@@ -254,7 +254,7 @@ module.exports = (app, dbConnection) => {
             interacao = await Interacao.findOne({ id_nivel_loc1: _reg.id_nivel_loc1, id_nivel_loc2: null });
         };
 
-          console.log("_checkInteracao: " + interacao)
+        console.log("_checkInteracao: " + interacao)
 
         //checa se trata-se de entrada ou saida indevida ou nao 
         let posicao
@@ -272,8 +272,6 @@ module.exports = (app, dbConnection) => {
                 }
             }
         };
-
-        console.log("_checkInteracao: " + inicio)
 
         if (movimento == 'entrada') {
 

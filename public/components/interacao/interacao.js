@@ -221,8 +221,8 @@ app.component('interacao', {
         'pdi_display': 'Display',
         'pdi_led_vr': 'Led Verde',
         'pdi_led_vm': 'Led Vermelho',
-        'saida': 'pdi_bt_1',
-        'saida': 'pdi_bt_2',
+        'pdi_bt_1': 'Botão 1',
+        'pdi_bt_2': 'Botão 2',
 
         'endpoint_get': 'GET',
         'endpoint_post': 'POST',
