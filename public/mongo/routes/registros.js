@@ -237,6 +237,10 @@ module.exports = (app, dbConnection) => {
 
     async function _checkInteracao(movimento, _reg) {
 
+        if(!_reg){
+            return
+        }
+        
         console.log("_checkInteracao: " + movimento + ' ' + _reg.id_nivel_loc1)
 
         let interacao
