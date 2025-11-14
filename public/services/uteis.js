@@ -4,7 +4,7 @@ app.service('uteisService', ['$rootScope', '$http', function ($rootScope, $http)
 
   const service = this;
   //service.ipAPI = 'http://localhost:3001';
-  service.ipAPI = 'https://sealairtracking-3d3268c3e73f.herokuapp.com/'
+  service.ipAPI = 'https://sealairtracking-3d3268c3e73f.herokuapp.com'
 
   // api
   //  -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_
