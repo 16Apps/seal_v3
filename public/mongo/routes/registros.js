@@ -240,7 +240,7 @@ module.exports = (app, dbConnection) => {
         if(!_reg){
             return
         }
-        
+
         console.log("_checkInteracao: " + movimento + ' ' + _reg.id_nivel_loc1)
 
         let interacao
@@ -330,7 +330,7 @@ module.exports = (app, dbConnection) => {
         console.log('_regPosicao:' + posicao)
 
         // 🔹 URL correta para OBJECTS
-        const urlSepioo = 'http://localhost:3001/sepioo';
+        const urlSepioo = 'https://sealairtracking-3d3268c3e73f.herokuapp.com/sepioo';
 
         if (interacao && Array.isArray(interacao.acoes)) {
 
