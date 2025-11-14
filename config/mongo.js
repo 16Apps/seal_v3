@@ -1,8 +1,8 @@
 const mongoose = require("mongoose");
 
     // URL de conexão (local ou Atlas)
-    const mongoURI = 'mongodb://127.0.0.1:27017/airtrack';
-    //const mongoURI = 'mongodb+srv://diadolivro:btpkafe@cluster0.cqtqv.mongodb.net/seal?retryWrites=true&w=majority';
+   // const mongoURI = 'mongodb://127.0.0.1:27017/airtrack';
+    const mongoURI = 'mongodb+srv://diadolivro:btpkafe@cluster0.cqtqv.mongodb.net/airtracking?retryWrites=true&w=majority';
 
     mongoose.connect(mongoURI, {
         // useNewUrlParser: true,
