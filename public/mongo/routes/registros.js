@@ -532,7 +532,8 @@ module.exports = (app, dbConnection) => {
                 const agora = moment();
 
                 for (const item of itens) {
-                    const dataPermanecia = item?.registro_atual?.data_permanecia;
+                    //const dataPermanecia = item?.registro_atual?.data_permanecia;
+                    const dataPermanecia = item.updatedAt
                     if (!dataPermanecia) continue;
 
                     const diffSegundos = agora.diff(moment(dataPermanecia), 'seconds');
@@ -540,8 +541,6 @@ module.exports = (app, dbConnection) => {
 
                     // 🔍 Caso esteja em perda de sinal, verificar registro e correlacionar colaborador
                     if (novoStatus === 'perca') {
-
-
 
                         const base = moment(dataPermanecia);
                         const inicioJanela = base.clone().subtract(30, 'seconds').toDate();
