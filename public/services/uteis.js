@@ -3,8 +3,8 @@ app.service('uteisService', ['$rootScope', '$http', function ($rootScope, $http)
   moment.locale('pt-br');
 
   const service = this;
-  service.ipAPI = 'http://localhost:3001';
-  //service.ipAPI = 'https://seal-3b8487bafac8.herokuapp.com'
+  //service.ipAPI = 'http://localhost:3001';
+  service.ipAPI = 'https://sealairtracking-3d3268c3e73f.herokuapp.com/'
 
   // api
   //  -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_

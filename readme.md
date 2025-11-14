@@ -23,7 +23,7 @@
 # Heroku Deploy
   - create git
 	$ git init
-	$ heroku git:remote -a seal
+	$ heroku git:remote -a sealairtracking
     
   - deploy
   $ git config core.autocrlf true
