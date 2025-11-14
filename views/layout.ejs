@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Seal AirTracking</title>
+
+  <!-- Meta -->
+  <meta name="description" content="Marketplace for Bootstrap Admin Dashboards" />
+  <meta name="author" content="Wrapmarket" />
+  <link rel="canonical" href="https://bootstrapget.com/">
+  <meta property="og:url" content="https://bootstrapget.com">
+  <meta property="og:title" content="Admin Templates - Dashboard Templates | Wrapmarket">
+  <meta property="og:description" content="Marketplace for Bootstrap Admin Dashboards">
+  <meta property="og:type" content="Website">
+  <meta property="og:site_name" content="Wrapmarket">
+  <link rel="shortcut icon" href="../assets/images/favicon.png" />
+
+  <!-- *************
+			************ CSS Files *************
+		************* -->
+  <link rel="stylesheet" href="../assets/fonts/bootstrap/bootstrap-icons.min.css" />
+  <link rel="stylesheet" href="../assets/css/main.min.css" />
+  <link rel="stylesheet" href="../assets/css/extras.css" />
+
+  <!-- Date Range CSS -->
+  <link rel="stylesheet" href="../assets/vendor/daterange/daterange.css" />
+
+  <!-- *************
+			************ Vendor Css Files *************
+		************ -->
+
+  <!-- Select2 CSS -->
+  <link href="../assets/vendor/select2/select2.min.css" rel="stylesheet" />
+
+  <!-- Scrollbar CSS -->
+  <link rel="stylesheet" href="../assets/vendor/overlay-scroll/OverlayScrollbars.min.css" />
+
+</head>
+
+<body ng-app="myApp" ng-controller="appCtrl">
+  <!-- Page wrapper start -->
+  <div class="page-wrapper">
+
+    <!-- App header starts -->
+    <div class="app-header">
+
+      <!-- App brand start -->
+      <div class="app-brand py-2 d-flex align-items-center">
+        <a href="index.html">
+          <img src="../assets/images/logo.fw.png" class="logo" alt="Admin Templates">
+        </a>
+      </div>
+      <!-- App brand end -->
+
+      <!-- Toggle buttons start -->
+      <div class="d-flex ms-4">
+        <button type="button" class="btn btn-outline-info btn-sm toggle-sidebar" id="toggle-sidebar"
+          title="Toggle sidebar">
+          <i class="bi bi-list fs-5"></i>
+        </button>
+        <button type="button" class="btn btn-outline-info btn-sm pin-sidebar" id="pin-sidebar" title="Pin sidebar">
+          <i class="bi bi-list fs-5"></i>
+        </button>
+      </div>
+      <!-- Toggle buttons end -->
+
+
+      <!-- App header actions start -->
+      <div class="header-actions gap-3">
+
+        <!-- Search container starts -->
+        <!-- <div class="search-container d-lg-flex d-none">
+          <input type="text" class="form-control" id="searchData" placeholder="Search">
+          <i class="bi bi-search"></i>
+        </div> -->
+        <!-- Search container ends -->
+
+        <!-- Header action starts -->
+        <div class="header-actions-block rounded-5 p-2 gap-2 d-sm-flex d-none">
+          <div class="dropdown">
+            <a class="dropdown-toggle action-icon" href="#!" role="button" data-bs-toggle="dropdown"
+              aria-expanded="false">
+              <i class="bi bi-hdd-network"></i>
+            </a>
+            <div class="dropdown-menu dropdown-menu-end dropdown-menu-md">
+
+              <h5 class="p-3 pb-0">Gateways Status</h5>
+              <!-- Activity start -->
+              <div class="scroll200">
+                <div class="header-activity d-grid gap-3 p-3">
+
+                  <!-- Activity item -->
+                  <div ng-repeat="item in _listRegsGateways | limitTo: 3 track by $index"
+                    class="d-flex align-items-start">
+                    <div ng-show="!item.sem_conexao" class="badge bg-success rounded-pill me-3 mt-1">
+                      <i class="bi bi-info-circle"></i>
+                    </div>
+                    <div ng-show="item.sem_conexao" class="badge bg-danger rounded-pill me-3 mt-1">
+                      <i class="bi bi-exclamation-circle"></i>
+                    </div>
+                    <div>
+                      <p class="mb-1 text-muted small">{{ item.descricao }}</p>
+                      <p class="mb-0">{{ formataDataHora(item.updatedAt) }}</p>
+                    </div>
+                  </div>
+
+
+                </div>
+              </div>
+              <!-- Activity end -->
+            </div>
+          </div>
+          <div class="dropdown">
+            <a class="dropdown-toggle action-icon" href="#!" role="button" data-bs-toggle="dropdown"
+              aria-expanded="false">
+              <i class="bi bi-handbag"></i>
+              <span class="count-label info">6</span>
+            </a>
+            <div class="dropdown-menu dropdown-menu-end dropdown-menu-md">
+              <div class="d-grid gap-4 p-3">
+                <div ng-repeat="item in _listRegsColaborador | limitTo: 3 track by $index" class="d-flex">
+                  <img src="{{ item.id_colaborador_ident._foto }}" class="img-3x me-3 rounded-2"
+                    alt="Dark Admin Template" />
+                  <div class="m-0">
+                    <h6>{{ item.id_colaborador_ident.nome }}</h6>
+                    <p class="mb-2">
+                      {{ item.id_nivel_loc1.descricao }} | {{ item.id_nivel_loc2.descricao }}
+                    </p>
+                    <span class="badge bg-danger">{{ formataDataHora(item.data_permanecia) }}</span>
+                  </div>
+                </div>
+                <a href="javascript:void(0)" class="btn btn-primary">Ver tudo</a>
+              </div>
+            </div>
+          </div>
+
+
+          <div class="dropdown">
+            <a class="dropdown-toggle action-icon" href="#!" role="button" data-bs-toggle="dropdown"
+              aria-expanded="false">
+              <i class="bi bi-person"></i>
+              <span class="count-label danger">{{ _listRegsColaborador.length <= 3 ? _listRegsColaborador.length : '3+'
+                  }}</span>
+            </a>
+            <div class="dropdown-menu dropdown-menu-end dropdown-menu-md">
+              <div class="d-grid gap-4 p-3">
+                <div ng-repeat="item in _listRegsColaborador | limitTo: 3 track by $index" class="d-flex">
+                  <img src="{{ item.id_colaborador_ident._foto }}" class="img-3x me-3 rounded-2"
+                    alt="Dark Admin Template" />
+                  <div class="m-0">
+                    <h6>{{ item.id_colaborador_ident.nome }}</h6>
+                    <p class="mb-2">
+                      {{ item.id_nivel_loc1.descricao }} | {{ item.id_nivel_loc2.descricao }}
+                    </p>
+                    <span class="badge bg-danger">{{ formataDataHora(item.data_permanecia) }}</span>
+                  </div>
+                </div>
+                <a href="javascript:void(0)" class="btn btn-primary">Ver tudo</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Header action ends -->
+
+        <!-- Header settings starts -->
+        <div class="dropdown">
+          <a id="userSettings" class="dropdown-toggle d-flex py-2 align-items-center text-decoration-none" href="#!"
+            role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <div class="icon-box md bg-primary text-white rounded-5">
+              {{ _regColaborador._nomeAbr }}
+            </div>
+          </a>
+          <div class="dropdown-menu dropdown-menu-end p-3">
+            <div class="text-center mb-3">
+              <div class="radial-graph-mini auto-align-graph">
+                <div id="credits"></div>
+              </div>
+              <h6 class="mb-1 text-decoration-underline">24/30</h6>
+              <p class="mb-1 small">Dias</p>
+              <span class="badge bg-success">Plano Free</span>
+            </div>
+            <div class="d-grid gap-1">
+              <a href="/profile" class="btn btn-primary btn-sm">Profile</a>
+              <a href="/start" class="btn btn-outline-secondary btn-sm">Start</a>
+              <a href="/" class="btn btn-outline-danger btn-sm">Logout</a>
+            </div>
+          </div>
+        </div>
+        <!-- Header settings starts -->
+
+      </div>
+      <!-- App header actions end -->
+
+    </div>
+    <!-- App header ends -->
+
+    <!-- Main container start -->
+    <div class="main-container">
+
+      <!-- Sidebar wrapper start -->
+      <nav id="sidebar" class="sidebar-wrapper">
+
+        <!-- Sidebar profile starts -->
+        <div class="sidebar-profile">
+          <img src="{{ _regConta._logo }}" class="img-3x me-3 rounded-5" alt="Dark Admin Dashboard" />
+          <div class="m-0 text-nowrap">
+            <p class="m-0">Olá &#128075;</p>
+            <h6 class="m-0 text-truncate">{{ _regColaborador.nome }}</h6>
+          </div>
+        </div>
+        <!-- Sidebar profile ends -->
+
+        <!-- Sidebar menu starts -->
+        <div class="sidebarMenuScroll">
+          <ul class="sidebar-menu">
+
+            <li ng-class="{'active current-page': isActive('start')}">
+              <a href="/start">
+                <i class="bi bi-lightning-charge-fill"></i>
+                <span class="menu-text">Start</span>
+              </a>
+            </li>
+
+            <li ng-class="{'active current-page': isActive('dashboard')}">
+              <a href="/dashboard">
+                <i class="bi bi-bar-chart"></i>
+                <span class="menu-text">Dashboard</span>
+              </a>
+            </li>
+
+            <li class="treeview" ng-class="{'active current-page': isActive('alerta') || isActive('posicao') || isActive('interacao') }">
+              <a href="#!">
+                <i class="bi bi-eye"></i>
+                <span class="menu-text">Monitoramento</span>
+              </a>
+              <ul class="treeview-menu">
+                <li><a href="/posicao">Posições Esperadas</a></li>
+                <li><a href="/alerta">Painel de Alertas</a></li>
+                <li><a href="/interacao">Interação nos Locais</a></li>
+              </ul>
+            </li>
+
+            <li ng-class="{'active current-page': isActive('categoria') || isActive('item') || isActive('importar')}"
+              class="treeview">
+              <a href="#!">
+                <i class="bi bi-ui-checks-grid"></i>
+                <span class="menu-text">Gestão de Itens</span>
+              </a>
+              <ul class="treeview-menu">
+                <li>
+                  <a href="/item">Itens</a>
+                </li>
+                <li>
+                  <a href="/categoria">Categorias</a>
+                </li>
+                <li>
+                  <a href="/importar">Importar</a>
+                </li>
+              </ul>
+            </li>
+
+            <li
+              ng-class="{'active current-page': isActive('localizacao') || isActive('gateway') || isActive('equipamento')}"
+              class="treeview">
+              <a href="#!">
+                <i class="bi bi-code-square"></i>
+                <span class="menu-text">Extras</span>
+              </a>
+              <ul class="treeview-menu">
+                <li>
+                  <a href="/localizacao">Localizações</a>
+                </li>
+                <li>
+                  <a href="/gateway">Gateways</a>
+                </li>
+                <li>
+                  <a href="/equipamento">Equipamentos</a>
+                </li>
+              </ul>
+            </li>
+
+            <li ng-class="{'active current-page': isActive('profile')}">
+              <a href="/profile">
+                <i class="bi bi-building"></i>
+                <span class="menu-text">Conta</span>
+              </a>
+            </li>
+
+
+            <!-- <li class="treeview">
+              <a href="#!">
+                <i class='bi bi-building'></i>
+                <span class="menu-text">Conta</span>
+              </a>
+              <ul class="treeview-menu">
+                <li>
+                  <a href="/profile">Profile</a>
+                </li>
+                <li>
+                  <a href="advanced-cards.html">Colaboradores</a>
+                </li>
+                <li>
+                  <a href="advanced-cards.html">Configurações</a>
+                </li>
+              </ul>
+            </li> -->
+
+            <li>
+              <a href="/">
+                <i class="bi bi-box-arrow-right"></i>
+                <span class="menu-text">Sair</span>
+              </a>
+            </li>
+
+          </ul>
+        </div>
+        <!-- Sidebar menu ends -->
+
+      </nav>
+      <!-- Sidebar wrapper end -->
+
+      <!-- App container starts -->
+      <div class="app-container">
+
+        <%- body %>
+
+      </div>
+      <!-- App container ends -->
+
+    </div>
+    <!-- Main container end -->
+
+  </div>
+  <!-- Page wrapper end -->
+
+  <!-- *************
+			************ JavaScript Files *************
+		************* -->
+  <!-- Required jQuery first, then Bootstrap Bundle JS -->
+  <script src="../assets/js/jquery.min.js"></script>
+  <script src="../assets/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.5.1/dist/sweetalert2.all.min.js"></script>
+
+  <!-- Angular-->
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular-sanitize.min.js"></script>
+
+  <!-- Moment -->
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.9.0/moment.min.js"></script>
+  <script type="text/javascript"
+    src="https://cdnjs.cloudflare.com/ajax/libs/angular-moment/0.9.0/angular-moment.min.js"></script>
+
+  <script src="/plugins/ngMask.js"></script>
+
+  <script src="/controller/app.js"></script>
+  <script src="/services/uteis.js"></script>
+  <script src="/controller/conta.js"></script>
+  <script src="/controller/start.js"></script>
+  <script src="/controller/dashboard.js"></script>
+  <script src="/controller/posicao.js"></script>
+  <script src="/controller/alerta.js"></script>
+  <script src="/controller/interacao.js"></script>
+
+  <script src="/controller/item.js"></script>
+  <script src="/controller/categoria.js"></script>
+  <script src="/controller/importar.js"></script>
+  <script src="/controller/localizacao.js"></script>
+  <script src="/controller/gateway.js"></script>
+  <script src="/controller/equipamento.js"></script>
+
+  <script src="/components/localizacao/localizacao.js"></script>
+  <script src="/components/item/item.js"></script>
+  <script src="/components/gateway/gateway.js"></script>
+  <script src="/components/posicao/posicao.js"></script>
+  <script src="/components/alerta/alerta.js"></script>
+  <script src="/components/interacao/interacao.js"></script>
+  
+
+  <script src="/components/categoria/categoria.js"></script>
+  <script src="/components/equipamento/equipamento.js"></script>
+  <script src="/components/mapa/mapa.js"></script>
+  <script src="/components/planta/planta.js"></script>
+
+  <!-- *************
+			************ Vendor Js Files *************
+		************* -->
+
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC5xaaH3BEUOSN_piHUEtAunpzLNB1f5TY&libraries=drawing,geometry"></script>
+
+
+  <!-- Overlay Scroll JS -->
+  <script src="../assets/vendor/overlay-scroll/jquery.overlayScrollbars.min.js"></script>
+  <script src="../assets/vendor/overlay-scroll/custom-scrollbar.js"></script>
+  <script src="../assets/vendor/jvectormap/jquery-jvectormap-2.0.5.min.js"></script>
+  <script src="../assets/vendor/jvectormap/world-mill-en.js"></script>
+
+  <!-- Apex Charts -->
+  <script src="../assets/vendor/apex/apexcharts.min.js"></script>
+  <script src="../assets/vendor/apex/custom/common/credits.js"></script>
+  <script src="../assets/vendor/apex/custom/dash2/sparkline.js"></script>
+  <script src="../assets/vendor/apex/custom/dash2/traffic.js"></script>
+  <script src="../assets/vendor/apex/custom/dash2/active-users.js"></script>
+  <script src="../assets/vendor/apex/custom/dash2/sessions.js"></script>
+  <script src="../assets/vendor/apex/custom/common/credits.js"></script>
+
+  <!-- Select2 JS  -->
+  <script src="../assets/vendor/select2/select2.min.js"></script>
+  <script src="../assets/vendor/select2/select2-custom.js"></script>
+
+  <!-- Date Range JS -->
+  <script src="../assets/vendor/daterange/daterange.js"></script>
+  <script src="../assets/vendor/daterange/custom-daterange.js"></script>
+
+  <!-- Custom JS files -->
+  <script src="../assets/js/custom.js"></script>
+  <script src="../assets/js/validations.js"></script>
+  <script src="../assets/js/custom.js"></script>
+
+</body>
+
+</html>

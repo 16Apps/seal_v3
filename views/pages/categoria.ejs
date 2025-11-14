@@ -1,0 +1,80 @@
+<%- contentFor('body') %>
+  <div ng-controller="categoriaCtrl" class="app-container">
+
+    <!-- App hero header starts -->
+    <div class="app-hero-header d-flex align-items-center">
+
+      <!-- Breadcrumb start -->
+      <ol class="breadcrumb d-none d-lg-flex">
+        <li class="breadcrumb-item">
+          <i class="bi bi-house lh-1"></i>
+          <a href="index.html" class="text-decoration-none">Gestão de Itens</a>
+        </li>
+        <li class="breadcrumb-item" aria-current="page">Categorias</li>
+      </ol>
+      <!-- Breadcrumb end -->
+
+      <!-- Filter start -->
+      <div class="ms-auto d-flex flex-row gap-1 ">
+        <div class="search-container d-lg-flex d-none">
+          <input type="text" class="form-control" id="searchData" placeholder="Pesquisar">
+          <i class="bi bi-search"></i>
+        </div>
+        <button ng-click="onCategoria('add', undefined)" type="button"
+          class="btn btn-warning btn-sm ms-3 text-dark">Novo</button>
+      </div>
+      <!-- Filter end -->
+
+    </div>
+    <!-- App Hero header ends -->
+
+    <!-- App body starts -->
+    <div class="app-body">
+
+      <div class="modal fade" id="modalCategoria" tabindex="-1" aria-labelledby="exampleModalFullscreenLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-fullscreen">
+          <categoria funcao="funcaoLoc" edit="editLoc" on-fechar="onCategoria()"></categoria>
+        </div>
+      </div>
+
+
+      <div class="row gx-3">
+        <div class="col-xxl-12">
+          <div class="card mb-3">
+            <div class="card-body">
+              <div class="table-responsive">
+                <div class="table-outer">
+                  <table class="table align-middle table-hover m-0">
+                    <thead>
+                      <tr>
+                        <th>Descrição</th>
+                        <th  class="w-90"></th>
+                        <th  class="w-10">EAN</th>
+                        <th >Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr ng-repeat="item in _listCategorias">
+                        <td>
+                          <img class="rounded-circle img-3x me-2" src="{{ item._foto }}" alt="Wrapmarket" />
+                        </td>
+                        <td>{{ item.descricao }}</td>
+                        <td>{{ item.ean }}</td>
+                        <td>
+                          <a class="btn btn-info btn-sm" ng-click="onCategoria('edit', item)" >
+                            <i class="bi bi-pencil"></i>
+                          </a>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <!-- App body ends -->

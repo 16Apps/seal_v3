@@ -1,0 +1,649 @@
+<%- contentFor('body') %>
+  <div ng-controller="dashboardCtrl" class="app-container">
+
+    <!-- App hero header starts -->
+    <div class="app-hero-header d-flex align-items-center">
+
+      <!-- Breadcrumb start -->
+      <ol class="breadcrumb d-none d-lg-flex">
+        <li class="breadcrumb-item">
+          <i class="bi bi-house lh-1"></i>
+          <a href="index.html" class="text-decoration-none">Home</a>
+        </li>
+        <li class="breadcrumb-item" aria-current="page">Dashboard</li>
+      </ol>
+      <!-- Breadcrumb end -->
+
+      <!-- Filter start -->
+      <div class="ms-auto d-flex flex-row gap-1 day-filters">
+
+        <div class="btn-group" role="group">
+
+          <span class="me-3">
+            <input ng-checked="!id_nivelPosicao" ng-click="onMudaNivel1Posicao('')" type="radio" class="btn-check"
+              name="btnradioNivelPosicao" id="nivel_pos_0" autocomplete="off">
+            <label class="btn btn-outline-primary" for="nivel_pos_0">Todas</label>
+          </span>
+
+          <span ng-repeat="item in _listNiveis1 track by $index" class="me-3">
+            <input ng-checked="item._id === id_nivelPosicao" ng-click="onMudaNivel1Posicao(item._id)" type="radio"
+              class="btn-check" name="btnradioNivelPosicao" id="nivel_pos_{{ item._id }}" autocomplete="off">
+            <label class="btn btn-outline-primary" for="nivel_pos_{{ item._id }}">{{ item.descricao }}</label>
+          </span>
+        </div>
+
+        <!-- <button type="button" class="btn btn-sm">Hoje</button>
+        <button type="button" class="btn btn-sm">7D</button>
+        <button type="button" class="btn btn-sm">2S</button>
+        <button type="button" class="btn btn-sm">1M</button>
+        <button type="button" class="btn btn-sm">3M</button>
+        <button type="button" class="btn btn-sm">6M</button>
+        <button type="button" class="btn btn-sm btn-info">1Y</button> -->
+      </div>
+      <!-- Filter end -->
+
+    </div>
+    <!-- App Hero header ends -->
+
+    <!-- App body starts -->
+    <div class="app-body">
+
+      <!-- Row start -->
+      <div class="row gx-3">
+        <div class="col-xl-3 col-sm-6 col-12">
+          <div class="card mb-3">
+            <div class="card-body">
+              <div class="d-flex align-items-center flex-row">
+                <div class="d-flex align-items-center py-2">
+                  <div class="icon-box lg bg-info rounded-4">
+                    <i class="bi bi-box-seam fs-3 lh-1"></i>
+                  </div>
+                  <div class="mx-3">
+                    <h3 class="m-0 display-5">{{ _regResumoItens.total }}</h3>
+                    <p class="m-0">Itens</p>
+                  </div>
+                </div>
+                <div class="overflow-hidden w-100" ng-show="_regResumoItens.ultimo_item">
+                  <div class="alert border-muted alert-dismissible fade show text-info mt-3 text-end" role="alert">
+                    <i class="bi bi bi-tag me-2"></i><b>{{ _regResumoItens.ultimo_item.tag }}</b><br> {{
+                    formataDataHora(_regResumoItens.ultimo_item.updatedAt) }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-xl-3 col-sm-6 col-12">
+          <div class="card mb-3">
+            <div class="card-body">
+              <div class="d-flex align-items-center flex-row">
+                <div class="d-flex align-items-center py-2">
+                  <div class="icon-box lg bg-success rounded-4">
+                    <i class="bi bi-hdd-network fs-3 lh-1"></i>
+                  </div>
+                  <div class="mx-3">
+                    <h3 class="m-0 display-5">{{ _regResumoItens.alocados }}</h3>
+                    <p class="m-0">Alocados</p>
+                  </div>
+                </div>
+                <div class="overflow-hidden w-100" ng-show="_regResumoItens.ultimo_alocado">
+                  <div class="alert border-muted alert-dismissible fade show text-success mt-3 text-end" role="alert">
+                    <i class="bi bi bi-tag me-2"></i><b>{{ _regResumoItens.ultimo_alocado.tag }}</b><br> {{
+                    formataDataHora(_regResumoItens.ultimo_alocado.updatedAt) }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-xl-3 col-sm-6 col-12">
+          <div class="card mb-3">
+            <div class="card-body">
+              <div class="d-flex align-items-center flex-row">
+                <div class="d-flex align-items-center py-2">
+                  <div class="icon-box lg bg-warning rounded-4">
+                    <i class="bi bi-truck fs-3 lh-1"></i>
+                  </div>
+                  <div class="mx-3">
+                    <h3 class="m-0 display-5">{{ _regResumoItens.em_transporte }}</h3>
+                    <p class="m-0">Trânsito</p>
+                  </div>
+                </div>
+                <div class="overflow-hidden w-100" ng-show="_regResumoItens.ultimo_em_transporte">
+                  <div class="alert border-muted alert-dismissible fade show text-warning mt-3 text-end " role="alert">
+                    <i class="bi bi bi-tag me-2"></i><b>{{ _regResumoItens.ultimo_em_transporte.tag }}</b><br>{{
+                    formataDataHora(_regResumoItens.ultimo_em_transporte.updatedAt) }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-xl-3 col-sm-6 col-12">
+          <div class="card mb-3">
+            <div class="card-body">
+              <div class="d-flex align-items-center flex-row">
+                <div class="d-flex align-items-center py-2">
+                  <div class="icon-box lg bg-danger rounded-4">
+                    <i class="bi bi-exclamation-triangle fs-3 fs-3 lh-1"></i>
+                  </div>
+                  <div class="mx-3">
+                    <h3 class="m-0 display-5">{{ _regResumoItens.perca }}</h3>
+                    <p class="m-0">PercaSinal</p>
+                  </div>
+                </div>
+                <div class="overflow-hidden w-100">
+                  <div class="alert border-muted alert-dismissible fade show text-danger mt-3 text-end" role="alert">
+                    <i class="bi bi bi-tag me-2"></i><b>{{ _regResumoItens.total_alertas }}</b><br>
+                    Alertas Mov.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Row end -->
+
+      <!-- Row start -->
+      <div class="row gx-3">
+
+        <div class="col-xxl-12 col-sm-12 col-12">
+          <div class="card mb-3">
+            <div class="card-header">
+              <h5 class="card-title mb-3">Posição</h5>
+            </div>
+            <div class="card-body pt-0">
+              <div class="card-h-400">
+
+                <!-- Graph start -->
+                <div class="overflow-hidden">
+                  <div id="grafico-local"></div>
+                </div>
+                <!-- Graph end -->
+
+
+                <!-- Progress start -->
+                <div class="d-grid gap-3">
+
+                  <div class="row gx-3">
+                    <div class="col-xxl-4 col-sm-6 col-6 p-4">
+                      <div ng-repeat="item in _listItens | limitTo: 3 track by $index  " class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                          <div class="d-flex align-items-center gap-3">
+                            <div class="icon-box md rounded-5" ng-class="getBgClass($index, true)">
+                              <i class="bi bi-display fs-5" ng-class="getTextClass($index)"></i>
+                            </div>
+                            <div>
+                              <h6 class="mb-0">
+                                {{ item.id_categoria.descricao }} {{ item.tag }}
+                                <span class="text-warning">{{ item.inf_compl1 }}</span>
+                                {{ item.registro_atual.id_colaborador_retirada }}
+                              </h6>
+                              <small class="text-muted">
+                                {{ item.id_nivel_loc1 ? item.id_nivel_loc1.descricao : 'Em Transporte' }}
+                                {{ item.id_nivel_loc2 ? ' - ' + item.id_nivel_loc2.descricao : '' }}<br>
+                                <span class="text-info">
+                                  {{ item.id_nivel_loc3 ? item.id_nivel_loc3.descricao : '' }}
+                                  {{ item.id_nivel_loc4 ? ' - ' + item.id_nivel_loc4.descricao : '' }}
+                                </span>
+                                <span ng-show="item.registro_atual.alerta "
+                                  class="badge bg-danger bg-opacity-10 text-danger text-uppercase">
+                                  <i class="bi bi-exclamation-triangle me-1 "></i>{{ item.registro_atual.alerta }}
+                                </span>
+                              </small>
+                            </div>
+                          </div>
+                          <span class="fw-semibold d-flex flex-column align-items-end text-end gap-1">
+                            <div>
+                              <i class="bi bi-clock-history text-muted me-1"></i>
+                              {{ item._intervalo_segundos ? formatarTempo(item._intervalo_segundos) : '0' }}
+                            </div>
+                            <div>
+                              {{ item.registro_atual ? formataDataHora(item.registro_atual.data_permanecia) : '00mmm
+                              00h0' }}
+                            </div>
+                          </span>
+                        </div>
+
+                        <div class="progress mt-2 small">
+                          <div class="progress-bar" ng-class="getBgClass($index)"
+                            ng-style="{'width': (item.percentual | number:0) + '%'}">
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+
+                    <div class="col-xxl-4 col-sm-6 col-6 p-4">
+                      <div ng-repeat="item in _listItens | limitTo: 3:3 track by $index  " class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                          <div class="d-flex align-items-center gap-3">
+                            <div class="icon-box md rounded-5" ng-class="getBgClass($index, true)">
+                              <i class="bi bi-display fs-5" ng-class="getTextClass($index)"></i>
+                            </div>
+                            <div>
+                              <h6 class="mb-0">
+                                {{ item.id_categoria.descricao }} {{ item.tag }}
+                                <span class="text-warning">{{ item.inf_compl1 }}</span>
+                              </h6>
+                              <small class="text-muted">
+                                {{ item.id_nivel_loc1 ? item.id_nivel_loc1.descricao : 'Em Transporte' }}
+                                {{ item.id_nivel_loc2 ? ' - ' + item.id_nivel_loc2.descricao : '' }}<br>
+                                <span class="text-info">
+                                  {{ item.id_nivel_loc3 ? item.id_nivel_loc3.descricao : '' }}
+                                  {{ item.id_nivel_loc4 ? ' - ' + item.id_nivel_loc4.descricao : '' }}
+                                </span>
+
+                              </small>
+                            </div>
+                          </div>
+                          <span class="fw-semibold d-flex flex-column align-items-end text-end gap-1">
+                            <div>
+                              <i class="bi bi-clock-history text-muted me-1"></i>
+                              {{ item._intervalo_segundos ? formatarTempo(item._intervalo_segundos) : '0' }}
+                            </div>
+                            <div>
+                              {{ item.registro_atual ? formataDataHora(item.registro_atual.data_permanecia) : '00mmm
+                              00h0' }}
+                            </div>
+                          </span>
+                        </div>
+
+                        <div class="progress mt-2 small">
+                          <div class="progress-bar" ng-class="getBgClass($index)"
+                            ng-style="{'width': (item.percentual | number:0) + '%'}">
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="col-xxl-4 col-sm-6 col-6 p-4">
+                      <div ng-repeat="item in _listItens | limitTo: 3:6 track by $index  " class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                          <div class="d-flex align-items-center gap-3">
+                            <div class="icon-box md rounded-5" ng-class="getBgClass($index, true)">
+                              <i class="bi bi-display fs-5" ng-class="getTextClass($index)"></i>
+                            </div>
+                            <div>
+                              <h6 class="mb-0">
+                                {{ item.id_categoria.descricao }} {{ item.tag }}
+                                <span class="text-warning">{{ item.inf_compl1 }}</span>
+                              </h6>
+                              <small class="text-muted">
+                                {{ item.id_nivel_loc1 ? item.id_nivel_loc1.descricao : 'Em Transporte' }}
+                                {{ item.id_nivel_loc2 ? ' - ' + item.id_nivel_loc2.descricao : '' }}<br>
+                                <span class="text-info">
+                                  {{ item.id_nivel_loc3 ? item.id_nivel_loc3.descricao : '' }}
+                                  {{ item.id_nivel_loc4 ? ' - ' + item.id_nivel_loc4.descricao : '' }}
+                                </span>
+
+                              </small>
+                            </div>
+                          </div>
+                          <span class="fw-semibold d-flex flex-column align-items-end text-end gap-1">
+                            <div>
+                              <i class="bi bi-clock-history text-muted me-1"></i>
+                              {{ item._intervalo_segundos ? formatarTempo(item._intervalo_segundos) : '0' }}
+                            </div>
+                            <div>
+                              {{ item.registro_atual ? formataDataHora(item.registro_atual.data_permanecia) : '00mmm
+                              00h0' }}
+                            </div>
+                          </span>
+                        </div>
+
+                        <div class="progress mt-2 small">
+                          <div class="progress-bar" ng-class="getBgClass($index)"
+                            ng-style="{'width': (item.percentual | number:0) + '%'}">
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Device Row -->
+
+
+                </div>
+                <!-- Progress end -->
+
+                <div class="mt-0 me-3 d-flex justify-content-end">
+                  <a ng-click="limite = limite + 3" ng-show="_regAgrupadoLocal1.resultado.length > limite"
+                    class="btn btn-secondary">
+                    Ver Mais
+                  </a>
+                  <a ng-click="limite = limite - 3" ng-show="_regAgrupadoLocal1.resultado.length == limite"
+                    class="btn btn-secondary">
+                    Ver Menos
+                  </a>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Row end -->
+
+      <!-- Row start -->
+
+      <div class="col-xxl-12 col-sm-12 col-12 mb-3">
+        <div class="card mb-0">
+          <div class="card-header">
+            <h5 class="card-title">Ciclo de Deslocamento</h5>
+          </div>
+          <div class="card-body pt-0">
+
+            <div class="row gx-3">
+              <div ng-repeat="item in _listRegistros  | limitTo: 4 track by $index  " class="col">
+                <div class="card mb-0">
+                  <div class="card-header">
+                    <h5 class="card-title">
+                      {{ item.id_categoria.descricao }}
+                      <span class="text-warning"> {{ item.id_item.inf_compl1 }}</span>
+                      <br>
+                      <small class="text-muted">{{ item.id_item.tag }}</small>
+                    </h5>
+                  </div>
+                  <div class="card-body">
+                    <div class="scroll250">
+                      <ul class="list-unstyled d-grid gap-4">
+                        <li class="tracking d-grid gap-3 pb-0">
+                          <div class="tracking-block d-flex gap-3">
+                            <div class="tracking-icon  bg-opacity-10"
+                              ng-class="item.id_nivel_loc1 ? 'bg-primary' : 'bg-warning'">
+                              <i class="bi"
+                                ng-class="item.id_nivel_loc1 ? 'bi-geo-alt text-primary lh-1' : 'bi-truck text-warning lh-1'">
+                              </i>
+                            </div>
+                            <div class="tracking-details d-grid gap-2">
+                              <h6 class="m-0" ng-class="item.id_nivel_loc1 ? 'text-primary' : 'text-warning'">
+                                {{ item.id_nivel_loc1 ? item.id_nivel_loc1.descricao : 'Em Trânsito '}}
+                              </h6>
+                              <h6 class="m-0 d-flex align-items-center">
+                                {{ item.id_nivel_loc2 ? item.id_nivel_loc2.descricao : '&nbsp;'}}
+
+                              </h6>
+                              <small class="text-muted"><i class="bi bi-clock me-1"></i>
+                                {{ formataDataHora(item.data_registro) }}
+                                <span class="badge bg-light bg-opacity-10 text-muted ms-2 small">
+                                  {{ item.id_gateway.descricao }}
+                                </span>
+                              </small>
+                            </div>
+                          </div>
+                          <div class="tracking-block d-flex gap-3">
+                            <div class="tracking-icon  bg-opacity-10"
+                              ng-class="item.id_nivel_loc1_final ? 'bg-primary' : 'bg-warning'">
+                              <i class="bi"
+                                ng-class="item.id_nivel_loc1_final ? 'bi-geo-alt text-primary lh-1' : 'bi-truck text-warning lh-1'">
+                              </i>
+                            </div>
+                            <div class="tracking-details d-grid gap-2">
+                              <h6 class="m-0" ng-class="item.id_nivel_loc1_final ? 'text-primary' : 'text-warning'">
+                                {{ item.id_nivel_loc1_final ? item.id_nivel_loc1_final.descricao : 'Em Trânsito '}}
+                              </h6>
+                              <h6 class="m-0 d-flex align-items-center">
+                                {{ item.id_nivel_loc2 ? item.id_nivel_loc2.descricao : '&nbsp;'}}
+
+                              </h6>
+                              <small class="text-muted"><i class="bi bi-clock me-1"></i>
+                                {{ formataDataHora(item.data_permanecia) }}
+                                <span class="badge bg-light bg-opacity-10 text-muted ms-2 small">
+                                  {{ item.id_gateway.descricao }}
+                                </span>
+                              </small>
+                            </div>
+                          </div>
+                          <div class="tracking-block d-flex gap-3">
+                            <div class="tracking-icon ng-white bg-opacity-10">
+                              <i class="bi bi-clock text-white lh-1">
+                              </i>
+                            </div>
+                            <div class="tracking-details d-grid gap-2">
+                              <h6 class="m-0 mt-2 text-white">
+                                {{ formatarTempo(item.intervalo_segundos) }}
+                              </h6>
+                            </div>
+                          </div>
+                        </li>
+
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+
+      <!-- Row end -->
+      <div class="row gx-3" ng-show="id_nivel">
+        <div class="col-xxl-12 col-sm-12 col-12">
+          <div class="card mb-3">
+            <div class="card-header">
+              <h5 class="card-title mb-3">Mapa</h5>
+            </div>
+            <div class="card-body pt-0">
+              <mapa id_nivel="id_nivel"></mapa>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Row start -->
+
+      <!-- Row end -->
+      <div class="row gx-3 mb-6" ng-show="id_nivelPlanta">
+        <div class="col-xxl-12 col-sm-12 col-12">
+          <div class="card mb-3">
+            <div class="card-header">
+              <h5 class="card-title mb-3">Planta Baixa</h5>
+
+
+            </div>
+            <div class="card-body pt-0">
+              <planta id_nivel_planta="id_nivelPlanta"></planta>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Row end -->
+
+    </div>
+    <!-- App body ends -->
+
+    <!-- App footer start -->
+    <div class="app-footer">
+      <span>© Seal 2025</span>
+    </div>
+    <!-- App footer end -->
+
+  </div>
+
+  <script>
+
+    document.addEventListener("DOMContentLoaded", function () {
+      // Sparkline 1
+      var options1 = {
+        series: [
+          {
+            name: "Likes",
+            data: [10, 20, 30, 50, 40, 30, 5],
+          },
+        ],
+        chart: {
+          type: "line",
+          height: 40,
+          sparkline: {
+            enabled: true,
+          },
+        },
+        colors: ["#04a777"],
+        stroke: {
+          curve: "smooth",
+          width: 5,
+        },
+        tooltip: {
+          y: {
+            formatter: function (val) {
+              return val;
+            },
+          },
+        },
+        fill: {
+          type: "gradient",
+          gradient: {
+            shade: "dark",
+            type: "horizontal",
+            shadeIntensity: 0.5,
+            gradientToColors: undefined,
+            inverseColors: true,
+          },
+        },
+      };
+
+      var chart1 = new ApexCharts(
+        document.querySelector("#sparklineLine1"),
+        options1
+      );
+      chart1.render();
+
+      // Sparkline 2
+      var options2 = {
+        series: [
+          {
+            name: "Views",
+            data: [10, 20, 30, 50, 40, 30, 10],
+          },
+        ],
+        chart: {
+          type: "line",
+          height: 40,
+          sparkline: {
+            enabled: true,
+          },
+        },
+        colors: ["#ffc857"],
+        stroke: {
+          curve: "smooth",
+          width: 5,
+        },
+        tooltip: {
+          y: {
+            formatter: function (val) {
+              return val;
+            },
+          },
+        },
+        fill: {
+          type: "gradient",
+          gradient: {
+            shade: "dark",
+            type: "horizontal",
+            shadeIntensity: 0.5,
+            gradientToColors: undefined,
+            inverseColors: true,
+          },
+        },
+      };
+
+      var chart2 = new ApexCharts(
+        document.querySelector("#sparklineLine2"),
+        options2
+      );
+      chart2.render();
+
+      // Sparkline 3
+      var options3 = {
+        series: [
+          {
+            name: "Users",
+            data: [10, 20, 30, 50, 40, 30, 60],
+          },
+        ],
+        chart: {
+          type: "line",
+          height: 40,
+          sparkline: {
+            enabled: true,
+          },
+        },
+        colors: ["#fe5f55"],
+        stroke: {
+          curve: "smooth",
+          width: 5,
+        },
+        tooltip: {
+          y: {
+            formatter: function (val) {
+              return val;
+            },
+          },
+        },
+        fill: {
+          type: "gradient",
+          gradient: {
+            shade: "dark",
+            type: "horizontal",
+            shadeIntensity: 0.5,
+            gradientToColors: undefined,
+            inverseColors: true,
+          },
+        },
+      };
+
+      var chart3 = new ApexCharts(
+        document.querySelector("#sparklineLine3"),
+        options3
+      );
+      chart3.render();
+
+      // Sparkline 4
+      var options4 = {
+        series: [
+          {
+            name: "Sales",
+            data: [10, 20, 30, 50, 40, 30, 60],
+          },
+        ],
+        chart: {
+          type: "line",
+          height: 40,
+          sparkline: {
+            enabled: true,
+          },
+        },
+        colors: ["#20a1d0"],
+        stroke: {
+          curve: "smooth",
+          width: 5,
+        },
+        tooltip: {
+          y: {
+            formatter: function (val) {
+              return val;
+            },
+          },
+        },
+        fill: {
+          type: "gradient",
+          gradient: {
+            shade: "dark",
+            type: "horizontal",
+            shadeIntensity: 0.5,
+            gradientToColors: undefined,
+            inverseColors: true,
+          },
+        },
+      };
+
+      var chart4 = new ApexCharts(
+        document.querySelector("#sparklineLine4"),
+        options4
+      );
+      chart4.render();
+    });
+  </script>

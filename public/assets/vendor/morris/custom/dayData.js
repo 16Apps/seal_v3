@@ -1,0 +1,42 @@
+// Morris Days
+var day_data = [
+  { period: "2016-10-01", licensed: 3213, "Wrapmarket": 887 },
+  { period: "2016-09-30", licensed: 3321, "Wrapmarket": 776 },
+  { period: "2016-09-29", licensed: 3671, "Wrapmarket": 884 },
+  { period: "2016-09-20", licensed: 3176, "Wrapmarket": 448 },
+  { period: "2016-09-19", licensed: 3376, "Wrapmarket": 565 },
+  { period: "2016-09-18", licensed: 3976, "Wrapmarket": 627 },
+  { period: "2016-09-17", licensed: 2239, "Wrapmarket": 660 },
+  { period: "2016-09-16", licensed: 3871, "Wrapmarket": 676 },
+  { period: "2016-09-15", licensed: 3659, "Wrapmarket": 656 },
+  { period: "2016-09-10", licensed: 3380, "Wrapmarket": 663 },
+];
+Morris.Line({
+  element: "dayData",
+  data: day_data,
+  xkey: "period",
+  ykeys: ["licensed", "Wrapmarket"],
+  labels: ["Licensed", "Wrapmarket"],
+  resize: true,
+  hideHover: "auto",
+  gridLineColor: "#575e6d",
+  pointFillColors: [
+    "#005f73",
+    "#0a9396",
+    "#94d2bd",
+    "#e9d8a6",
+    "#ee9b00",
+    "#ca6702",
+    "#bb3e03",
+  ],
+  pointStrokeColors: ["#6fb4ce"],
+  lineColors: [
+    "#005f73",
+    "#0a9396",
+    "#94d2bd",
+    "#e9d8a6",
+    "#ee9b00",
+    "#ca6702",
+    "#bb3e03",
+  ],
+});

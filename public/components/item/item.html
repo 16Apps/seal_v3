@@ -1,0 +1,446 @@
+<div class="modal-content">
+    <div class="modal-header">
+        <h5 class="modal-title h4" id="exampleModalFullscreenLabel">
+            Itens
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    </div>
+    <div class="modal-body">
+
+        <ol class="breadcrumb d-none d-lg-flex mb-4">
+            <li class="breadcrumb-item">
+                <i class="bi bi-geo-alt lh-1"></i>
+                <a href="index.html" class="text-decoration-none">Item</a>
+            </li>
+            <li class="breadcrumb-item" aria-current="page">
+                <a href="index.html" class="text-decoration-none text-info">
+                    {{ $ctrl._editItem.tag || 'Novo'}}
+                </a>
+            </li>
+
+        </ol>
+
+        <div class="row gx-3">
+            <div class="col-sm-12">
+                <div class="card mb-3">
+                    <div class="card-body">
+
+                        <!-- Tabs starts -->
+                        <ul class="nav nav-pills mb-3 gap-1" id="itens-tab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link rounded-pill active " id="itens-a-tab" data-bs-toggle="pill"
+                                    data-bs-target="#itens-a" type="button" role="tab" aria-controls="itens-a"
+                                    aria-selected="true">Cadastro</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button ng-click="$ctrl.onCarregaNiveisPlanta('02')" class="nav-link rounded-pill"
+                                    id="itens-b-tab" data-bs-toggle="pill" data-bs-target="#itens-b" type="button"
+                                    role="tab" aria-controls="itens-b" aria-selected="false">Tracking</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link rounded-pill" id="itens-c-tab" data-bs-toggle="pill"
+                                    data-bs-target="#itens-c" type="button" role="tab" aria-controls="itens-c"
+                                    aria-selected="false">Movimentação</button>
+                            </li>
+
+                        </ul>
+                        <div class="tab-content" id="itens-tabContent">
+                            <div class="tab-pane fade show active" id="itens-a" role="tabpanel"
+                                aria-labelledby="itens-a-tab" tabindex="0">
+
+                                <!-- Row start -->
+                                <div class="row gx-3">
+                                    <div class="col-xxl-6 col-sm-12">
+                                        <div class="border rounded-2 p-3 mb-3">
+
+                                            <!-- Row start -->
+                                            <div class="row gx-3">
+                                                <div class="col-xxl-2 col-sm-4">
+                                                    <div class="mb-2">
+                                                        <img src="{{ $ctrl._editItem._foto }}"
+                                                            class="img-fluid rounded-3 border border-2 border-primary"
+                                                            style="height: 120px;" alt="Admin Templates">
+                                                    </div>
+                                                    <button ng-click="$ctrl.onGetFoto()" type="button"
+                                                        class="btn btn-primary">Carregar
+                                                        Ícone</button>
+                                                    <div class="form-text">
+                                                        Máximo 1MB
+                                                    </div>
+                                                    <input type='file' id="imgLogo" style="display:none" />
+                                                </div>
+                                                <div class="col-xxl-10 col-sm-8">
+
+                                                    <!-- Row start -->
+                                                    <div class="row gx-3 mb-3">
+                                                        <div class="col-sm-6">
+                                                            <label for="displayName" class="form-label">
+                                                                Categoria
+                                                            </label>
+
+                                                            <div class="input-group">
+                                                                <select ng-model="$ctrl._editItem.id_categoria"
+                                                                    ng-class="{'is-invalid': !$ctrl._editItem.id_categoria || $ctrl._editItem.id_categoria.trim() === ''}"
+                                                                    class="form-select flex-grow-1" id="basicSelect"
+                                                                    aria-label="Basic select example">
+                                                                    <option value="" disabled>Selecione uma categoria...
+                                                                    </option>
+                                                                    <option ng-repeat="item in $ctrl._listCategorias"
+                                                                        value="{{ item._id }}">
+                                                                        {{ item.descricao }}
+                                                                    </option>
+                                                                </select>
+                                                                <button ng-click="$ctrl.onCategoria()"
+                                                                    class="btn btn-info" type="button"><i
+                                                                        class="bi bi-plus-lg"></i></button>
+                                                            </div>
+
+                                                            <div class="modal fade" id="modalCategoria" tabindex="-1"
+                                                                aria-labelledby="exampleModalFullscreenLabel"
+                                                                aria-hidden="true">
+                                                                <div class="modal-dialog modal-fullscreen">
+                                                                    <categoria funcao="funcaoLoc" edit="editLoc"
+                                                                        on-fechar="$ctrl.onCategoria()"></categoria>
+                                                                </div>
+                                                            </div>
+
+                                                        </div>
+                                                        <div class="col-sm-3">
+                                                            <label for="displayName" class="form-label">
+                                                                Cód. Interno
+                                                            </label>
+                                                            <input ng-model="$ctrl._editItem.id_externo" type="text"
+                                                                class="form-control">
+                                                        </div>
+                                                        <div class="col-sm-3">
+                                                            <label for="displayName" class="form-label">
+                                                                Status
+                                                            </label>
+                                                            <select ng-model="$ctrl._editItem.status"
+                                                                class="form-select flex-grow-1" id="basicSelect"
+                                                                aria-label="Basic select example">
+                                                                <option value="ativo">Ativo</option>
+                                                                <option value="inativo">Inativo</option>
+                                                                <option value="perca">Perca Sinal</option> 
+                                                                <option value="emtransporte">Em Transporte</option>                                                                
+                                                                <option value="manutencao">Manutenção</option>
+                                                                <option value="descartado">Descartado</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="row gx-3 mb-4">
+                                                        <div class="col-sm-3">
+                                                            <label for="displayName" class="form-label">
+                                                                Tag
+                                                            </label>
+                                                            <input ng-model="$ctrl._editItem.tag"
+                                                                ng-class="{'is-invalid': !$ctrl._editItem.tag || $ctrl._editItem.tag.trim() === ''}"
+                                                                type="text" class="form-control">
+                                                        </div>
+                                                        <div class="col-sm-3">
+                                                            <label for="displayName" class="form-label">
+                                                                Tag Secundária
+                                                            </label>
+                                                            <input ng-model="$ctrl._editItem.tag_secundaria" type="text"
+                                                                class="form-control">
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="row gx-3 mb-3">
+                                                        <div class="col-sm-3">
+                                                            <label for="displayName" class="form-label">
+                                                                Label 1
+                                                            </label>
+                                                            <input ng-model="$ctrl._editItem.inf_compl1" type="text"
+                                                                class="form-control">
+                                                        </div>
+                                                        <div class="col-sm-3">
+                                                            <label for="displayName" class="form-label">
+                                                                Label 2
+                                                            </label>
+                                                            <input ng-model="$ctrl._editItem.inf_compl2" type="text"
+                                                                class="form-control">
+                                                        </div>
+                                                        <div class="col-sm-3">
+                                                            <label for="displayName" class="form-label">
+                                                                Label 3
+                                                            </label>
+                                                            <input ng-model="$ctrl._editItem.inf_compl3" type="text"
+                                                                class="form-control">
+                                                        </div>
+                                                        <div class="col-sm-3">
+                                                            <label for="displayName" class="form-label">
+                                                                Label 4
+                                                            </label>
+                                                            <input ng-model="$ctrl._editItem.inf_compl4" type="text"
+                                                                class="form-control">
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="row gx-3 mb-0">
+                                                        <div class="col-sm-12">
+                                                            <label for="displayName" class="form-label">
+                                                                Observações
+                                                            </label>
+                                                            <textarea ng-model="$ctrl._editItem.observacao"
+                                                                class="form-control" rows="4">
+                                                            </textarea>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Row end -->
+
+                                                </div>
+                                            </div>
+                                            <!-- Row end -->
+
+                                        </div>
+                                    </div>
+
+                                    <div class="col-xxl-3 col-sm-12">
+
+                                        <div class="row gx-3 mb-3">
+                                            <div class="col-sm-12 col-12">
+                                                <div class="bg-warning bg-opacity-10 text-warning p-2 rounded-2">
+                                                    <p class="m-0">
+                                                        Localização
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="list-group">
+                                            <div class="list-group-item d-flex align-items-center gap-3">
+                                                <div
+                                                    class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3 text-center px-3 py-2">
+                                                    N.1
+                                                </div>
+                                                <select ng-model="$ctrl._editItem.id_nivel_loc1"
+                                                    ng-change="$ctrl.onCarregaNiveis('02')"
+                                                    class="form-select flex-grow-1" id="basicSelect"
+                                                    aria-label="Basic select example">
+                                                    <option value="">Todos</option>
+                                                    <option ng-repeat="item in $ctrl._listNivel1"
+                                                        value="{{ item._id }}">
+                                                        {{ item.descricao }}
+                                                    </option>
+                                                </select>
+                                            </div>
+                                            <div class="list-group-item d-flex align-items-center gap-3">
+                                                <div
+                                                    class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3 text-center px-3 py-2">
+                                                    N.2
+                                                </div>
+                                                <select ng-model="$ctrl._editItem.id_nivel_loc2"
+                                                    ng-disabled="$ctrl._editItem.id_nivel_loc1==''"
+                                                    ng-change="$ctrl.onCarregaNiveis('03')"
+                                                    class="form-select flex-grow-1" id="basicSelect"
+                                                    aria-label="Basic select example">
+                                                    <option value="">Todos</option>
+                                                    <option ng-repeat="item in $ctrl._listNivel2"
+                                                        value="{{ item._id }}">
+                                                        {{ item.descricao }}
+                                                    </option>
+                                                </select>
+                                            </div>
+                                            <div class="list-group-item d-flex align-items-center gap-3">
+                                                <div
+                                                    class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3 text-center px-3 py-2">
+                                                    N.3
+                                                </div>
+                                                <select ng-model="$ctrl._editItem.id_nivel_loc3"
+                                                    ng-disabled="!$ctrl._editItem.id_nivel_loc2"
+                                                    ng-change="$ctrl.onCarregaNiveis('04')"
+                                                    class="form-select flex-grow-1" id="basicSelect"
+                                                    aria-label="Basic select example">
+                                                    <option ng-repeat="item in $ctrl._listNivel3"
+                                                        value="{{ item._id }}">
+                                                        {{ item.descricao }}
+                                                    </option>
+                                                </select>
+                                            </div>
+                                            <div class="list-group-item d-flex align-items-center gap-3">
+                                                <div
+                                                    class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3 text-center px-3 py-2">
+                                                    N.4
+                                                </div>
+                                                <select ng-model="$ctrl._editItem.id_nivel_loc4"
+                                                    ng-disabled="!$ctrl._editItem.id_nivel_loc3"
+                                                    class="form-select flex-grow-1" id="basicSelect"
+                                                    aria-label="Basic select example">
+                                                    <option ng-repeat="item in $ctrl._listNivel4"
+                                                        value="{{ item._id }}">
+                                                        {{ item.descricao }}
+                                                    </option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+
+
+
+                                </div>
+                                <!-- Row end -->
+
+                            </div>
+                            <div class="tab-pane fade" id="itens-b" role="tabpanel" aria-labelledby="itens-b-tab"
+                                tabindex="0">
+
+                                <div class="row gx-3">
+                                    <div class="col-sm-3">
+                                        <div class="border rounded-2 p-3 mb-3">
+                                            <div class="list-group">
+
+                                                <div class="list-group-item d-flex align-items-center gap-3">
+                                                    <div
+                                                        class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
+                                                        <i class="bi bi-hdd-network text-primary fs-5"></i>
+                                                    </div>
+
+                                                    <div>
+                                                        <h6 class="mb-1">Livre Movimentação</h6>
+                                                        <p class="m-0 text-muted">Regra sobrepoe os Alertas</p>
+                                                    </div>
+
+                                                    <div class="form-check form-switch m-0 ms-auto">
+                                                        <input class="form-check-input" type="checkbox" role="switch"
+                                                            id="n2" checked=""
+                                                            title="Enable or disable messages notifications">
+                                                    </div>
+                                                </div>
+                                                <div class="list-group-item d-flex align-items-center gap-3">
+                                                    <div
+                                                        class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
+                                                        <i class="bi bi-hdd-network text-primary fs-5"></i>
+                                                    </div>
+
+                                                    <div>
+                                                        <h6 class="mb-1">Notificar WhatsApp</h6>
+                                                        <p class="m-0 text-muted">Envio de mensagem</p>
+                                                    </div>
+
+                                                    <div class="form-check form-switch m-0 ms-auto">
+                                                        <input class="form-check-input" type="checkbox" role="switch"
+                                                            id="n2" checked=""
+                                                            title="Enable or disable messages notifications">
+                                                    </div>
+                                                </div>
+                                                <div class="list-group-item d-flex align-items-center gap-3">
+                                                    <div
+                                                        class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
+                                                        <i class="bi bi-hdd-network text-primary fs-5"></i>
+                                                    </div>
+
+                                                    <div>
+                                                        <h6 class="mb-1">Notificar e-Mail</h6>
+                                                        <p class="m-0 text-muted">Envio de mensagem</p>
+                                                    </div>
+
+                                                    <div class="form-check form-switch m-0 ms-auto">
+                                                        <input class="form-check-input" type="checkbox" role="switch"
+                                                            id="n2" checked=""
+                                                            title="Enable or disable messages notifications">
+                                                    </div>
+                                                </div>
+                                                <div class="list-group-item d-flex align-items-center gap-3">
+                                                    <div
+                                                        class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
+                                                        <i class="bi bi-qr-code text-success fs-5"></i>
+                                                    </div>
+
+                                                    <div>
+                                                        <h6 class="mb-1">Ação</h6>
+                                                        <p class="m-0 text-muted">Oque será realizado</p>
+                                                    </div>
+
+                                                    <select ng-model="$ctrl._editItem.status"
+                                                        class="form-select flex-grow-1 text-end w-auto ms-auto"
+                                                        id="basicSelect" aria-label="Basic select example"
+                                                        style="max-width: 150px;">
+                                                        <option value="ativo">Apenas Registrar</option>
+                                                        <option value="emtransporte">Tag Inteligente</option>
+                                                        <option value="inativo">Disp. Tuya</option>
+                                                    </select>
+
+
+                                                    <!-- <input ng-model="$ctrl._editAP.mac" type="text"
+                                                        ng-class="{'is-invalid': !$ctrl._editAP.mac || $ctrl._editAP.mac.trim() === ''}"
+                                                        mask="99:99:99:99:99:99"
+                                                        class="form-control text-end w-auto ms-auto"
+                                                        style="max-width: 150px;"> -->
+                                                </div>
+                                                <div ng-show="$ctrl._editApModo"
+                                                    class="list-group-item d-flex align-items-center gap-3">
+                                                    <div
+                                                        class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
+                                                        <i class="bi bi-wifi text-info fs-5"></i>
+                                                    </div>
+
+                                                    <div>
+                                                        <h6 class="mb-1">RSSI</h6>
+                                                        <p class="m-0 text-muted">Potência de referência</p>
+                                                    </div>
+
+                                                    <input ng-model="$ctrl._editAP.rssi" type="text"
+                                                        ng-class="{'is-invalid': !$ctrl._editAP.rssi || $ctrl._editAP.rssi.trim() === ''}"
+                                                        class="form-control text-end w-auto ms-auto"
+                                                        style="max-width: 100px;">
+                                                </div>
+                                                <div ng-show="$ctrl._editApModo"
+                                                    class="list-group-item d-flex align-items-center gap-3">
+                                                    <div
+                                                        class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
+                                                        <i class="bi bi-broadcast-pin text-warning fs-5"></i>
+                                                    </div>
+
+                                                    <div>
+                                                        <h6 class="mb-1">Range Potência</h6>
+                                                        <p class="m-0 text-muted">Considerado para menos ou mais</p>
+                                                    </div>
+
+                                                    <input ng-model="$ctrl._editAP.range" type="text"
+                                                        class="form-control text-end w-auto ms-auto"
+                                                        style="max-width: 100px;">
+                                                </div>
+
+
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+
+                            </div>
+                            <div class="tab-pane fade" id="itens-c" role="tabpanel" aria-labelledby="itens-c-tab"
+                                tabindex="0">
+
+                                <div class="border rounded-2 p-3 mb-3">
+
+                                </div>
+
+                            </div>
+
+
+
+                        </div>
+                        <!-- Tabs ends -->
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <div class="modal-footer">
+        <button class="btn btn-danger me-3" type="button">Excluir</button>
+        <button ng-click="$ctrl.fechar()" class="btn btn-light" type="button">Fechar</button>
+
+        <button ng-click="$ctrl.onSalvar()" class="btn btn-primary" type="button">
+            <span role="status">Salvar</span>
+            <!-- <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+            <span role="status">Saving...</span> -->
+        </button>
+    </div>
+</div>

@@ -1,0 +1,379 @@
+<%- contentFor('body') %>
+  <div ng-controller="startCtrl" class="app-container">
+
+    <!-- App hero header starts -->
+    <div class="app-hero-header d-flex align-items-center">
+
+      <!-- Breadcrumb start -->
+      <ol class="breadcrumb d-none d-lg-flex">
+        <li class="breadcrumb-item">
+          <i class="bi bi-house lh-1"></i>
+          <a href="index.html" class="text-decoration-none">Home</a>
+        </li>
+        <li class="breadcrumb-item" aria-current="page">Start</li>
+      </ol>
+      <!-- Breadcrumb end -->
+
+      <!-- Filter start -->
+      <!-- <div class="ms-auto d-flex flex-row gap-1 day-filters">
+        <button type="button" class="btn btn-sm">Today</button>
+        <button type="button" class="btn btn-sm">7D</button>
+        <button type="button" class="btn btn-sm">2W</button>
+        <button type="button" class="btn btn-sm">1M</button>
+        <button type="button" class="btn btn-sm">3M</button>
+        <button type="button" class="btn btn-sm">6M</button>
+        <button type="button" class="btn btn-sm btn-info">1Y</button>
+      </div> -->
+      <!-- Filter end -->
+
+    </div>
+    <!-- App Hero header ends -->
+
+    <!-- App body starts -->
+    <div class="app-body">
+
+      <!-- Row start -->
+      <div class="row gx-3">
+        <div class="col-xxl-12">
+          <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h5 class="card-title fs-4">Primeiros Passos</h5>
+              <!-- <button type="button" class="btn btn-outline-primary btn-sm ms-auto">
+                Download
+              </button> -->
+            </div>
+            <div class="card-body pt-0">
+
+              <!-- Row start -->
+              <div class="row g-3 mb-4">
+
+                <!-- Stats start -->
+                <div class="col-sm-12">
+                  <p class="text-light m-0 fs-5">
+                    <span class="text-primary fw-semibold ">Olá! </span> Bem-vindo à sua central de rastreamento
+                    <span class="text-primary fw-semibold">AirTracking</span>
+                    <span class="text-danger fw-semibold">Seal</span>.
+                  </p>
+                </div>
+
+                <!-- Card 1 -->
+                <div class="col-xxl-3 col-sm-6 col-12">
+                  <div class="card h-100 border border-primary">
+                    <div class="card-body">
+                      <div class="d-flex align-items-start">
+                        <div class="badge text-bg-primary me-3 py-3">
+                          <span>1</span>
+                        </div>
+                        <div>
+                          <h6 class="mb-1">Defina suas localizações</h6>
+                          <p class="mb-1 text-muted small">
+                            Configure áreas, plantas e zonas para mapear seu ambiente físico.
+                          </p>
+                          <span ng-show="_regLocalizacao.length > 0"
+                            class="badge bg-success bg-opacity-10 text-success">
+                            <i class="bi bi-check2 me-1"></i>Concluído
+                          </span>
+                          <span ng-show="_regLocalizacao.length == 0"
+                            class="badge bg-warning bg-opacity-10 text-warning">
+                            <i class="bi bi-exclamation-triangle me-1"></i>Pendente
+                          </span>
+                        </div>
+
+                      </div>
+
+                      <div class="d-flex justify-content-end gap-2 mt-3">
+                        <button ng-repeat="item in _regLocalizacao | limitTo:2" ng-click="onLocalizacao('edit', item)"
+                          type="button" class="btn btn-outline-primary btn-sm">
+                          {{ item.descricao }}
+                        </button>
+                        <button ng-click="onLocalizacao('add', undefined)" type="button" class="btn btn-primary btn-sm ms-auto" >
+                          Incluir
+                        </button>
+                        <div class="modal fade" id="modalLocalizacao" tabindex="-1"
+                          aria-labelledby="exampleModalFullscreenLabel" aria-hidden="true">
+                          <div class="modal-dialog modal-fullscreen">
+                            <localizacao funcao="funcaoLoc" edit="editLoc" on-fechar="onLocalizacao()"></localizacao>
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="col-xxl-3 col-sm-6 col-12">
+                  <div class="card h-100 border border-danger">
+                    <div class="card-body">
+                      <div class="d-flex align-items-start">
+                        <div class="badge text-bg-danger me-3 py-3">
+                          <span>2</span>
+                        </div>
+                        <div>
+                          <h6 class="mb-1">Cadastre seus Itens</h6>
+                          <p class="mb-1 text-muted small">
+                            Adicione os ativos, produtos ou pessoas que serão monitorados.
+                          </p>
+                          <span ng-show="_regItem.length > 0" class="badge bg-success bg-opacity-10 text-success">
+                            <i class="bi bi-check2 me-1"></i>Concluído
+                          </span>
+                          <span ng-show="_regItem.length == 0" class="badge bg-warning bg-opacity-10 text-warning">
+                            <i class="bi bi-exclamation-triangle me-1"></i>Pendente
+                          </span>
+                        </div>
+                      </div>
+
+                      <div class="d-flex justify-content-end gap-2 mt-3">
+                        <button ng-repeat="item in _regItem | limitTo:2" ng-click="onItem('edit', item)"
+                          type="button" class="btn btn-outline-danger btn-sm">
+                          {{ item.tag }}
+                        </button>
+                        <button ng-click="onItem('add', undefined)" type="button" class="btn btn-danger btn-sm ms-auto">
+                          Incluir
+                        </button>
+                        <div class="modal fade" id="modalItem" tabindex="-1"
+                          aria-labelledby="exampleModalFullscreenLabel" aria-hidden="true">
+                          <div class="modal-dialog modal-fullscreen">
+                            <item funcao="funcaoLoc" edit="editLoc" on-fechar="onItem()"></item>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="col-xxl-3 col-sm-6 col-12">
+                  <div class="card h-100 border border-success">
+                    <div class="card-body">
+                      <div class="d-flex align-items-start">
+                        <div class="badge text-bg-success me-3 py-3">
+                          <span>3</span>
+                        </div>
+                        <div>
+                          <h6 class="mb-1">Ative seus Gateways</h6>
+                          <p class="mb-1 text-muted small">
+                            Conecte os dispositivos de leitura fixos ou móveis à sua conta.
+                          </p>
+                          <span ng-show="_regGateway.length > 0" class="badge bg-success bg-opacity-10 text-success">
+                            <i class="bi bi-check2 me-1"></i>Concluído
+                          </span>
+                          <span ng-show="_regGateway.length == 0" class="badge bg-warning bg-opacity-10 text-warning">
+                            <i class="bi bi-exclamation-triangle me-1"></i>Pendente
+                          </span>
+                        </div>
+                      </div>
+                      <div class="d-flex justify-content-end gap-2 mt-3">
+                        <button ng-repeat="item in _regGateway | limitTo:2" ng-click="onGateway('edit', item)"
+                          type="button" class="btn btn-outline-success btn-sm">
+                          {{ item.descricao }}
+                        </button>
+                        <button ng-click="onGateway('add', undefined)" type="button" class="btn btn-success btn-sm ms-auto">
+                          Incluir
+                        </button>
+                        <div class="modal fade" id="modalGateway" tabindex="-1"
+                          aria-labelledby="exampleModalFullscreenLabel" aria-hidden="true">
+                          <div class="modal-dialog modal-fullscreen">
+                            <gateway funcao="funcaoLoc" edit="editLoc" on-fechar="onGateway()"></gateway>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Card 4 -->
+                <div class="col-xxl-3 col-sm-6 col-12">
+                  <div class="card h-100 border border-warning">
+                    <div class="card-body">
+                      <div class="d-flex align-items-start">
+                        <div class="badge text-bg-warning me-3 py-3">
+                          <span>4</span>
+                        </div>
+                        <div>
+                          <h6 class="mb-1">Receba Alertas</h6>
+                          <p class="mb-1 text-muted small">
+                            Monitore desvios, saídas não autorizadas e movimentações fora da rota.
+                          </p>
+                          <span ng-show="_regAlerta.length > 0" class="badge bg-success bg-opacity-10 text-success">
+                            <i class="bi bi-check2 me-1"></i>Concluído
+                          </span>
+                          <span ng-show="_regAlerta.length == 0" class="badge bg-warning bg-opacity-10 text-warning">
+                            <i class="bi bi-exclamation-triangle me-1"></i>Pendente
+                          </span>
+                        </div>
+                      </div>
+
+                      <div class="d-flex justify-content-end gap-2 mt-3">
+                        <button ng-repeat="item in _regAlerta | limitTo:2" ng-click="onAlerta('edit', item)"
+                          type="button" class="btn btn-outline-warning btn-sm">
+                          {{ item.descricao }}
+                        </button>
+                        <button ng-click="onAlerta('add', undefined)" type="button" class="btn btn-warning btn-sm ms-auto">
+                          Incluir
+                        </button>
+                        <div class="modal fade" id="modalAlerta" tabindex="-1"
+                          aria-labelledby="exampleModalFullscreenLabel" aria-hidden="true">
+                          <div class="modal-dialog modal-fullscreen">
+                            <alerta funcao="funcaoLoc" edit="editLoc" on-fechar="onAlerta()"></alerta>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- <div class="d-flex align-items-center">
+                        <button ng-click="onAlerta('add', undefined)" type="button" class="btn btn-outline-warning btn-sm ms-auto">
+                          Iniciar
+                        </button>
+                        <div class="modal fade" id="modalAlerta" tabindex="-1"
+                          aria-labelledby="exampleModalFullscreenLabel" aria-hidden="true">
+                          <div class="modal-dialog modal-fullscreen">
+                            <alerta funcao="funcaoLoc" edit="editLoc" on-fechar="onAlerta()"></alerta>
+                          </div>
+                        </div>
+                      </div> -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- Row end -->
+
+              <div class="progress mb-4 mt-2 rounded-pill medium">
+
+                <div ng-show="_regLocalizacao.length == 0"
+                  class="progress-bar progress-bar-striped progress-bar-animated bg-dark w-25" role="progressbar"
+                  aria-valuenow="20" aria-valuemin="0" aria-valuemax="100" aria-label="Animated progress: 25% Complete">
+                </div>
+                <div ng-show="_regLocalizacao.length > 0"
+                  class="progress-bar progress-bar-striped progress-bar-animated w-25" role="progressbar"
+                  aria-valuenow="20" aria-valuemin="0" aria-valuemax="100" aria-label="Animated progress: 25% Complete">
+                </div>
+
+                <div ng-show="_regItem.length == 0"
+                  class="progress-bar progress-bar-striped progress-bar-animated bg-dark w-25" role="progressbar"
+                  aria-valuenow="20" aria-valuemin="0" aria-valuemax="100" aria-label="Animated progress: 25% Complete">
+                </div>
+                <div ng-show="_regItem.length > 0"
+                  class="progress-bar progress-bar-striped progress-bar-animated bg-danger w-25" role="progressbar"
+                  aria-valuenow="20" aria-valuemin="0" aria-valuemax="100" aria-label="Animated progress: 25% Complete">
+                </div>
+
+                <div ng-show="_regGateway.length == 0"
+                  class="progress-bar progress-bar-striped progress-bar-animated bg-dark w-25" role="progressbar"
+                  aria-valuenow="20" aria-valuemin="0" aria-valuemax="100" aria-label="Animated progress: 25% Complete">
+                </div>
+                <div ng-show="_regGateway.length > 0"
+                  class="progress-bar progress-bar-striped progress-bar-animated bg-success w-25" role="progressbar"
+                  aria-valuenow="20" aria-valuemin="0" aria-valuemax="100" aria-label="Animated progress: 25% Complete">
+                </div>
+
+                <div ng-show="_regAlerta.length == 0"
+                  class="progress-bar progress-bar-striped progress-bar-animated bg-dark w-25" role="progressbar"
+                  aria-valuenow="20" aria-valuemin="0" aria-valuemax="100" aria-label="Animated progress: 25% Complete">
+                </div>
+                <div ng-show="_regAlerta.length > 0"
+                  class="progress-bar progress-bar-striped progress-bar-animated bg-warning w-25" role="progressbar"
+                  aria-valuenow="20" aria-valuemin="0" aria-valuemax="100" aria-label="Animated progress: 25% Complete">
+                </div>
+
+              </div>
+
+              <div class="p-3">
+                <div class="row flex-lg-row-reverse align-items-center">
+                  <div class="col-lg-3">
+                    <div class="mt-4 end">
+                      <img src="assets/images/tela_app.png" class="d-block w-100 img-fluid rounded-5"
+                        alt="Admin Templates & Dashboards">
+
+                    </div>
+                  </div>
+                  <div class="col-lg-9">
+                    <h1 class="display-5">
+                      Pronto para começar?
+                    </h1>
+                    <p class="lead mb-4">
+                      Configure suas áreas, registre seus itens e conecte seus dispositivos.
+                      Em poucos minutos, você verá tudo se movimentando em tempo real — utilizando até mesmo o
+                      seu celular como um gateway inteligente, reduzindo custos de infraestrutura e acelerando a
+                      implantação.
+                    </p>
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+                      <button type="button" class="btn btn-warning btn-lg" data-bs-toggle="offcanvas"
+                        data-bs-target="#offcanvasBottom" aria-controls="offcanvasBottom">
+                        <i class="bi bi-headset  lh-1"></i>
+                        Suporte
+                      </button>
+
+                      <div class="offcanvas offcanvas-bottom" tabindex="-1" id="offcanvasBottom"
+                        aria-labelledby="offcanvasBottomLabel" style="height: 50% !important;">
+                        <div class="offcanvas-header">
+                          <h5 class="offcanvas-title" id="offcanvasBottomLabel">Suporte</h5>
+                          <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas"
+                            aria-label="Close"></button>
+                        </div>
+                        <div class="offcanvas-body">
+
+                          <div class="row gx-3">
+                            <div class="col-6 col-md-3">
+                              <div class="list-group">
+                                <a href="#" class="list-group-item list-group-item-action d-flex align-items-center">
+                                  <div class="icon-box lg bg-primary text-white rounded-circle me-3">
+                                    <i class="bi bi-bluetooth fs-3"></i>
+                                  </div>
+                                  <div>
+                                    <h6 class="fw-bold">Project Alpha Launch</h6>
+                                    <small class="text-muted d-block mb-2">3 days ago</small>
+                                    <p class="mb-2">Team meeting to discuss final preparations for the launch.</p>
+                                    <span class="text-primary fw-semibold">View Details</span>
+                                  </div>
+                                </a>
+                              </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                              <div class="list-group">
+                                <a href="#" class="list-group-item list-group-item-action d-flex align-items-center">
+                                  <div class="icon-box lg bg-success text-white rounded-circle me-3">
+                                    <i class="bi bi-map fs-3"></i>
+                                  </div>
+                                  <div>
+                                    <h6 class="fw-bold">Project Alpha Launch</h6>
+                                    <small class="text-muted d-block mb-2">3 days ago</small>
+                                    <p class="mb-2">Team meeting to discuss final preparations for the launch.</p>
+                                    <span class="text-primary fw-semibold">View Details</span>
+                                  </div>
+                                </a>
+                              </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                              <div class="list-group">
+                                <a href="#" class="list-group-item list-group-item-action d-flex align-items-center">
+                                  <div class="icon-box lg bg-warning text-white rounded-circle me-3">
+                                    <i class="bi bi-router fs-3"></i>
+                                  </div>
+                                  <div>
+                                    <h6 class="fw-bold">Project Alpha Launch</h6>
+                                    <small class="text-muted d-block mb-2">3 days ago</small>
+                                    <p class="mb-2">Team meeting to discuss final preparations for the launch.</p>
+                                    <span class="text-primary fw-semibold">View Details</span>
+                                  </div>
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Row end -->
+
+    </div>
+    <!-- App body ends -->

@@ -1,0 +1,28 @@
+{
+  "name": "modelobase",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"16Apps error\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "axios": "^1.13.1",
+    "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
+    "ejs": "^3.1.10",
+    "express": "^4.21.1",
+    "express-ejs-layouts": "^2.5.1",
+    "moment": "^2.30.1",
+    "mongoose": "^8.8.0",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^7.0.10",
+    "shortid": "^2.2.16",
+    "sweetalert2": "^11.14.4",
+    "ws": "^8.18.3"
+  }
+}

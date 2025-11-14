@@ -1,0 +1,153 @@
+<%- contentFor('body') %>
+<div ng-controller="usersCtrl">
+  <main class="main-content position-relative border-radius-lg">
+    <!-- Navbar -->
+    <nav class="navbar navbar-main navbar-expand-lg px-0 mx-3 shadow-none border-radius-xl" id="navbarBlur" data-scroll="true">
+      <div class="container-fluid py-1 px-3">
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb bg-transparent mb-0 pb-0 pt-1 px-0 me-sm-6 me-5">
+            <li class="breadcrumb-item text-sm"><a class="opacity-5 text-dark" href="javascript:;">Pages</a></li>
+            <li class="breadcrumb-item text-sm text-dark active" aria-current="page">Users</li>
+          </ol>
+        </nav>
+        <div class="collapse navbar-collapse mt-sm-0 mt-2 me-md-0 me-sm-4" id="navbar">
+          <div class="ms-md-auto pe-md-3 d-flex align-items-center">
+            <div class="input-group input-group-outline">
+              <!-- <label class="">Type here...</label> -->
+              <input type="text" class="form-control" placeholder="Pesquise pelo usuário">
+            </div>
+          </div>
+          <ul class="navbar-nav d-flex align-items-center  justify-content-end">
+            <li class="nav-item d-flex align-items-center">
+              <!-- <a class="btn btn-outline-primary btn-sm mb-0 me-3" target="_blank" href="https://www.creative-tim.com/builder?ref=navbar-material-dashboard">Online Builder</a> -->
+              <button class="btn btn-success btn-sm mb-0 me-3" data-toggle="modal" data-target="#exampleModal" ng-click="onEditar(undefined)">+ Novo Usuário</button>
+              
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+    <!-- End Navbar -->
+
+    <div class="modal fade" id="exampleModal" tabindex="3" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header" style="display: flex; justify-content: space-between;">
+            <h5 class="modal-title" id="exampleModalLabel">Usuário</h5>
+            <i class="fa-solid fa-xmark text-dark" data-dismiss="modal" aria-label="Close"></i>
+            <!-- <button type="button" class="" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button> -->
+          </div>
+          <div class="modal-body">
+            <form style="display: flex; flex-direction: column; gap: 10px;">
+              <!-- <div class="form-group">
+                <label for="recipient-name" class="col-form-label">Recipient:</label>
+                <input type="text" class="form-control" id="recipient-name">
+              </div>
+              <div class="form-group">
+                <label for="message-text" class="col-form-label">Message:</label>
+                <textarea class="form-control" id="message-text"></textarea>
+              </div> -->
+              <div class="input-group input-group-outline">
+                <label class="">Email</label>
+                <input type="text" class="form-control" ng-model="_editUsuario.email">
+              </div>
+              <div class="input-group input-group-outline">
+                <label class="">Senha</label>
+                <input type="text" class="form-control" ng-model="_editUsuario.senha">
+              </div>
+              <div class="input-group input-group-outline">
+                <label class="">Tipo</label>
+                <select class="form-control" ng-model="_editUsuario.tipo">
+                  <option value="Aluno">Aluno</option>
+                  <option value="Professor">Professor</option>
+                </select>
+              </div>
+              <div class="input-group input-group-outline">
+                <label class="">Nome</label>
+                <input type="text" class="form-control" ng-model="_editUsuario.nome">
+              </div>
+              <div class="input-group input-group-outline">
+                <label class="">Biografia</label>
+                <!-- <input type="text" class="form-control" style="width: 100%;"> -->
+                <textarea type="text" class="form-control" ng-model="_editUsuario.biografia"></textarea>
+              </div>
+              <div class="input-group input-group-outline">
+                <label class="">Instituição</label>
+                <input type="text" class="form-control" ng-model="_editUsuario.instituicao">
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-ligth" data-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-secondary" ng-click="onCadastrar()">Salvar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="container-fluid py-2">
+      <div class="row">
+        <div class="col-12">
+          <div class="card my-4">
+            <!-- <div class="card-header p-0 position-relative mt-n4 mx-3 z-index-2">
+              <div class="bg-gradient-dark shadow-dark border-radius-lg pt-4 pb-3">
+                <h6 class="text-white text-capitalize ps-3">Usuários</h6>
+              </div>
+            </div> -->
+            <div class="card-body px-0 pb-2">
+              <div class="table-responsive p-0">
+                <h1 class="text-sm px-4"  ng-show="_regUsuarios.length == 0">Nenhum usuário cadastrado</h1>
+                <table class="table align-items-center mb-0" ng-show="_regUsuarios.length > 0">
+                  <thead>
+                    <tr>
+                      <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Usuário</th>
+                      <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Tipo</th>
+                      <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Instituição</th>
+                      <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Status</th>
+                      <th class="text-secondary opacity-7"></th>
+                      <th class="text-secondary opacity-7"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr ng-repeat="item in _regUsuarios">
+                      <td>
+                        <div class="d-flex px-2 py-1">
+                          <div>
+                            <img src="../assets/img/team-2.jpg" class="avatar avatar-sm me-3 border-radius-lg" alt="user1">
+                          </div>
+                          <div class="d-flex flex-column justify-content-center">
+                            <h6 class="mb-0 text-sm">{{item.nome}}</h6>
+                            <p class="text-xs text-secondary mb-0">{{item.email}}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <!-- <p class="text-xs font-weight-bold mb-0">Manager</p> -->
+                        <p class="text-xs text-secondary mb-0">{{item.tipo}}</p>
+                      </td>
+                      <td class="align-middle text-center">
+                        <span class="text-secondary text-xs font-weight-bold">{{item.instituicao}}</span>
+                      </td>
+                      <td class="align-middle text-center text-sm">
+                        <span class="badge badge-sm bg-gradient-success">Online</span>
+                      </td>
+                      <td class="align-middle">
+                        <i class="fa-regular fa-pen-to-square" data-toggle="modal" data-target="#exampleModal" ng-click="onEditar(item)"></i>
+                      </td>
+                      <td class="align-middle">
+                        <i class="fa-regular fa-trash-can text-danger"></i>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>

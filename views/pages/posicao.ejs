@@ -1,0 +1,146 @@
+<%- contentFor('body') %>
+  <div ng-controller="posicaoCtrl" class="app-container">
+
+    <!-- App hero header starts -->
+    <div class="app-hero-header d-flex align-items-center">
+
+      <!-- Breadcrumb start -->
+      <ol class="breadcrumb d-none d-lg-flex">
+        <li class="breadcrumb-item">
+          <i class="bi bi-house lh-1"></i>
+          <a href="index.html" class="text-decoration-none">Monitoramento</a>
+        </li>
+        <li class="breadcrumb-item" aria-current="page">Posições Esperadas</li>
+        <li class="breadcrumb-item text-info" aria-current="page">Total: {{ _listPosicoes.length }}</li>
+      </ol>
+      <!-- Breadcrumb end -->
+
+      <!-- Filter start -->
+      <div class="ms-auto d-flex flex-row gap-1 ">
+        <div class="search-container d-lg-flex d-none">
+          <input type="text" class="form-control" id="searchData" placeholder="Pesquisar">
+          <i class="bi bi-search"></i>
+        </div>
+        <button ng-click="onPosicao('add', undefined)" type="button"
+          class="btn btn-warning btn-sm ms-3 text-dark">Novo</button>
+      </div>
+      <!-- Filter end -->
+
+    </div>
+    <!-- App Hero header ends -->
+
+    <!-- App body starts -->
+    <div class="app-body">
+
+      <div class="modal fade" id="modalPosicao" tabindex="-1" aria-labelledby="exampleModalFullscreenLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-fullscreen">
+          <posicao funcao="funcaoLoc" edit="editLoc" on-fechar="onPosicao()"></posicao>
+        </div>
+      </div>
+
+      <div class="row gx-3">
+        <div class="col-xxl-12">
+          <div class="card mb-3">
+            <div class="card-body">
+              <div class="table-responsive">
+                <div class="table-outer">
+                  <table class="table align-middle table-hover m-0">
+                    <thead>
+                      <tr>
+                        <th class="w-5">iD Doc</th>
+                        <th class="w-20"></th>
+                        <th class="w-35">Partida</th>
+                        <th class="w-10">Itens</th>
+                        <th class="w-35">Chegada</th>
+                        <th>Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <style>
+                        .status-circle {
+                          width: 40px;
+                          height: 40px;
+                          border-radius: 50%;
+                          display: inline-block;
+                          margin-left: 30px;
+                        }
+
+                        .status-concluido {
+                          background-color: #28a745;
+                          /* verde */
+                        }
+
+                        .status-parcial {
+                          background-color: #ffc107;
+                          /* amarelo */
+                        }
+
+                        .status-pendente {
+                          background-color: #6c757d;
+                          /* cinza */
+                        }
+                      </style>
+                      <tr ng-repeat="item in _listPosicoes">
+                        <td class="align-top">
+
+                          <span ng-class="{
+        'status-circle': true,
+        'status-concluido': item.status === 'concluido',
+        'status-parcial': item.status === 'parcial',
+        'status-pendente': item.status === 'aberta'
+      }">
+                          </span>
+
+                          <!-- <img class="rounded-circle img-3x me-2" src="{{ item._icone }}" alt="Wrapmarket" /> -->
+                        </td>
+
+                        <td class="align-top">
+                          <span class="text-white fw-bold">{{ item.id_doc }}</span> <br>
+                          <span class="text-muted">{{ formataDataHora(item.createdAt) }}</span>
+                        </td>
+
+                        <td class="align-top">
+                          <span class="text-white  fw-bold">{{ formataDataHora(item.partida_data) }}</span><br>
+                          {{ item.id_nivel_loc1 ? item.id_nivel_loc1.descricao : 'Em Transporte' }}
+                          {{ item.id_nivel_loc2 ? ' - ' + item.id_nivel_loc2.descricao : '' }}<br>
+
+                          <span ng-show="item.id_nivel_loc3" class="text-muted">
+                            {{ item.id_nivel_loc3 ? item.id_nivel_loc3.descricao : '' }}
+                            {{ item.id_nivel_loc4 ? ' - ' + item.id_nivel_loc4.descricao : '' }}
+                          </span>
+                        </td>
+
+                        <td class="align-top">
+                          <span class="text-white fw-bold">{{ item.itens.length }}</span>
+                        </td>
+
+                        <td class="align-top">
+                          <span class="text-primary  fw-bold">{{ formataDataHora(item.previsao_chegada_data)
+                            }}</span><br>
+                          {{ item.id_nivel_loc1_destino ? item.id_nivel_loc1_destino.descricao : 'Em Transporte' }}
+                          {{ item.id_nivel_loc2_destino ? ' - ' + item.id_nivel_loc2_destino.descricao : '' }}<br>
+
+                          <span ng-show="item.id_nivel_loc3" class="text-muted">
+                            {{ item.id_nivel_loc3_destino ? item.id_nivel_loc3_destino.descricao : '' }}
+                            {{ item.id_nivel_loc4_destino ? ' - ' + item.id_nivel_loc4_destino.descricao : '' }}
+                          </span>
+                        </td>
+
+                        <td class="align-top">
+                          <a class="btn btn-info btn-sm" ng-click="onPosicao('edit', item)">
+                            <i class="bi bi-pencil"></i>
+                          </a>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <!-- App body ends -->

@@ -1,0 +1,805 @@
+<%- contentFor('body') %>
+  <div ng-controller="contaCtrl" class="app-container">
+
+    <!-- App hero header starts -->
+    <div class="app-hero-header d-flex align-items-center">
+
+      <!-- Breadcrumb start -->
+      <ol class="breadcrumb d-none d-lg-flex">
+        <li class="breadcrumb-item">
+          <i class="bi bi-house lh-1"></i>
+          <a href="index.html" class="text-decoration-none">Home</a>
+        </li>
+        <li class="breadcrumb-item" aria-current="page">Profile</li>
+      </ol>
+      <!-- Breadcrumb end -->
+
+    </div>
+    <!-- App Hero header ends -->
+
+    <!-- App body starts -->
+    <div class="app-body">
+
+      <!-- Row start -->
+      <div class="row gx-3">
+        <div class="col-sm-12">
+          <div class="card mb-3">
+            <div class="card-body">
+
+              <!-- Tabs starts -->
+              <ul class="nav nav-pills mb-3 gap-1" id="pills-tab" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link rounded-pill active " id="pills-a-tab" data-bs-toggle="pill"
+                    data-bs-target="#pills-a" type="button" role="tab" aria-controls="pills-a"
+                    aria-selected="true">General</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link rounded-pill" id="pills-b-tab" data-bs-toggle="pill" data-bs-target="#pills-b"
+                    type="button" role="tab" aria-controls="pills-b" aria-selected="false">Endereço</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link rounded-pill" id="pills-d-tab" data-bs-toggle="pill" data-bs-target="#pills-d"
+                    type="button" role="tab" aria-controls="pills-d" aria-selected="false">Regras Alertas</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link rounded-pill" id="pills-e-tab" data-bs-toggle="pill" data-bs-target="#pills-e"
+                    type="button" role="tab" aria-controls="pills-e" aria-selected="false">Colaboradores</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link rounded-pill" id="pills-c-tab" data-bs-toggle="pill" data-bs-target="#pills-c"
+                    type="button" role="tab" aria-controls="pills-c" aria-selected="false">Cobrança</button>
+                </li>
+
+              </ul>
+              <div class="tab-content" id="pills-tabContent">
+                <div class="tab-pane fade show active" id="pills-a" role="tabpanel" aria-labelledby="pills-a-tab"
+                  tabindex="0">
+
+                  <!-- Row start -->
+                  <div class="row gx-3">
+                    <div class="col-xxl-9 col-sm-12">
+                      <div class="border rounded-2 p-3 mb-3">
+
+                        <!-- Row start -->
+                        <div class="row gx-3">
+                          <div class="col-xxl-3 col-sm-4">
+                            <div class="mb-2">
+                              <img src="{{ _regConta._logo }}" style="height: 120px;"
+                                class="img-fluid rounded-3 border border-3 border-primary" alt="Admin Templates">
+                            </div>
+                            <button ng-click="onGetFoto()" type="button" class="btn btn-primary">Carregar Logo</button>
+                            <div class="form-text">
+                              Máximo 1MB
+                            </div>
+                          </div>
+                          <input type='file' id="imgload" style="display:none" />
+                          <div class="col-xxl-9 col-sm-8">
+
+                            <div class="row gx-3">
+                              <div class="col-sm-7">
+                                <div class="mb-3">
+                                  <label for="displayName" class="form-label">Razão Social</label>
+                                  <input ng-model="_regConta.nome" type="text" class="form-control">
+                                </div>
+                              </div>
+                              <div class="col-sm-5">
+                                <div class="mb-3">
+                                  <label for="displayName" class="form-label">Nome Fantasia</label>
+                                  <input ng-model="_regConta.apelido" type="text" class="form-control">
+                                </div>
+                              </div>
+                            </div>
+
+                            <div class="row gx-3">
+                              <div class="col-sm-4">
+                                <div class="mb-3">
+                                  <label for="displayName" class="form-label">CNPJ</label>
+                                  <input ng-model="_regConta.cnpj" type="text" class="form-control">
+                                </div>
+                              </div>
+                              <div class="col-sm-5">
+                                <div class="mb-3">
+                                  <label for="displayName" class="form-label">e-Mail</label>
+                                  <input ng-model="_regConta.email" type="text" class="form-control">
+                                </div>
+                              </div>
+                              <div class="col-sm-3">
+                                <div class="mb-3">
+                                  <label for="displayName" class="form-label">Telefone</label>
+                                  <input ng-model="_regConta.telefone" type="text" class="form-control">
+                                </div>
+                              </div>
+                            </div>
+
+                            <div class="mb-4 mt-4 bg-primary bg-opacity-10 text-primary p-2 rounded-2">
+                              <h6 class="m-0">Contato Responsável</h6>
+                            </div>
+
+                            <div class="row gx-3">
+                              <div class="col-sm-4">
+                                <div class="mb-3">
+                                  <label for="displayName" class="form-label">Nome Completo</label>
+                                  <input ng-model="_regConta.contato_responsavel" type="text" class="form-control">
+                                </div>
+                              </div>
+                              <div class="col-sm-5">
+                                <div class="mb-3">
+                                  <label for="displayName" class="form-label">e-Mail</label>
+                                  <input ng-model="_regConta.email" type="text" class="form-control">
+                                </div>
+                              </div>
+                              <div class="col-sm-3">
+                                <div class="mb-3">
+                                  <label for="displayName" class="form-label">Celular</label>
+                                  <input ng-model="_regConta.contato_celular" type="text" class="form-control">
+                                </div>
+                              </div>
+                            </div>
+
+                            <div class="col-12">
+                              <div class="d-flex justify-content-end gap-1">
+
+                                <button ng-click="onAtualizar()" class="btn btn-primary" type="button">
+                                  <!-- <span class="spinner-border spinner-border-sm" aria-hidden="true"></span> -->
+                                  <span role="status">Atualizar</span>
+                                </button>
+                              </div>
+                            </div>
+
+                          </div>
+                        </div>
+                        <!-- Row end -->
+
+                      </div>
+                    </div>
+                    <div class="col-xxl-3 col-sm-12">
+                      <div class="border rounded-2 p-3 mb-3">
+                        <div class="mb-4 bg-primary bg-opacity-10 text-primary p-2 rounded-2">
+                          <h6 class="m-0">Status</h6>
+                        </div>
+                        <div class="d-grid gap-3">
+                          <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-lightning-charge me-1 fs-4 text-warning  "></i>
+                            <span>Início</span>
+                            <button type="button" class="btn btn-outline-warning btn-sm rounded-pill ms-auto">
+                              {{ formataDataHora(_regConta.updatedAt) }}
+                            </button>
+                          </div>
+                          <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-box me-1 fs-4 text-info  "></i>
+                            <span>Plano</span>
+                            <button type="button" class="btn btn-outline-info btn-sm rounded-pill ms-auto">Demo</button>
+                          </div>
+                          <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-cash-stack me-1 fs-4  text-success"></i>
+                            <span>Estimativa Cobrança</span>
+                            <button type="button" class="btn btn-outline-success btn-sm rounded-pill ms-auto">R$
+                              0,00</button>
+                          </div>
+                          <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-person-badge me-1 fs-4 text-danger "></i>
+                            <span>Rep. Seal</span>
+                            <button type="button" class="btn btn-outline-danger btn-sm rounded-pill ms-auto">Higor
+                              Correia</button>
+                          </div>
+                          <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-headset me-1 fs-4  "></i>
+                            <span>Suporte</span>
+                            <button type="button" class="btn btn-outline-light btn-sm rounded-pill ms-auto">(11)
+                              8282-9929</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Row end -->
+
+                </div>
+                <div class="tab-pane fade" id="pills-b" role="tabpanel" aria-labelledby="pills-b-tab" tabindex="0">
+
+
+
+                  <!-- Row start -->
+                  <div class="row gx-3 mb-3">
+                    <div class="col-sm-1">
+                      <label for="displayName" class="form-label">
+                        CEP
+                      </label>
+                      <input ng-model="_regConta.cep" type="text" class="form-control" mask="99999-999">
+                    </div>
+                    <div class="col-sm-6 pt-4">
+                      <button ng-click="onBuscaCep()" class="btn btn-info me-3" type="button">
+                        <i class="bi bi-search fs-6"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="row gx-3 mb-3">
+                    <div class="col-sm-4">
+                      <label for="displayName" class="form-label">
+                        Logradouro
+                      </label>
+                      <input ng-model="_regConta.logradouro" type="text" class="form-control">
+                    </div>
+                    <div class="col-sm-1">
+                      <label for="displayName" class="form-label">
+                        Número
+                      </label>
+                      <input ng-model="_regConta.numero" type="text" class="form-control">
+                    </div>
+                    <div class="col-sm-1">
+                      <label for="displayName" class="form-label">
+                        Complemento
+                      </label>
+                      <input ng-model="_regConta.complemento" type="text" class="form-control">
+                    </div>
+                  </div>
+                  <div class="row gx-3 mb-3">
+                    <div class="col-sm-2">
+                      <label for="displayName" class="form-label">
+                        Bairro
+                      </label>
+                      <input ng-model="_regConta.bairro" type="text" class="form-control">
+                    </div>
+                    <div class="col-sm-3">
+                      <label for="displayName" class="form-label">
+                        Cidade
+                      </label>
+                      <input ng-model="_regConta.cidade" type="text" class="form-control">
+                    </div>
+                    <div class="col-sm-1">
+                      <label for="displayName" class="form-label">
+                        Estado
+                      </label>
+                      <input ng-model="_regConta.estado" type="text" class="form-control">
+                    </div>
+                    <div class="col-sm-1">
+                      <label for="displayName" class="form-label">
+                        Pais
+                      </label>
+                      <input ng-model="_regConta.pais" type="text" class="form-control">
+                    </div>
+                  </div>
+                  <!-- Row end -->
+
+                </div>
+                <div class="tab-pane fade" id="pills-c" role="tabpanel" aria-labelledby="pills-c-tab" tabindex="0">
+
+                  <!-- Row start -->
+                  <div class="row gx-3">
+                    <div class="col-sm-12">
+                      <div class="border rounded-2 p-3 mb-3">
+                        <div class="mb-4 bg-danger bg-opacity-10 text-danger p-2 rounded-2">
+                          Seu plano de demonstração expira de 16 dias.
+                        </div>
+
+                        <!-- Row start -->
+                        <div class="row gx-3 justify-content-center mb-5">
+                          <div class="col-xl-3 col-sm-4">
+                            <a href="javascript:void(0)" class="d-flex border border-3 rounded-3 p-3 position-relative">
+                              <div class="ribbon-2-end">Selected</div>
+                              <div class="d-grid gap-3">
+                                <i class="bi bi-star text-primary fs-3"></i>
+                                <h3 class="m-0 fw-bold">$0.00/<small class="fw-normal text-secondary">mo</small>
+                                </h3>
+                                <h6 class="m-0 text-uppercase">Free</h6>
+                              </div>
+                            </a>
+
+                            <ul class="list-group mt-3">
+                              <li class="list-group-item d-flex align-items-center">
+                                <i class="bi bi-hdd-network text-primary me-3 fs-5"></i>
+                                3 Gateways
+                              </li>
+                              <li class="list-group-item d-flex align-items-center">
+                                <i class="bi bi-cpu text-success me-3 fs-5"></i>
+                                10 Devices
+                              </li>
+                              <li class="list-group-item d-flex align-items-center">
+                                <i class="bi bi-geo-alt text-warning me-3 fs-5"></i>
+                                2 Locais
+                              </li>
+                              <li class="list-group-item d-flex align-items-center">
+                                <i class="bi bi-headset text-info me-3 fs-5"></i>
+                                Suporte, 30 dias
+                              </li>
+                              <li class="list-group-item d-flex align-items-center">
+                                <i class="bi bi-terminal text-danger me-3 fs-5"></i>
+                                Versão Standard, 30 dias
+                              </li>
+                            </ul>
+
+                          </div>
+                          <div class="col-xl-3 col-sm-4">
+                            <a href="javascript:void(0)" class="d-flex border border-3 rounded-3 p-3 position-relative">
+                              <div class="d-grid gap-3">
+                                <i class="bi bi-star-half text-primary fs-3"></i>
+                                <h3 class="m-0 fw-bold">$3.00/<small class="fw-normal text-secondary">mo</small>
+                                </h3>
+                                <h6 class="m-0 text-uppercase">Basic</h6>
+                              </div>
+                            </a>
+
+                            <ul class="list-group mt-3">
+                              <li class="list-group-item d-flex align-items-center">
+                                <i class="bi bi-hdd-network text-primary me-3 fs-5"></i>
+                                30 Gateways
+                              </li>
+                              <li class="list-group-item d-flex align-items-center">
+                                <i class="bi bi-cpu text-success me-3 fs-5"></i>
+                                70 Devices
+                              </li>
+                              <li class="list-group-item d-flex align-items-center">
+                                <i class="bi bi-geo-alt text-warning me-3 fs-5"></i>
+                                10 Locais
+                              </li>
+                              <li class="list-group-item d-flex align-items-center">
+                                <i class="bi bi-headset text-info me-3 fs-5"></i>
+                                Suporte 24/7
+                              </li>
+                              <li class="list-group-item d-flex align-items-center">
+                                <i class="bi bi-robot text-danger me-3 fs-5"></i>
+                                Agente IA Seal
+                              </li>
+                            </ul>
+
+                          </div>
+                          <div class="col-xl-3 col-sm-4">
+                            <a href="javascript:void(0)"
+                              class="d-flex border border-primary border-3 rounded-3 p-3 position-relative">
+
+                              <div class="d-grid gap-3">
+                                <i class="bi bi-star-fill text-primary fs-3"></i>
+                                <h3 class="m-0 fw-bold">$9.99/<small class="fw-normal text-secondary">mo</small>
+                                </h3>
+                                <h6 class="m-0 text-uppercase">Standard</h6>
+                              </div>
+                            </a>
+
+                            <ul class="list-group mt-3">
+                              <li class="list-group-item d-flex align-items-center">
+                                <i class="bi bi-hdd-network text-primary me-3 fs-5"></i>
+                                100 Gateways
+                              </li>
+                              <li class="list-group-item d-flex align-items-center">
+                                <i class="bi bi-cpu text-success me-3 fs-5"></i>
+                                300 Devices
+                              </li>
+                              <li class="list-group-item d-flex align-items-center">
+                                <i class="bi bi-geo-alt text-warning me-3 fs-5"></i>
+                                50 Locais
+                              </li>
+                              <li class="list-group-item d-flex align-items-center">
+                                <i class="bi bi-headset text-info me-3 fs-5"></i>
+                                Suporte 24/7
+                              </li>
+                              <li class="list-group-item d-flex align-items-center">
+                                <i class="bi bi-robot text-danger me-3 fs-5"></i>
+                                Agente IA Seal
+                              </li>
+                            </ul>
+
+                          </div>
+                          <div class="col-xl-3 col-sm-4">
+                            <a href="javascript:void(0)" class="d-flex border border-3 rounded-3 p-3 position-relative">
+                              <div class="d-grid gap-3">
+                                <i class="bi bi-star-fill text-warning fs-3"></i>
+                                <h3 class="m-0 fw-bold">$19.00/<small class="fw-normal text-secondary">mo</small>
+                                </h3>
+                                <h6 class="m-0 text-uppercase">Business</h6>
+                              </div>
+                            </a>
+
+                            <ul class="list-group mt-3">
+                              <li class="list-group-item d-flex align-items-center">
+                                <i class="bi bi-hdd-network text-primary me-3 fs-5"></i>
+                                Ilimitado Gateways
+                              </li>
+                              <li class="list-group-item d-flex align-items-center">
+                                <i class="bi bi-cpu text-success me-3 fs-5"></i>
+                                Ilimitado Devices
+                              </li>
+                              <li class="list-group-item d-flex align-items-center">
+                                <i class="bi bi-geo-alt text-warning me-3 fs-5"></i>
+                                Ilimitado Locais
+                              </li>
+                              <li class="list-group-item d-flex align-items-center">
+                                <i class="bi bi-headset text-info me-3 fs-5"></i>
+                                Suporte 24/7 Especializado
+                              </li>
+                              <li class="list-group-item d-flex align-items-center">
+                                <i class="bi bi-robot text-danger me-3 fs-5"></i>
+                                Agente IA Seal Full
+                              </li>
+                            </ul>
+
+                          </div>
+                        </div>
+                        <!-- Row end -->
+
+                        <!-- Row start -->
+                        <div class="row gx-3 justify-content-center">
+                          <div class="col-sm-9">
+                            <h6 class="fw-bold text-uppercase text-primary mb-3">Detalhes da fatura:</h6>
+                            <div class="row g-3">
+                              <div class="col-sm-6">
+                                <div class="d-flex align-items-center">
+                                  <span class="icon-box sm bg-primary bg-opacity-10 text-primary rounded-2 me-3 mt-1">
+                                    <i class="bi bi-calendar"></i>
+                                  </span>
+                                  <div>
+                                    <h6 class="text-uppercase text-muted mb-1">Data Fatura:</h6>
+                                    <p class="mb-0 fw-semibold text-primary">Aug 15, 2025</p>
+                                  </div>
+                                </div>
+                              </div>
+                              <div class="col-sm-6">
+                                <div class="d-flex align-items-center">
+                                  <span class="icon-box sm bg-warning bg-opacity-10 text-warning rounded-2 me-3 mt-1">
+                                    <i class="bi bi-clock"></i>
+                                  </span>
+                                  <div>
+                                    <h6 class="text-uppercase text-muted mb-1">Próxima Cobrança:</h6>
+                                    <p class="mb-0 fw-semibold text-warning">Sept 15, 2025</p>
+                                  </div>
+                                </div>
+                              </div>
+                              <div class="col-sm-6">
+                                <div class="d-flex align-items-center bg-primary bg-opacity-10 rounded-2 p-2">
+                                  <span
+                                    class="icon-box sm bg-light bg-opacity-10 text-primary rounded-2 me-3 mt-1 border border-primary">
+                                    <i class="bi bi-file-earmark-text"></i>
+                                  </span>
+                                  <div>
+                                    <h6 class="text-uppercase text-muted mb-1">Ordem ID:</h6>
+                                    <p class="mb-0 fw-bold text-primary letter-spacing-1">ORD-7835246</p>
+                                  </div>
+                                </div>
+                              </div>
+                              <div class="col-sm-6">
+                                <div class="d-flex align-items-center bg-primary bg-opacity-10 rounded-2 p-2">
+                                  <span
+                                    class="icon-box sm bg-light bg-opacity-10 text-primary rounded-2 me-3 mt-1 border border-primary">
+                                    <i class="bi bi-credit-card"></i>
+                                  </span>
+                                  <div>
+                                    <h6 class="text-uppercase text-muted mb-1">Método Pagamento:</h6>
+                                    <p class="mb-0 fw-medium">Cartão de Crédito (Visa ****4582)</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="col-sm-3 mb-4">
+                            <div class="bg-dark rounded-2 p-3">
+
+                              <div class="mb-2">
+                                <label for="cardNo" class="form-label">Número Cartão</label>
+                                <input type="text" class="form-control form-control-sm" id="cardNo"
+                                  placeholder="1234 1234 1234 XXXX">
+                              </div>
+
+                              <div class="mb-2">
+                                <label for="uName" class="form-label">Nome Gravado</label>
+                                <input type="text" class="form-control form-control-sm" id="uName">
+                              </div>
+
+                              <div>
+                                <label for="enterOtp" class="form-label">Validade</label>
+                                <input type="text" class="form-control form-control-sm" id="enterOtp">
+                              </div>
+
+                              <div class="d-grid my-4">
+                                <button type="button" class="btn btn-danger">Pagar Agora</button>
+                              </div>
+
+                              <div class="bg-primary text-white p-3 rounded-2 m-0">
+                                As próximas cobranças serão realizadas automaticamente.
+                              </div>
+
+                            </div>
+                          </div>
+
+                          <div class="col-sm-12">
+                            <div class="table-outer mb-3">
+                              <div class="table-responsive">
+                                <table class="table align-middle table-hover m-0">
+                                  <thead>
+                                    <tr>
+                                      <th scope="col">Order No.</th>
+                                      <th scope="col">Date</th>
+                                      <th scope="col">Amount</th>
+                                      <th scope="col">Status</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr>
+                                      <td>SKU89890</td>
+                                      <td>09 March 2025 9:20AM</td>
+                                      <td>$90.00</td>
+                                      <td>
+                                        <span class="badge bg-danger">Awaiting</span>
+                                      </td>
+                                    </tr>
+                                    <tr>
+                                      <td>SKU89890</td>
+                                      <td>02 February 2025 6:30PM</td>
+                                      <td>$30.00</td>
+                                      <td>
+                                        <span class="badge bg-primary">Paid</span>
+                                      </td>
+                                    </tr>
+                                    <tr>
+                                      <td>SKU89890</td>
+                                      <td>03 January 2025 3:36PM</td>
+                                      <td>$60.00</td>
+                                      <td>
+                                        <span class="badge bg-primary">Paid</span>
+                                      </td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div class="col-sm-12">
+                            <div class="d-flex justify-content-end gap-1">
+                              <button class="btn btn-danger" type="button">Suspender AirTracking</button>
+                            </div>
+                          </div>
+                        </div>
+                        <!-- Row end -->
+
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Row end -->
+                </div>
+
+                <div class="tab-pane fade" id="pills-d" role="tabpanel" aria-labelledby="pills-d-tab" tabindex="0">
+
+                  <div class="mb-2 bg-warning bg-opacity-10 text-warning p-2 rounded-2">
+                    Envio de e-Mail
+                  </div>
+
+                  <div class="row gx-3 mb-6">
+                    <div class="col-sm-4">
+                      <label for="displayName" class="form-label">
+                        Endereço
+                      </label>
+                      <input ng-model="_regConta.alerta_email" type="text" class="form-control">
+                    </div>
+                    <div class="col-sm-3">
+                      <label for="displayName" class="form-label">
+                        Notificar
+                      </label><br>
+                      <div class="btn-group" role="group" aria-label="Basic checkbox toggle button group">
+                        <input ng-model="_regConta.alerta_email_criterio_leve" type="checkbox" class="btn-check"
+                          id="alerta_email_criterio_leve" autocomplete="off">
+                        <label class="btn btn-outline-danger" for="alerta_email_criterio_leve">Leve</label>
+
+                        <input ng-model="_regConta.alerta_email_criterio_importante" type="checkbox" class="btn-check"
+                          id="alerta_email_criterio_importante" autocomplete="off">
+                        <label class="btn btn-outline-danger" for="alerta_email_criterio_importante">Importante</label>
+
+                        <input ng-model="_regConta.alerta_email_criterio_critico" type="checkbox" class="btn-check"
+                          id="alerta_email_criterio_critico" autocomplete="off">
+                        <label class="btn btn-outline-danger" for="alerta_email_criterio_critico">Crítico</label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="mt-5 mb-2 bg-success bg-opacity-10 text-success p-2 rounded-2">
+                    Envio de WhatsApp
+                  </div>
+
+                  <div class="row gx-3 mb-3">
+                    <div class="col-sm-2">
+                      <label for="displayName" class="form-label">
+                        Celular
+                      </label>
+                      <input ng-model="_regConta.alerta_celular" type="text" class="form-control">
+                    </div>
+                    <div class="col-sm-3">
+                      <label for="displayName" class="form-label">
+                        Notificar
+                      </label><br>
+                      <div class="btn-group" role="group" aria-label="Basic checkbox toggle button group">
+                        <input ng-model="_regConta.alerta_celular_criterio_leve" type="checkbox" class="btn-check"
+                          id="alerta_celular_criterio_leve" autocomplete="off">
+                        <label class="btn btn-outline-danger" for="alerta_celular_criterio_leve">Leve</label>
+
+                        <input ng-model="_regConta.alerta_celular_criterio_importante" type="checkbox" class="btn-check"
+                          id="alerta_celular_criterio_importante" autocomplete="off">
+                        <label class="btn btn-outline-danger"
+                          for="alerta_celular_criterio_importante">Importante</label>
+
+                        <input ng-model="_regConta.alerta_celular_criterio_critico" type="checkbox" class="btn-check"
+                          id="alerta_celular_criterio_critico" autocomplete="off">
+                        <label class="btn btn-outline-danger" for="alerta_celular_criterio_critico">Crítico</label>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+
+                <div class="tab-pane fade" id="pills-e" role="tabpanel" aria-labelledby="pills-e-tab" tabindex="0">
+
+                  <div class="col-12">
+                        <div class="d-flex justify-content-start gap-1 mb-3">
+                          <button  ng-disabled="_regColaborador" ng-click="onEditarColaborador(undefined)" type="button" class="btn btn-outline-warning">
+                            Novo Colaborador
+                          </button>
+                        </div>
+                      </div>
+
+                  <div class="row gx-3 mb-6">
+                    <div class="col-sm-7">
+                      <div class="invoice-table-container">
+                        <div class="table-outer">
+                          <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-1">
+                              <thead>
+                                <tr>
+                                  <th scope="col" class="w-20">iDTag #</th>
+                                  <th scope="col" class="w-60">Nome</th>
+                                  <th scope="col" class="w-20">Perfil</th>
+                                  <th scope="col">Ações</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr ng-repeat="item in _listColaboradores">
+                                  <td><a class="text-primary fw-semibold">
+                                      {{ item.tag }}
+                                    </a></td>
+                                  <td>
+                                    <div class="d-flex align-items-center">
+                                      <img src="{{ item._foto }}" class="rounded-circle me-2" width="32" alt="Client">
+                                      <span class="text-white">
+                                        {{ item.nome }}
+                                        <br> <span class="text-light">{{ formatarCargo(item.funcao) }} </span> 
+                                      </span>
+                                      
+                                    </div>
+                                  </td>
+                                  <td>
+                                    {{ item.perfil == 'admin' ? 'Administrador' : 'Colaborador' }}
+                                  </td>
+                                  <td>
+                                    <div class="d-flex gap-1">
+                                      <button ng-click="onEditarColaborador(item)" type="button"
+                                        class="btn btn-sm btn-outline-primary" data-bs-toggle="tooltip"
+                                        title="Edit user">
+                                        <i class="bi bi-pencil"></i>
+                                      </button>
+                                      <button type="button" class="btn btn-sm btn-outline-primary"
+                                        data-bs-toggle="tooltip" title="Delete user">
+                                        <i class="bi bi-trash"></i>
+                                      </button>
+
+                                    </div>
+                                  </td>
+                                </tr>
+
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div ng-show="_regColaborador" class="col-sm-5">
+                      <div class="bg-dark rounded-2 p-3">
+
+                        <div class="mb-4">
+                          <h5 class="text-primary">Colaborador</h5>
+                        </div>
+
+                        <div class="d-flex align-items-center flex-column position-relative" style="width: 100%;">
+                          <div class="position-relative mb-3">
+                            <img src="{{ _regColaborador._foto }}" class="img-6x rounded-circle border"
+                              alt="Foto do Usuário" />
+
+                            <!-- Botão para trocar foto -->
+                            <button ng-click="onGetFotoColoborador()" type="button"
+                              class="btn btn-sm btn-primary rounded-circle position-absolute bottom-0 end-0 shadow"
+                              title="Alterar foto">
+                              <i class="bi bi-camera-fill"></i>
+                            </button>
+                          </div>
+                        </div>
+
+
+                        <div class="row gx-3 mb-3">
+                          <div class="col-sm-7">
+                            <label for="cardNo" class="form-label">Nome</label>
+                            <input ng-model="_regColaborador.nome" type="text" class="form-control form-control-sm" ng-class="{'is-invalid': !_regColaborador.nome || _regColaborador.nome.trim() === ''}">
+                          </div>
+                          <div class="col-sm-3">
+                            <label for="cardNo" class="form-label">Apelido</label>
+                            <input ng-model="_regColaborador.apelido" type="text" class="form-control form-control-sm">
+                          </div>
+                          <div class="col-sm-2">
+                            <label for="cardNo" class="form-label">Ativo</label>
+                            <select ng-model="_regColaborador.ativo" class="form-select form-select-sm">
+                              <option value="1">Sim</option>
+                              <option value="0">Não</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div class="row gx-3 mb-3">
+                          <div class="col-sm-3">
+                            <label for="cardNo" class="form-label">iD Tag</label>
+                            <input ng-model="_regColaborador.tag" type="text" class="form-control form-control-sm">
+                          </div>
+                          <div class="col-sm-6">
+                            <label for="cardNo" class="form-label">e-Mail</label>
+                            <input ng-model="_regColaborador.email" type="text" class="form-control form-control-sm">
+                          </div>
+                          <div class="col-sm-3">
+                            <label for="cardNo" class="form-label">Celular</label>
+                            <input ng-model="_regColaborador.celular" type="text" class="form-control form-control-sm">
+                          </div>
+                        </div>
+
+                        <div class="row gx-3 mb-3">
+                          <div class="col-sm-3">
+                            <label for="cardNo" class="form-label">Perfil</label>
+                            <select ng-model="_regColaborador.perfil" class="form-select form-select-sm">
+                              <option value="admin">Administrador</option>
+                              <option value="colaborador">Colaborador</option>
+                            </select>
+                          </div>
+                          <div class="col-sm-3">
+                            <label for="cardNo" class="form-label">Função</label>
+                            <select ng-model="_regColaborador.id_funcao" class="form-select form-select-sm" ng-class="{'is-invalid': !_regColaborador.funcao || _regColaborador.funcao.trim() === ''}">
+                              <option value="auxiliar_logistica">Auxiliar de Logística</option>
+                              <option value="assistente_logistica">Assistente de Logística</option>
+                              <option value="analista_logistica">Analista de Logística</option>
+                              <option value="coordenador_logistica">Coordenador de Logística</option>
+                              <option value="supervisor_armazem">Supervisor de Armazém</option>
+                              <option value="gerente_logistica">Gerente de Logística</option>
+                              <option value="encarregado_expedicao">Encarregado de Expedição</option>
+                              <option value="analista_transporte">Analista de Transporte</option>
+                              <option value="planejador_demanda">Planejador de Demanda</option>
+                              <option value="gestor_supply_chain">Gestor de Supply Chain</option>
+                            </select>
+                          </div>
+                          <div class="col-sm-6">
+                            <label for="cardNo" class="form-label">Observação</label>
+                            <input ng-model="_regColaborador.observacao" type="text"
+                              class="form-control form-control-sm">
+                          </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-1">
+                          <button ng-click="$ctrl.onCarregaPlantaZonas()" class="btn btn-danger me-2" type="button">
+                            Excluir
+                          </button>
+
+                          <button ng-click="_regColaborador=undefined" class="btn btn-muted" type="button">
+                            Cancelar
+                          </button>
+                          <button ng-click="onSalvarColaborador()" class="btn btn-info" type="button">
+                            Salvar
+                          </button>
+                        </div>
+
+                      </div>
+                    </div>
+                  </div>
+
+
+                </div>
+              </div>
+              <!-- Tabs ends -->
+
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Row end -->
+
+    </div>
+    <!-- App body ends -->

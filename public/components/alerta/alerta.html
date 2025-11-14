@@ -1,0 +1,659 @@
+<div class="modal-content">
+    <div class="modal-header">
+        <h5 class="modal-title h4" id="exampleModalFullscreenLabel">
+            Central de Alerta
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    </div>
+    <div class="modal-body">
+
+        <ol class="breadcrumb d-none d-lg-flex mb-4">
+            <li class="breadcrumb-item">
+                <i class="bi bi-geo-alt lh-1"></i>
+                <a href="index.html" class="text-decoration-none">Alerta</a>
+            </li>
+            <li class="breadcrumb-item" aria-current="page">
+                <a href="index.html" class="text-decoration-none text-info">
+                    {{ $ctrl._editAlerta.descricao || 'Novo'}}
+                </a>
+            </li>
+        </ol>
+
+        <div class="row gx-3">
+            <div class="col-sm-12">
+                <div class="card mb-3">
+                    <div class="card-body">
+
+                        <!-- Tabs starts -->
+                        <ul class="nav nav-pills mb-3 gap-1" id="alerta-tab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link rounded-pill active " id="alerta-a-tab" data-bs-toggle="pill"
+                                    data-bs-target="#alerta-a" type="button" role="tab" aria-controls="alerta-a"
+                                    aria-selected="true">Cadastro</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button ng-click="$ctrl.onCarregaNiveisPlanta('02')" class="nav-link rounded-pill"
+                                    id="alerta-b-tab" data-bs-toggle="pill" data-bs-target="#alerta-b" type="button"
+                                    role="tab" aria-controls="alerta-b" aria-selected="false">Notificação</button>
+                            </li>
+                        </ul>
+                        <div class="tab-content" id="alerta-tabContent">
+                            <div class="tab-pane fade show active" id="alerta-a" role="tabpanel"
+                                aria-labelledby="alerta-a-tab" tabindex="0">
+
+                                <!-- Row start -->
+                                <div class="row gx-3">
+                                    <div class="col-xxl-5 col-sm-12">
+                                        <div class="border rounded-2 p-3 mb-3">
+
+                                            <!-- Row start -->
+                                            <div class="row gx-3">
+                                                <div class="col-xxl-2 col-sm-4">
+                                                    <div class="mb-2">
+                                                        <img src="{{ $ctrl._editAlerta._icone }}"
+                                                            class="img-fluid rounded-3 border border-2 border-primary"
+                                                            style="height: 100px;" alt="Admin Templates">
+                                                    </div>
+                                                    <button ng-click="$ctrl.onGetIcone()" type="button"
+                                                        class="btn btn-primary">
+                                                        Ícone</button>
+                                                    <div class="form-text">
+                                                        Máximo 1MB
+                                                    </div>
+                                                    <input type='file' id="imgLogo" style="display:none" />
+                                                </div>
+                                                <div class="col-xxl-10 col-sm-8">
+
+                                                    <!-- Row start -->
+                                                    <div class="row gx-3 mb-3">
+                                                        <div class="col-sm-9">
+                                                            <label for="displayName" class="form-label">
+                                                                Nome da Alerta
+                                                            </label>
+                                                            <input ng-model="$ctrl._editAlerta.descricao" type="text"
+                                                                ng-class="{'is-invalid': !$ctrl._editAlerta.descricao || $ctrl._editAlerta.descricao.trim() === ''}"
+                                                                class="form-control">
+                                                        </div>
+                                                        <div class="col-sm-3">
+                                                            <label for="displayName" class="form-label">
+                                                                Ativo
+                                                            </label>
+                                                            <select ng-model="$ctrl._editAlerta.ativo"
+                                                                class="form-select flex-grow-1" id="basicSelect"
+                                                                aria-label="Basic select example">
+                                                                <option value="0">Não</option>
+                                                                <option value="1">Sim</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="row gx-3 mb-3 mt-4">
+                                                        <div class="col-sm-12 col-12">
+                                                            <div
+                                                                class="bg-primary bg-opacity-10 text-primary p-2 rounded-2">
+                                                                <p class="m-0">
+                                                                    Localização
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="row gx-3 mb-3">
+                                                        <div class="col-sm-6">
+                                                            <label for="displayName" class="form-label">
+                                                                Nível 1
+                                                            </label>
+                                                            <select ng-model="$ctrl._editAlerta.id_nivel_loc1"
+                                                                ng-change="$ctrl.onCarregaNiveis('02')"
+                                                                ng-class="{'is-invalid': !$ctrl._editAlerta.id_nivel_loc1 || $ctrl._editAlerta.id_nivel_loc1.trim() === ''}"
+                                                                class="form-select">
+                                                                <option value="">Todos</option>
+                                                                <option ng-repeat="item in $ctrl._listNivel1"
+                                                                    value="{{ item._id }}">
+                                                                    {{ item.descricao }}
+                                                                </option>
+                                                            </select>
+                                                        </div>
+                                                        <div class="col-sm-6">
+                                                            <label for="displayName" class="form-label">
+                                                                Nível 2
+                                                            </label>
+                                                            <select ng-model="$ctrl._editAlerta.id_nivel_loc2"
+                                                                ng-change="$ctrl.onCarregaNiveis('03')"
+                                                                class="form-select">
+                                                                <option value="">Todos</option>
+                                                                <option ng-repeat="item in $ctrl._listNivel2"
+                                                                    value="{{ item._id }}">
+                                                                    {{ item.descricao }}
+                                                                </option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="row gx-3 mb-1">
+
+                                                        <div class="col-sm-6">
+                                                            <label for="displayName" class="form-label">
+                                                                Nível 3
+                                                            </label>
+                                                            <select ng-model="$ctrl._editAlerta.id_nivel_loc3"
+                                                                ng-change="$ctrl.onCarregaNiveis('04')"
+                                                                class="form-select">
+                                                                <option value="">Todos</option>
+                                                                <option ng-repeat="item in $ctrl._listNivel3"
+                                                                    value="{{ item._id }}">
+                                                                    {{ item.descricao }}
+                                                                </option>
+                                                            </select>
+                                                        </div>
+                                                        <div class="col-sm-6">
+                                                            <label for="displayName" class="form-label">
+                                                                Nível 4
+                                                            </label>
+                                                            <select ng-model="$ctrl._editAlerta.id_nivel_loc4"
+                                                                class="form-select">
+                                                                <option value="">Todos</option>
+                                                                <option ng-repeat="item in $ctrl._listNivel4"
+                                                                    value="{{ item._id }}">
+                                                                    {{ item.descricao }}
+                                                                </option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+
+
+                                                    <!-- Row end -->
+
+                                                </div>
+                                            </div>
+                                            <!-- Row end -->
+
+                                        </div>
+                                    </div>
+                                    <div class="col-xxl-7 col-sm-12">
+                                        <div class="border rounded-2 p-3 mb-3">
+
+                                            <!-- Row start -->
+                                            <div class="row justify-content-between mb-4">
+                                                <div class="col-sm-4">
+
+                                                    <div class="input-group">
+                                                        <span class="input-group-text">
+                                                            <i class="bi bi-lightning text-muted"></i>
+                                                        </span>
+                                                        <select ng-model="$ctrl._editAlertaAcao.acao"
+                                                            class="form-select">
+                                                            <option value="" disabled>Ação...</option>
+                                                            <option value="aproximar">Ao Aproximar do Gateway</option>
+                                                            <option value="distanciar">Ao Distânciar do Gateway</option>
+                                                            <option value="sair">Sair do Raio de Leitura</option>
+                                                            <option value="itens_fixo">Itens Fixo</option>
+                                                            <option value="tol_max">Tolerância Máxima</option>
+                                                            <option value="tol_min">Tolerância Mínima</option>
+
+                                                        </select>
+                                                        <script>
+                                                            const texto = getOptionTextByValue('acaoSelect', 'tol_max');
+                                                            console.log(texto); // 👉 "Tolerância Máxima"
+                                                        </script>
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-sm-8">
+                                                    <div ng-show="$ctrl._editAlertaAcao.acao!=''"
+                                                        class="d-flex align-items-end gap-2 justify-content-end">
+
+                                                        <!-- <div class="m-0">
+                                                            <div class="input-group">
+                                                                <input type="text" class="form-control" id="copyField"
+                                                                    value="https://test.com" readonly
+                                                                    aria-label="URL to copy"
+                                                                    placeholder="Shareable URL">
+                                                                <button class="btn btn-primary" type="button"
+                                                                    id="copyBtn" onclick="copyToClipboard()">
+                                                                    <i class="bi bi-files me-1"></i>Itens
+                                                                </button>
+                                                            </div>
+                                                        </div> -->
+
+                                                        <div ng-show="$ctrl._editAlertaAcao.acao=='aproximar' || $ctrl._editAlertaAcao.acao=='distanciar'"
+                                                            class="input-group" style="width: 100px;">
+                                                            <input ng-model="$ctrl._editAlertaAcao.referencia[0].valor"
+                                                                type="text" class="form-control">
+                                                            <span class="input-group-text">dB</span>
+                                                        </div>
+
+                                                        <div ng-show="$ctrl._editAlertaAcao.acao!='aproximar' && $ctrl._editAlertaAcao.acao!='distanciar' && 
+                                                        $ctrl._editAlertaAcao.referencia[0].id_item == '' && $ctrl._editAlertaAcao.referencia[0].id_categoria == ''"
+                                                            class="input-group" style="width: 100px;">
+                                                            <input ng-model="$ctrl._editAlertaAcao.referencia[0].valor"
+                                                                type="text" class="form-control">
+                                                            <span class="input-group-text">
+
+                                                                {{ $ctrl._editAlertaAcao.acao=='sair' ? 'seg' : 'itens'
+                                                                }}
+                                                            </span>
+                                                        </div>
+
+                                                        <button ng-disabled="!$ctrl._editAlerta.id_nivel_loc1"
+                                                            ng-show="$ctrl._editAlertaAcao.acao=='tol_max' || $ctrl._editAlertaAcao.acao=='tol_min' || $ctrl._editAlertaAcao.acao=='itens_fixo'"
+                                                            ng-click="$ctrl.onEditarAlertaItem(undefned)" type="button"
+                                                            class="btn btn-warning text-dark">
+                                                            Definir Itens
+                                                        </button>
+
+                                                        <div class="offcanvas offcanvas-bottom" tabindex="-1"
+                                                            id="offcanvasAlerta" aria-labelledby="offcanvasBottomLabel"
+                                                            style="height: 70vh;">
+                                                            <div class="offcanvas-header">
+                                                                <h5 class="offcanvas-title text-warning"
+                                                                    id="offcanvasBottomLabel">
+                                                                    Itens para Tolérância Máxima
+                                                                </h5>
+                                                                <button type="button" class="btn-close text-reset"
+                                                                    data-bs-dismiss="offcanvas"
+                                                                    aria-label="Close"></button>
+                                                            </div>
+                                                            <div class="offcanvas-body">
+                                                                <div class="row gx-3">
+                                                                    <div class="col-xxl-3 col-sm-6">
+                                                                        <div class="list-group">
+                                                                            <div
+                                                                                class="list-group-item d-flex align-items-center gap-3">
+                                                                                <div
+                                                                                    class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
+                                                                                    <i
+                                                                                        class="bi bi-envelope text-primary fs-6"></i>
+                                                                                </div>
+                                                                                <div>
+                                                                                    <h6 class="mb-1">
+                                                                                        Identificação dos itens
+                                                                                    </h6>
+                                                                                </div>
+                                                                                <div
+                                                                                    class="form-check form-switch m-0 ms-auto">
+                                                                                    <select
+                                                                                        ng-model="$ctrl._editAlertaItem.id_ref"
+                                                                                        class="form-select select2">
+                                                                                        <option value="item"
+                                                                                            ng-show="$ctrl._editAlertaAcao.acao == 'itens_fixo'">
+                                                                                            Item
+                                                                                        </option>
+                                                                                        <option value="categoria">
+                                                                                            Categoria</option>
+                                                                                    </select>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div ng-show="$ctrl._editAlertaItem.id_ref!='ignorar'"
+                                                                                class="list-group-item d-flex align-items-center gap-3">
+                                                                                <div
+                                                                                    class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
+                                                                                    <i
+                                                                                        class="bi bi-envelope text-primary fs-6"></i>
+                                                                                </div>
+                                                                                <style>
+                                                                                    .option-placeholder {
+                                                                                        color: #000814;
+                                                                                        font-weight: 500;
+                                                                                        background-color: #ffbe0b;
+                                                                                    }
+                                                                                </style>
+                                                                                <select
+                                                                                    ng-model="$ctrl._editAlertaItem.id_item"
+                                                                                    ng-show="$ctrl._editAlertaItem.id_ref=='item'"
+                                                                                    class="form-select select2">
+                                                                                    <option value="im"
+                                                                                        class="option-placeholder">
+                                                                                        Itens de Momento
+                                                                                    </option>
+                                                                                    <option value="{{ item._id }}"
+                                                                                        ng-repeat="item in $ctrl._listItens">
+                                                                                        {{ item.id_categoria.descricao |
+                                                                                        limitTo:15
+                                                                                        }}&nbsp;&nbsp;&nbsp;{{ item.tag
+                                                                                        }}
+                                                                                    </option>
+                                                                                </select>
+                                                                                <select
+                                                                                    ng-model="$ctrl._editAlertaItem.id_categoria"
+                                                                                    ng-show="$ctrl._editAlertaItem.id_ref=='categoria'"
+                                                                                    class="form-select select2">
+                                                                                    <option value="cm"
+                                                                                        class="option-placeholder">
+                                                                                        Categorias de Momento
+                                                                                    </option>
+                                                                                    <option value="{{ item._id }}"
+                                                                                        ng-repeat="item in $ctrl._listCategorias">
+                                                                                        {{ item.descricao | limitTo:15
+                                                                                        }}
+                                                                                    </option>
+                                                                                </select>
+                                                                            </div>
+                                                                            <div ng-show="$ctrl._editAlertaItem.id_ref=='categoria' && $ctrl._editAlertaItem.id_categoria !='cm' && $ctrl._editAlertaItem.id_categoria !=''"
+                                                                                class="list-group-item d-flex align-items-center gap-3">
+                                                                                <div
+                                                                                    class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
+                                                                                    <i
+                                                                                        class="bi bi-envelope text-primary fs-6"></i>
+                                                                                </div>
+                                                                                <div>
+                                                                                    <h6 class="mb-1">Quantidade </h6>
+                                                                                </div>
+                                                                                <div
+                                                                                    class="form-check form-switch m-0 ms-auto">
+                                                                                    <input
+                                                                                        ng-model="$ctrl._editAlertaItem.quantidade"
+                                                                                        type="number"
+                                                                                        class="form-control text-end">
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div
+                                                                            class="d-flex justify-content-end gap-1 mt-3">
+                                                                            <button
+                                                                                ng-click="$ctrl.onSalvarAlertaItem()"
+                                                                                class="btn btn-info"
+                                                                                type="button">Incluir</button>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-xxl-6 col-sm-6">
+                                                                        <div class="invoice-table-container">
+                                                                            <div class="table-outer">
+                                                                                <div class="table-responsive">
+                                                                                    <table
+                                                                                        class="table table-hover align-middle mb-1">
+                                                                                        <thead>
+                                                                                            <tr>
+                                                                                                <th scope="col"
+                                                                                                    class="w-20">
+                                                                                                    Identificação
+                                                                                                </th>
+                                                                                                <th scope="col"
+                                                                                                    class="w-60">
+                                                                                                    Descrição
+                                                                                                </th>
+                                                                                                <th scope="col"
+                                                                                                    class="w-20">Valor
+                                                                                                </th>
+                                                                                                <th scope="col">Edição
+                                                                                                </th>
+                                                                                            </tr>
+                                                                                        </thead>
+                                                                                        <tbody>
+                                                                                            <tr
+                                                                                                ng-repeat="item in $ctrl._editAlertaAcao.referencia track by $index">
+
+                                                                                                <td
+                                                                                                    class="text-white fw-semibold">
+                                                                                                    {{
+                                                                                                    $ctrl.idItemDescricao(item.id_item,
+                                                                                                    item.id_categoria,
+                                                                                                    false) }}
+                                                                                                </td>
+                                                                                                <td>
+                                                                                                    {{
+                                                                                                    $ctrl.idItemDescricao(item.id_item,
+                                                                                                    item.id_categoria,
+                                                                                                    true) }}
+                                                                                                </td>
+
+                                                                                                <td>
+                                                                                                    {{ item.valor }}
+                                                                                                </td>
+                                                                                                <td>
+                                                                                                    <div
+                                                                                                        class="d-flex gap-1">
+                                                                                                        <button
+                                                                                                            ng-click=" $ctrl.onEditarAcao(item)"
+                                                                                                            type="button"
+                                                                                                            class="btn btn-sm btn-outline-primary"
+                                                                                                            data-bs-toggle="tooltip"
+                                                                                                            title="Editar Ação">
+                                                                                                            <i
+                                                                                                                class="bi bi-pencil"></i>
+                                                                                                        </button>
+                                                                                                        <button
+                                                                                                            type="button"
+                                                                                                            class="btn btn-sm btn-outline-primary"
+                                                                                                            data-bs-toggle="tooltip"
+                                                                                                            title="Delete Ação">
+                                                                                                            <i
+                                                                                                                class="bi bi-trash"></i>
+                                                                                                        </button>
+
+                                                                                                    </div>
+                                                                                                </td>
+                                                                                            </tr>
+
+                                                                                        </tbody>
+                                                                                    </table>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div
+                                                                            class="d-flex justify-content-end gap-1 mt-3">
+                                                                            <button
+                                                                                ng-click="$ctrl.onSalvarAlertaItemRegistro()"
+                                                                                class="btn btn-warning text-dark"
+                                                                                type="button">Registrar</button>
+                                                                        </div>
+                                                                    </div>
+
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+
+                                                        <button ng-click="$ctrl.onAddAcao()" type="button"
+                                                            class="btn btn-primary">
+                                                            Incluir
+                                                        </button>
+                                                        <button ng-click="$ctrl.onEditarAcao(undefined)" type="button"
+                                                            class="btn btn-muted">
+                                                            <i class="bi bi-x"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                            </div>
+                                            <div class="row gx-3 mb-3 mt-4">
+                                                <div class="col-sm-6 col-6">
+                                                    <div class="bg-primary bg-opacity-10 text-primary p-2 rounded-2">
+                                                        <p class="m-0">
+                                                            <i class="bi bi-info-circle-fill text-primary me-2"></i>
+
+                                                            <span ng-show="$ctrl._editAlertaAcao.acao==''">
+                                                                Condição que determina quando a ação será executada, de
+                                                                acordo com a movimentação e quantidade de itens na área.
+                                                            </span>
+
+                                                            <span ng-show="$ctrl._editAlertaAcao.acao=='aproximar'">
+                                                                Executa a ação quando o item entra no alcance de leitura
+                                                                do gateway, indicando aproximação física ou detecção de
+                                                                presença.
+                                                            </span>
+
+                                                            <span ng-show="$ctrl._editAlertaAcao.acao=='distanciar'">
+                                                                Dispara a ação quando o item se afasta do gateway,
+                                                                sugerindo movimentação para fora da área monitorada.
+                                                            </span>
+
+                                                            <span ng-show="$ctrl._editAlertaAcao.acao=='sair'">
+                                                                Aciona o evento quando o item deixa completamente o
+                                                                campo de leitura do gateway, sendo considerado fora da
+                                                                zona de cobertura.
+                                                            </span>
+
+                                                            <span ng-show="$ctrl._editAlertaAcao.acao=='tol_max'">
+                                                                Define a quantidade máxima de itens permitida dentro da
+                                                                área; se ultrapassada, gera alerta de excesso de itens.
+                                                            </span>
+
+                                                            <span ng-show="$ctrl._editAlertaAcao.acao=='tol_min'">
+                                                                Determina a quantidade mínima necessária de itens na
+                                                                área; se houver menos, é gerado alerta de ausência ou
+                                                                falta.
+                                                            </span>
+
+                                                            <span ng-show="$ctrl._editAlertaAcao.acao=='itens_fixo'">
+                                                                Indica que os itens devem permanecer estáticos no local;
+                                                                qualquer movimentação fora da posição esperada gera
+                                                                alerta de deslocamento.
+                                                            </span>
+
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="invoice-table-container">
+                                                <div class="table-outer">
+                                                    <div class="table-responsive">
+                                                        <table class="table table-hover align-middle mb-1">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th scope="col" class="w-80">Ação</th>
+                                                                    <th scope="col" class="w-20">Valor</th>
+                                                                    <!-- <th scope="col" class="w-20">Device</th> -->
+                                                                    <th scope="col">Edição</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                <tr
+                                                                    ng-repeat="item in $ctrl._editAlerta.acoes  track by $index">
+                                                                    <td class="text-white fw-semibold">
+                                                                        {{ $ctrl.getTextoAcao( item.acao ) }}
+                                                                    </td>
+                                                                    <td
+                                                                        ng-show=" item.referencia[0].id_item == '' && item.referencia[0].id_categoria == '' ">
+                                                                        {{ item.referencia[0].valor }}
+                                                                        {{ item.acao=='sair' ? 'segundos' :
+                                                                        item.acao=='aproximar' ||
+                                                                        item.acao=='distanciar' ? 'dB' : 'itens' }}
+                                                                    </td>
+
+                                                                    <td
+                                                                        ng-show=" item.referencia[0].id_item != '' || item.referencia[0].id_categoria != '' ">
+                                                                        Itens Definidos
+                                                                    </td>
+
+                                                                    <td>
+                                                                        <div class="d-flex gap-1">
+                                                                            <button ng-click=" $ctrl.onEditarAcao(item)"
+                                                                                type="button"
+                                                                                class="btn btn-sm btn-outline-primary"
+                                                                                data-bs-toggle="tooltip"
+                                                                                title="Edit user">
+                                                                                <i class="bi bi-pencil"></i>
+                                                                            </button>
+                                                                            <button
+                                                                                ng-click="$ctrl.onRemoveAlertaItem($index)"
+                                                                                type="button"
+                                                                                class="btn btn-sm btn-outline-primary"
+                                                                                data-bs-toggle="tooltip"
+                                                                                title="Delete user">
+                                                                                <i class="bi bi-trash"></i>
+                                                                            </button>
+
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Row end -->
+                                        </div>
+                                    </div>
+
+
+
+
+
+
+
+
+
+                                </div>
+                                <!-- Row end -->
+
+                            </div>
+                            <div class="tab-pane fade" id="alerta-b" role="tabpanel" aria-labelledby="alerta-b-tab"
+                                tabindex="0">
+
+                                <div class="row gx-3">
+                                    <div class="col-sm-12">
+                                        <div class="border rounded-2 p-3 mb-3">
+                                            <div class="list-group mt-0">
+
+                                                <div class="list-group-item d-flex align-items-center gap-3">
+                                                    <div
+                                                        class="icon-box md bg-warning bg-opacity-10 text-warning rounded-3">
+                                                        <i class="bi bi-envelope text-warning fs-5"></i>
+                                                    </div>
+
+                                                    <div>
+                                                        <h6 class="mb-1">e-Mail</h6>
+                                                        <p class="m-0 text-muted">Envio de mensagem para o email
+                                                            cadastrado da conta</p>
+                                                    </div>
+
+                                                    <div class="form-check form-switch m-0 ms-auto">
+                                                        <input ng-model="$ctrl._editInteracao.enviar_email"
+                                                            class="form-check-input" type="checkbox" role="switch"
+                                                            id="n2" checked=""
+                                                            title="Enable or disable messages notifications">
+                                                    </div>
+                                                </div>
+                                                <div class="list-group-item d-flex align-items-center gap-3">
+                                                    <div
+                                                        class="icon-box md bg-warning bg-opacity-10 text-warning rounded-3">
+                                                        <i class="bi bi-whatsapp text-warning fs-5"></i>
+                                                    </div>
+
+                                                    <div>
+                                                        <h6 class="mb-1">WhatsApp</h6>
+                                                        <p class="m-0 text-muted">Envio de mensagem para o celular
+                                                            cadastrado da conta</p>
+                                                    </div>
+
+                                                    <div class="form-check form-switch m-0 ms-auto">
+                                                        <input ng-model="$ctrl._editInteracao.enviar_whats"
+                                                            class="form-check-input" type="checkbox" role="switch"
+                                                            id="n2" checked=""
+                                                            title="Enable or disable messages notifications">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+
+                            </div>
+
+
+
+
+                        </div>
+                        <!-- Tabs ends -->
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <div class="modal-footer">
+        <button class="btn btn-danger me-3" type="button">Excluir</button>
+        <button ng-click="$ctrl.fechar()" class="btn btn-light" type="button">Fechar</button>
+
+        <button ng-click="$ctrl.onSalvar()" class="btn btn-primary" type="button">
+            <span role="status">Salvar</span>
+            <!-- <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+            <span role="status">Saving...</span> -->
+        </button>
+    </div>
+</div>

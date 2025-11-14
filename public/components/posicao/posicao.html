@@ -1,0 +1,513 @@
+<div class="modal-content">
+    <div class="modal-header">
+        <h5 class="modal-title h4" id="exampleModalFullscreenLabel">
+            Posição Esperada
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    </div>
+    <div class="modal-body">
+
+        <ol class="breadcrumb d-none d-lg-flex mb-4">
+            <li class="breadcrumb-item">
+                <i class="bi bi-geo-alt lh-1"></i>
+                <a href="index.html" class="text-decoration-none">Categoria</a>
+            </li>
+            <li class="breadcrumb-item" aria-current="page">
+                <a href="index.html" class="text-decoration-none text-info">
+                    {{ $ctrl._editPosicao.descricao || 'Novo'}}
+                </a>
+            </li>
+        </ol>
+
+        <div class="row gx-3">
+            <div class="col-sm-12">
+                <div class="card mb-3">
+                    <div class="card-body">
+
+                        <!-- Tabs starts -->
+                        <ul class="nav nav-pills mb-3 gap-1" id="categorias-tab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link rounded-pill active " id="categorias-a-tab"
+                                    data-bs-toggle="pill" data-bs-target="#categorias-a" type="button" role="tab"
+                                    aria-controls="categorias-a" aria-selected="true">Cadastro</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link rounded-pill" id="categorias-b-tab" data-bs-toggle="pill"
+                                    data-bs-target="#categorias-b" type="button" role="tab" aria-controls="categorias-b"
+                                    aria-selected="false">Itens</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link rounded-pill" id="categorias-c-tab" data-bs-toggle="pill"
+                                    data-bs-target="#categorias-c" type="button" role="tab" aria-controls="categorias-c"
+                                    aria-selected="false">Destino</button>
+                            </li>
+
+                        </ul>
+                        <div class="tab-content" id="categorias-tabContent">
+                            <div class="tab-pane fade show active" id="categorias-a" role="tabpanel"
+                                aria-labelledby="categorias-a-tab" tabindex="0">
+
+                                <!-- Row start -->
+                                <div class="row gx-3">
+                                    <div class="col-xxl-6 col-sm-12">
+                                        <div class="border rounded-2 p-3 mb-3">
+
+                                            <!-- Row start -->
+                                            <div class="row gx-3">
+                                                <div class="col-xxl-2 col-sm-4">
+                                                    <div class="mb-2">
+                                                        <img src="{{ $ctrl._editPosicao._icone }}"
+                                                            class="img-fluid rounded-3 border border-2 border-primary"
+                                                            style="height: 120px;" alt="Admin Templates">
+                                                    </div>
+                                                    <button ng-click="$ctrl.onGetFoto()" type="button"
+                                                        class="btn btn-primary">Carregar
+                                                        Ícone</button>
+                                                    <div class="form-text">
+                                                        Máximo 1MB
+                                                    </div>
+                                                    <input type='file' id="imgLogo" style="display:none" />
+                                                </div>
+                                                <div class="col-xxl-10 col-sm-8">
+
+                                                    <!-- Row start -->
+                                                    <div class="row gx-3 mb-3">
+                                                        <div class="col-sm-3">
+                                                            <label for="displayName" class="form-label">
+                                                                idDoc
+                                                            </label>
+                                                            <input ng-model="$ctrl._editPosicao.id_doc" type="text"
+                                                                ng-class="{'is-invalid': !$ctrl._editPosicao.id_doc || $ctrl._editPosicao.id_doc.trim() === ''}"
+                                                                class="form-control">
+                                                        </div>
+                                                        <div class="col-sm-6">
+                                                            <label for="displayName" class="form-label">
+                                                                Descrição
+                                                            </label>
+                                                            <input ng-model="$ctrl._editPosicao.descricao" type="text" class="form-control">
+                                                        </div>
+                                                        <div class="col-sm-3">
+                                                            <label for="displayName" class="form-label">
+                                                                Ativo
+                                                            </label>
+                                                            <select ng-model="$ctrl._editPosicao.ativo"
+                                                                class="form-select flex-grow-1" id="basicSelect"
+                                                                aria-label="Basic select example">
+                                                                <option value="0">Não</option>
+                                                                <option value="1">Sim</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="row gx-3 mb-3 mt-4">
+                                                        <div class="col-sm-6 col-6">
+                                                            <div
+                                                                class="bg-success bg-opacity-10 text-success p-2 rounded-2">
+                                                                <p class="m-0">
+                                                                    Partida
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+
+                                                    <div class="row gx-3 mb-3">
+                                                        <div class="col-sm-3">
+                                                            <label for="displayName" class="form-label">
+                                                                Data
+                                                            </label>
+                                                            <input ng-model="$ctrl._editPosicao.partida_data"
+                                                            ng-class="{'is-invalid': !$ctrl._editPosicao.partida_data || $ctrl._editPosicao.partida_data.trim() === ''}"
+                                                                type="datetime-local" id="abc7"
+                                                                class="form-control datepicker-time-24" />
+                                                        </div>
+                                                        <div class="col-sm-3">
+                                                            <label for="displayName" class="form-label">
+                                                                Tolerância
+                                                            </label>
+                                                            <input ng-model="$ctrl._editPosicao.tolerancia"
+                                                                ng-model="$ctrl._editPosicao.id_doc" type="text"
+                                                                class="form-control">
+                                                        </div>
+                                                    </div>
+                                                    <div class="row gx-3 mb-0">
+                                                        <div class="col-sm-12">
+                                                            <label for="displayName" class="form-label">
+                                                                Observações
+                                                            </label>
+                                                            <textarea ng-model="$ctrl._editPosicao.observacao"
+                                                                class="form-control mb-3" rows="2">
+                                                            </textarea>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Row end -->
+
+                                                </div>
+                                            </div>
+                                            <!-- Row end -->
+
+                                        </div>
+                                    </div>
+
+                                </div>
+                                <!-- Row end -->
+
+                            </div>
+                            <div class="tab-pane fade" id="categorias-b" role="tabpanel"
+                                aria-labelledby="categorias-b-tab" tabindex="0">
+
+                                <div class="row gx-3">
+                                    <div class="col-xxl-3 col-sm-6">
+                                        <div class="list-group">
+                                            <div class="list-group-item d-flex align-items-center gap-3">
+                                                <div
+                                                    class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
+                                                    <i class="bi bi-envelope text-primary fs-6"></i>
+                                                </div>
+                                                <div>
+                                                    <h6 class="mb-1">
+                                                        Identificação dos itens
+                                                    </h6>
+                                                </div>
+                                                <div class="form-check form-switch m-0 ms-auto">
+                                                    <select ng-model="$ctrl._regAddItem.id_ref"
+                                                        class="form-select select2">
+                                                        <option value="item">
+                                                            Item
+                                                        </option>
+                                                        <option value="categoria">
+                                                            Categoria
+                                                        </option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="list-group-item d-flex align-items-center gap-3">
+                                                <div
+                                                    class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
+                                                    <i class="bi bi-envelope text-primary fs-6"></i>
+                                                </div>
+                                                <select ng-show="$ctrl._regAddItem.id_ref=='item'"
+                                                    ng-model="$ctrl._regAddItem.id_item"
+                                                    ng-change="$ctrl.onDefineLocal(true)" class="form-select select2">
+                                                    <option value="{{ item._id }}" ng-repeat="item in $ctrl._listItens">
+                                                        {{ item.id_categoria.descricao |
+                                                        limitTo:15
+                                                        }}&nbsp;&nbsp;&nbsp;{{ item.tag
+                                                        }}
+                                                    </option>
+                                                </select>
+                                                <select ng-show="$ctrl._regAddItem.id_ref=='categoria'"
+                                                    ng-model="$ctrl._regAddItem.id_categoria"
+                                                    class="form-select select2">
+                                                    <option value="{{ item._id }}"
+                                                        ng-repeat="item in $ctrl._listCategorias">
+                                                        {{ item.descricao | limitTo:15
+                                                        }}
+                                                    </option>
+                                                </select>
+                                            </div>
+                                            <div ng-show="$ctrl._regAddItem.id_ref=='categoria' && $ctrl._regAddItem.id_categoria !=''"
+                                                class="list-group-item d-flex align-items-center gap-3">
+                                                <div
+                                                    class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
+                                                    <i class="bi bi-envelope text-primary fs-6"></i>
+                                                </div>
+                                                <div>
+                                                    <h6 class="mb-1">Quantidade </h6>
+                                                </div>
+                                                <div class="form-check form-switch m-0 ms-auto">
+                                                    <input ng-model="$ctrl._regAddItem.quantidade" type="number"
+                                                        class="form-control text-end">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="list-group mt-3">
+                                            <div ng-show="$ctrl._regAddItem.id_item!='' || $ctrl._regAddItem.id_categoria!='' || $ctrl._editPosicao.itens.length > 0"
+                                                class="list-group-item d-flex align-items-center gap-3">
+                                                <div
+                                                    class="icon-box md bg-warning bg-opacity-10 text-warning rounded-3">
+                                                    N.1
+                                                </div>
+                                                <select ng-model="$ctrl._editPosicao.id_nivel_loc1"
+                                                    ng-disabled="$ctrl._regAddItem.id_ref=='item'"
+                                                    class="form-select select2">
+                                                    <option value="{{ item._id }}"
+                                                        ng-repeat="item in $ctrl._listNivel1">
+                                                        {{ item.descricao | limitTo:150
+                                                        }}
+                                                    </option>
+                                                </select>
+                                            </div>
+                                            <div ng-show="$ctrl._regAddItem.id_item!='' || $ctrl._regAddItem.id_categoria!='' || $ctrl._editPosicao.itens.length > 0"
+                                                class="list-group-item d-flex align-items-center gap-3">
+                                                <div
+                                                    class="icon-box md bg-warning bg-opacity-10 text-warning rounded-3">
+                                                    N.2
+                                                </div>
+                                                <select ng-model="$ctrl._editPosicao.id_nivel_loc2"
+                                                    ng-disabled="$ctrl._regAddItem.id_ref=='item'"
+                                                    class="form-select select2">
+                                                    <option value="{{ item._id }}"
+                                                        ng-repeat="item in $ctrl._listNivel2">
+                                                        {{ item.descricao | limitTo:150
+                                                        }}
+                                                    </option>
+                                                </select>
+                                            </div>
+                                            <div ng-show="$ctrl._regAddItem.id_item!='' || $ctrl._regAddItem.id_categoria!='' || $ctrl._editPosicao.itens.length > 0"
+                                                class="list-group-item d-flex align-items-center gap-3">
+                                                <div
+                                                    class="icon-box md bg-warning bg-opacity-10 text-warning rounded-3">
+                                                    N.3
+                                                </div>
+                                                <select ng-model="$ctrl._editPosicao.id_nivel_loc3"
+                                                    ng-disabled="$ctrl._regAddItem.id_ref=='item'"
+                                                    ng-disabled="$ctrl._regAddItem.id_ref=='item'"
+                                                    class="form-select select2">
+                                                    <option value="{{ item._id }}"
+                                                        ng-repeat="item in $ctrl._listNivel3">
+                                                        {{ item.descricao | limitTo:150
+                                                        }}
+                                                    </option>
+                                                </select>
+                                            </div>
+                                            <div ng-show="$ctrl._regAddItem.id_item!='' || $ctrl._regAddItem.id_categoria!='' || $ctrl._editPosicao.itens.length > 0"
+                                                class="list-group-item d-flex align-items-center gap-3">
+                                                <div
+                                                    class="icon-box md bg-warning bg-opacity-10 text-warning rounded-3">
+                                                    N.4
+                                                </div>
+                                                <select ng-model="$ctrl._editPosicao.id_nivel_loc4"
+                                                    ng-disabled="$ctrl._regAddItem.id_ref=='item'"
+                                                    class="form-select select2">
+                                                    <option value="{{ item._id }}"
+                                                        ng-repeat="item in $ctrl._listNivel4">
+                                                        {{ item.descricao | limitTo:100
+                                                        }}
+                                                    </option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div class="d-flex justify-content-end gap-1 mt-3">
+                                            <button ng-click="$ctrl.onAddItem()" class="btn btn-info"
+                                                type="button">Incluir</button>
+                                        </div>
+                                    </div>
+                                    <div class="col-xxl-9 col-sm-6">
+                                        <div class="invoice-table-container">
+                                            <div class="table-outer">
+                                                <div class="table-responsive">
+                                                    <table class="table table-hover align-middle mb-1">
+                                                        <thead>
+                                                            <tr>
+                                                                <th scope="col" class="w-20">
+                                                                    Identificação
+                                                                </th>
+                                                                <th scope="col" class="w-40">
+                                                                    Descrição
+                                                                </th>
+                                                                <th scope="col" class="w-40">
+                                                                    Quantidade
+                                                                </th>
+                                                                <th scope="col" class="w-20">
+                                                                    Registro
+                                                                </th>
+                                                                <th scope="col">Edição
+                                                                </th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr
+                                                                ng-repeat="item in $ctrl._editPosicao.itens track by $index">
+
+                                                                <td class="text-white fw-semibold">
+                                                                    {{
+                                                                    $ctrl.idItemDescricao(item.id_item,
+                                                                    item.id_categoria,
+                                                                    false) }}
+                                                                </td>
+                                                                <td>
+                                                                    {{
+                                                                    $ctrl.idItemDescricao(item.id_item,
+                                                                    item.id_categoria,
+                                                                    true) }}
+                                                                    <br>
+                                                                    <span ng-show="item.id_item"
+                                                                        class="badge bg-info bg-opacity-10 text-info">
+                                                                        Item
+                                                                    </span>
+                                                                    <span ng-show="item.id_categoria"
+                                                                        class="badge bg-success bg-opacity-10 text-success">
+                                                                        Categoria
+                                                                    </span>
+                                                                </td>
+
+                                                                <td>
+                                                                    {{ item.quantidade }}
+                                                                </td>
+                                                                <td>
+                                                                    {{ item.status }}
+                                                                </td>
+                                                                <td>
+                                                                    <div class="d-flex gap-1">
+                                                                        <button ng-click=" $ctrl.onEditarAcao(item)"
+                                                                            type="button"
+                                                                            class="btn btn-sm btn-outline-primary"
+                                                                            data-bs-toggle="tooltip"
+                                                                            title="Editar Ação">
+                                                                            <i class="bi bi-pencil"></i>
+                                                                        </button>
+                                                                        <button type="button"
+                                                                            class="btn btn-sm btn-outline-primary"
+                                                                            data-bs-toggle="tooltip"
+                                                                            title="Delete Ação">
+                                                                            <i class="bi bi-trash"></i>
+                                                                        </button>
+
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex justify-content-end gap-1 mt-3">
+                                            <button ng-click="$ctrl.onSalvarAlertaItemRegistro()"
+                                                class="btn btn-warning text-dark" type="button">Registrar</button>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+
+
+                            </div>
+                            <div class="tab-pane fade" id="categorias-c" role="tabpanel"
+                                aria-labelledby="categorias-c-tab" tabindex="0">
+
+                                <div class="row gx-3">
+                                    <div class="col-xxl-3 col-sm-6">
+                                        <div class="list-group">
+                                            <div class="list-group-item d-flex align-items-center gap-3">
+                                                <div
+                                                    class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
+                                                    <i class="bi bi-envelope text-primary fs-6"></i>
+                                                </div>
+                                                <div>
+                                                    <h6 class="mb-1">
+                                                        Previsão
+                                                    </h6>
+                                                </div>
+                                                <div class="form-check form-switch m-0 ms-auto">
+                                                    <input ng-model="$ctrl._editPosicao.previsao_chegada_data" type="datetime-local" id="abc7"
+                                                    ng-class="{'is-invalid': !$ctrl._editPosicao.previsao_chegada_data || $ctrl._editPosicao.previsao_chegada_data.trim() === ''}"
+                                                        class="form-control datepicker-time-24" />
+                                                </div>
+                                            </div>
+                                            <div class="list-group-item d-flex align-items-center gap-3">
+                                                <div
+                                                    class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
+                                                    <i class="bi bi-envelope text-primary fs-6"></i>
+                                                </div>
+                                                <div>
+                                                    <h6 class="mb-1">
+                                                        Tolerância
+                                                    </h6>
+                                                </div>
+                                                <div class="form-check form-switch m-0 ms-auto">
+                                                    <input ng-model="$ctrl._editPosicao.previsao_chegada_tolerancia" type="number" 
+                                                        class="form-control" />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="list-group mt-3">
+                                            <div class="list-group-item d-flex align-items-center gap-3">
+                                                <div
+                                                    class="icon-box md bg-warning bg-opacity-10 text-warning rounded-3">
+                                                    N.1
+                                                </div>
+                                                <select ng-model="$ctrl._editPosicao.id_nivel_loc1_destino"
+                                                    ng-change="$ctrl.onCarregaNiveisDestino('02')"
+                                                    class="form-select select2">
+                                                    <option value="{{ item._id }}"
+                                                        ng-repeat="item in $ctrl._listNivel1Destino">
+                                                        {{ item.descricao | limitTo:150
+                                                        }}
+                                                    </option>
+                                                </select>
+                                            </div>
+                                            <div class="list-group-item d-flex align-items-center gap-3">
+                                                <div
+                                                    class="icon-box md bg-warning bg-opacity-10 text-warning rounded-3">
+                                                    N.2
+                                                </div>
+                                                <select ng-model="$ctrl._editPosicao.id_nivel_loc2_destino"
+                                                    ng-change="$ctrl.onCarregaNiveisDestino('03')"
+                                                    class="form-select select2">
+                                                    <option value="{{ item._id }}"
+                                                        ng-repeat="item in $ctrl._listNivel2Destino">
+                                                        {{ item.descricao | limitTo:150
+                                                        }}
+                                                    </option>
+                                                </select>
+                                            </div>
+                                            <div class="list-group-item d-flex align-items-center gap-3">
+                                                <div
+                                                    class="icon-box md bg-warning bg-opacity-10 text-warning rounded-3">
+                                                    N.3
+                                                </div>
+                                                <select ng-model="$ctrl._editPosicao.id_nivel_loc3_destino"
+                                                    ng-change="$ctrl.onCarregaNiveisDestino('04')"
+                                                    class="form-select select2">
+                                                    <option value="{{ item._id }}"
+                                                        ng-repeat="item in $ctrl._listNivel3Destino">
+                                                        {{ item.descricao | limitTo:150
+                                                        }}
+                                                    </option>
+                                                </select>
+                                            </div>
+                                            <div class="list-group-item d-flex align-items-center gap-3">
+                                                <div
+                                                    class="icon-box md bg-warning bg-opacity-10 text-warning rounded-3">
+                                                    N.4
+                                                </div>
+                                                <select ng-model="$ctrl._editPosicao.id_nivel_loc4_destino"
+                                                    class="form-select select2">
+                                                    <option value="{{ item._id }}"
+                                                        ng-repeat="item in $ctrl._listNivel4Destino">
+                                                        {{ item.descricao | limitTo:100
+                                                        }}
+                                                    </option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                        <!-- Tabs ends -->
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <div class="modal-footer">
+        <button class="btn btn-danger me-3" type="button">Excluir</button>
+        <button ng-click="$ctrl.fechar()" class="btn btn-light" type="button">Fechar</button>
+
+        <button ng-click="$ctrl.onSalvar()" class="btn btn-primary" type="button">
+            <span role="status">Salvar</span>
+            <!-- <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+            <span role="status">Saving...</span> -->
+        </button>
+    </div>
+</div>

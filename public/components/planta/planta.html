@@ -1,0 +1,118 @@
+<div class="row gx-3">
+    <div class="col-xxl-12 col-sm-6">
+        <!-- <img src="{{ $ctrl._editNivel._planta_baixa }}"
+                                            class="d-block w-100 img-fluid rounded-5"
+                                            alt="Admin Templates & Dashboards"> -->
+
+
+        <div style="height:400px; ">
+            <style>
+                #viewport {
+                    position: relative;
+                    width: 100%;
+                    height: 45vh;
+                    overflow: hidden;
+                    background: #353C48;
+                    border-radius: 5px;
+                }
+
+                #stage {
+                    position: absolute;
+                    left: 0;
+                    top: 0;
+                    transform-origin: 0 0;
+                    cursor: grab;
+                }
+
+                #stage.dragging {
+                    cursor: grabbing;
+                }
+
+                #planta {
+                    display: block;
+                    user-select: none;
+                    pointer-events: none;
+                }
+
+                /* imagem não captura cliques */
+                #overlay {
+                    position: absolute;
+                    left: 0;
+                    top: 0;
+                    pointer-events: none;
+                }
+
+                /* desenho por cima */
+                .vertex {
+                    pointer-events: none;
+                }
+            </style>
+
+
+            <div id="viewport" ng-wheel="$ctrl.onWheel($event)" ng-mousemove="$ctrl.onMouseMove($event)"
+                ng-mouseup="$ctrl.onMouseUp()">
+
+                <!-- tudo que sofre zoom/pan fica aqui -->
+                <div id="stage" ng-class="{'dragging': $ctrl.panning}" ng-style="{'transform':'translate('+$ctrl.pan.x+'px,'+$ctrl.pan.y+'px) scale('+$ctrl.zoom+')',
+                                                        'width': $ctrl.imgW+'px','height': $ctrl.imgH+'px'}"
+                    ng-mousedown="$ctrl.onMouseDown($event)" ng-click="$ctrl.onStageClick($event)">
+
+                    <img ng-show="$ctrl.plantaSrc" id="planta" ng-src="{{$ctrl.plantaSrc}}" width="{{$ctrl.imgW}}"
+                        height="{{$ctrl.imgH}}" class="d-block w-100 img-fluid rounded-5" />
+
+                    <!-- Overlay com o mesmo tamanho da imagem -->
+                    <svg id="overlay" ng-attr-width="{{$ctrl.imgW}}" ng-attr-height="{{$ctrl.imgH}}"
+                        ng-attr-viewBox="0 0 {{$ctrl.imgW}} {{$ctrl.imgH}}">
+
+                        <!-- polígonos já salvos -->
+                        <polygon ng-repeat="area in $ctrl.areas" ng-attr-points="{{$ctrl.polyToAttr(area.points)}}"
+                            ng-attr-fill="{{area.fillColor}}" ng-attr-stroke="{{area.strokeColor}}" stroke-width="2"
+                            ng-click="$ctrl.onSelectArea(area, $event)"></polygon>
+
+                        <!-- Nome da área -->
+                        <text ng-repeat="area in $ctrl.areas" ng-attr-x="{{$ctrl.centroide(area.points).x}}"
+                            ng-attr-y="{{$ctrl.centroide(area.points).y - 5}}" text-anchor="middle"
+                            alignment-baseline="middle" ng-attr-fill="{{area.textColor}}" font-size="14"
+                            font-weight="bold" pointer-events="none">
+                            {{ area.nome }}
+                        </text>
+
+                        <!-- Ícone + valor (logo abaixo do nome) -->
+                        <text ng-repeat="area in $ctrl.areas" ng-attr-x="{{$ctrl.centroide(area.points).x}}"
+                            ng-attr-y="{{$ctrl.centroide(area.points).y + 22}}" text-anchor="middle"
+                            alignment-baseline="middle" fill="#432818" font-size="20" font-weight="bold"
+                            pointer-events="none">
+                            <!-- usa emoji ou símbolo textual, SVG não renderiza <i> -->
+                            📦 {{ area.valor }}
+                        </text>
+
+
+                        <!-- polilinha do polígono em edição -->
+                        <polyline ng-if="$ctrl.drawing && $ctrl.currentPoints.length"
+                            ng-attr-points="{{$ctrl.polyToAttr($ctrl.currentPoints)}}" fill="rgba(255,0,0,0.10)"
+                            stroke="#ff0000" stroke-width="2">
+                        </polyline>
+
+                        <!-- vértices visuais -->
+                        <circle class="vertex" ng-repeat="p in $ctrl.currentPoints" ng-attr-cx="{{p.x}}"
+                            ng-attr-cy="{{p.y}}" r="5" fill="#ff0000"></circle>
+                    </svg>
+                </div>
+            </div>
+
+
+            <div class="d-flex align-items-center" style="position: absolute; margin-top: -390px; margin-left: 20px;">
+                <button class="btn btn-sm btn-warning me-1" ng-click="$ctrl.zoomOut()">
+                    <i class="bi bi-zoom-out"></i>
+                </button>
+
+                <button class="btn btn-sm btn-warning me-2" ng-click="$ctrl.zoomIn()">
+                    <i class="bi bi-zoom-in"></i>
+                </button>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>

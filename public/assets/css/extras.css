@@ -1,0 +1,48 @@
+    .swal2-popup.toast-dark {
+        border: 1px solid #334155;
+        box-shadow: 0 0 12px rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(6px);
+    }
+
+    .swal2-title {
+        font-weight: 500;
+        font-size: 0.95rem;
+    }
+
+    .swal2-timer-progress-bar {
+        background: linear-gradient(90deg, #3b82f6, #06b6d4);
+    }
+
+    .swal2-popup.msgbox-dark {
+        border: 1px solid #334155;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(6px);
+        border-radius: 12px;
+    }
+
+    .swal2-title.msgbox-title {
+        font-weight: 600;
+        color: #93c5fd;
+        /* Azul suave */
+    }
+
+    .swal2-confirm.msgbox-confirm {
+        font-weight: 500;
+        border-radius: 8px !important;
+        padding: 8px 18px !important;
+    }
+
+    .swal2-icon.swal2-success {
+        border-color: #10b981 !important;
+        color: #10b981 !important;
+    }
+
+    .swal2-icon.swal2-error {
+        border-color: #ef4444 !important;
+        color: #ef4444 !important;
+    }
+
+    .swal2-icon.swal2-warning {
+        border-color: #facc15 !important;
+        color: #facc15 !important;
+    }
