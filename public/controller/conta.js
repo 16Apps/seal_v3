@@ -33,7 +33,32 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
         tokem_api: '',
     }
 
-    $scope._regColaborador = undefined
+    $scope._regColaborador = {
+        _id: uteisService.onGetID(),
+        id_conta: $scope._regConta._id,
+        ativo: '1',
+        foto: '',
+        _foto: '../assets/images/icon_avatar.png',
+        nome: '',
+        apelido: '',
+        id_funcao: null,
+        tag: '',
+        cpf: '',
+        perfil: 'admin',
+        email: '',
+        celular: '',
+        login: '',
+        senha: '',
+        _senha: '',
+        cep: '',
+        logradouro: '',
+        numero: '',
+        complemento: '',
+        bairro: '',
+        cidade: '',
+        estado: '',
+        acesso_modulos: []
+    }
 
     $scope._regExtras = 'fusos'
 
@@ -109,6 +134,9 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
                         });
 
                     } else {
+
+                        uteisService.setCookie('_conta', JSON.stringify($scope._regConta), 365);
+                        uteisService.setCookie('_colaborador', JSON.stringify($scope._regColaborador), 365);
 
                         uteisService.setCookie('_conta', JSON.stringify(res[0].id_conta), 365);
                         uteisService.setCookie('_colaborador', JSON.stringify(res[0]), 365);
