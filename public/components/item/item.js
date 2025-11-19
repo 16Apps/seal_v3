@@ -20,6 +20,14 @@ app.component('item', {
     $ctrl._listNivel3 = [];
     $ctrl._listNivel4 = [];
 
+    $ctrl._regAddAssociacao = {
+      id_ref: 'item',
+      id_item: '',
+      id_categoria: '',
+      quantidade: 1
+    };
+
+
     $ctrl.options = {
       headers: { 'Content-Type': 'application/json' }
     };
@@ -42,6 +50,7 @@ app.component('item', {
     $ctrl.onEditar = async function (reg) {
 
       await $ctrl.onCarregaCategorias();
+      await $ctrl.onCarregaItens();
       await $ctrl.onCarregaNiveis('01');
 
       if (reg == undefined) {
@@ -72,6 +81,8 @@ app.component('item', {
           mov_data_hora: ''
         };
 
+        $ctrl.onBaseAssocicao()
+
       } else {
 
         $timeout(async () => {
@@ -83,6 +94,8 @@ app.component('item', {
           if ($ctrl._editItem.foto) {
             $ctrl._editItem._foto = uteisService.apiUrl_() + '/image/' + $ctrl._editItem.foto
           };
+
+          $ctrl.onBaseAssocicao();
 
           if ($ctrl._editItem.id_nivel_loc1) {
 
@@ -106,6 +119,60 @@ app.component('item', {
 
       };
 
+
+
+    };
+
+    $ctrl.onBaseAssocicao = async function () {
+
+      let _url = '/_bd?c=associacao&id_item=' + $ctrl._editItem._id
+
+      await uteisService.getBase(_url)
+        .then((res) => {
+
+          $timeout(() => {
+            if (res.length > 0) {
+              $ctrl._editAssocicao = res[0]
+            } else {
+              $ctrl._editAssocicao = {
+                _id: uteisService.onGetID(),
+                id_conta: $ctrl._regConta._id,
+                id_colaborador: '',
+                id_item: $ctrl._editItem._id,
+                id_categoria: '',
+                ativo: 1,
+                descricao: '',
+                associados: []
+              }
+
+            }
+          }, 10);
+
+        })
+        .catch((error) => {
+          uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
+        });
+
+    }
+
+
+    $ctrl.onCarregaItens = async function () {
+
+      // !!! Itens vinculados ao local escolhido
+      let _url = '/_bd?c=item&id_conta=' + $ctrl._regConta._id
+      _url += '&pop=id_categoria';
+
+      await uteisService.getBase(_url)
+        .then((res) => {
+
+          $timeout(() => {
+            $ctrl._listItens = res
+          }, 10);
+
+        })
+        .catch((error) => {
+          uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
+        });
     };
 
     $ctrl.onCarregaCategorias = async function () {
@@ -219,6 +286,64 @@ app.component('item', {
       };
     };
 
+    $ctrl.onAddAssociacao = async function () {
+
+      if ($ctrl._regAddAssociacao.id_ref == 'item') {
+
+        let iFind = $ctrl._editAssocicao.associados.findIndex((item) => item.id_item == $ctrl._regAddAssociacao.id_item)
+        if (iFind == -1) {
+          $ctrl._editAssocicao.associados.push({
+            _id: uteisService.onGetID(),
+            id_item: $ctrl._regAddAssociacao.id_item,
+            id_categoria: '',
+            quantidade: 1
+          })
+        } else {
+          $ctrl.$ctrl._editAssocicao.associados[iFind].quantidade = $ctrl._regAddAssociacao.quantidade
+        }
+
+      } else {
+
+
+        let iFind = $ctrl._editAssocicao.associados.findIndex((item) => item.id_categoria == $ctrl._regAddAssociacao.id_categoria)
+        if (iFind == -1) {
+          $ctrl._editAssocicao.associados.push({
+            _id: uteisService.onGetID(),
+            id_item: '',
+            id_categoria: $ctrl._regAddAssociacao.id_categoria,
+            quantidade: $ctrl._regAddAssociacao.quantidade
+          })
+        } else {
+          $ctrl._editAssocicao.associados[iFind].quantidade = $ctrl._regAddAssociacao.quantidade
+        }
+
+      }
+
+
+    };
+
+    $ctrl.idItemDescricao = function (_idItem, _idCategoria, desc) {
+
+      if (_idItem != '') {
+        let iFind = $ctrl._listItens.findIndex((item) => item._id == _idItem)
+        if (desc) {
+          return $ctrl._listItens[iFind].id_categoria.descricao;
+        } else {
+          return $ctrl._listItens[iFind].tag
+        }
+
+      } else {
+        let iFind = $ctrl._listCategorias.findIndex((item) => item._id == _idCategoria)
+        if (desc) {
+          return $ctrl._listCategorias[iFind].descricao;
+        } else {
+          return $ctrl._listCategorias[iFind].ean
+        }
+
+      };
+
+    };
+
 
     $ctrl.onSalvar = function () {
 
@@ -234,6 +359,9 @@ app.component('item', {
 
       uteisService.patchBase('/item', $ctrl._editItem)
         .then((res) => {
+
+          uteisService.patchBase('/assosicao', $ctrl._editAssocicao)
+
           uteisService.onToast('Registrado!', 'success', 3000, 'top-end');
           $ctrl.fechar();
         })

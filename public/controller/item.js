@@ -51,8 +51,6 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService) {
     $scope.onItem = async function (_acao, _edit) {
 
 
-
-
         if (modalInstance != undefined) {
             modalInstance.hide();
             modalInstance = undefined
@@ -62,14 +60,20 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService) {
             $scope.editLoc = undefined;
 
             $scope.$apply();
+
         } else {
 
+
             let _tratComponente = JSON.parse(JSON.stringify(_edit || {}));
-            _tratComponente.id_categoria = _tratComponente.id_categoria._id
-            _tratComponente.id_nivel_loc1 = _tratComponente.id_nivel_loc1 ? _tratComponente.id_nivel_loc1._id : null
-            _tratComponente.id_nivel_loc2 = _tratComponente.id_nivel_loc2 ? _tratComponente.id_nivel_loc2._id : null
-            _tratComponente.id_nivel_loc3 = _tratComponente.id_nivel_loc3 ? _tratComponente.id_nivel_loc3._id : null
-            _tratComponente.id_nivel_loc4 = _tratComponente.id_nivel_loc4 ? _tratComponente.id_nivel_loc4._id : null
+
+            if (_acao == 'edit') {
+                _tratComponente.id_categoria = _tratComponente.id_categoria._id
+                _tratComponente.id_nivel_loc1 = _tratComponente.id_nivel_loc1 ? _tratComponente.id_nivel_loc1._id : null
+                _tratComponente.id_nivel_loc2 = _tratComponente.id_nivel_loc2 ? _tratComponente.id_nivel_loc2._id : null
+                _tratComponente.id_nivel_loc3 = _tratComponente.id_nivel_loc3 ? _tratComponente.id_nivel_loc3._id : null
+                _tratComponente.id_nivel_loc4 = _tratComponente.id_nivel_loc4 ? _tratComponente.id_nivel_loc4._id : null
+
+            }
 
             $scope.funcaoLoc = _acao;
             $scope.editLoc = _tratComponente;
