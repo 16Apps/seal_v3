@@ -53,6 +53,10 @@ app.component('item', {
       await $ctrl.onCarregaItens();
       await $ctrl.onCarregaNiveis('01');
 
+      const tabTrigger = document.querySelector('#itens-a-tab');
+      const tab = new bootstrap.Tab(tabTrigger);
+      tab.show();
+
       if (reg == undefined) {
 
         $ctrl._editItem = {
@@ -141,6 +145,8 @@ app.component('item', {
                 id_item: $ctrl._editItem._id,
                 id_categoria: '',
                 ativo: 1,
+                intervalo: 10,
+                range_rssi: 30,
                 descricao: '',
                 associados: []
               }
@@ -360,7 +366,7 @@ app.component('item', {
       uteisService.patchBase('/item', $ctrl._editItem)
         .then((res) => {
 
-          uteisService.patchBase('/assosicao', $ctrl._editAssocicao)
+          uteisService.patchBase('/associacao', $ctrl._editAssocicao)
 
           uteisService.onToast('Registrado!', 'success', 3000, 'top-end');
           $ctrl.fechar();

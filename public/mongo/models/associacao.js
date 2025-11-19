@@ -11,6 +11,10 @@ const AssociacaoSchema = new mongoose.Schema({
     ativo: { type: String },
     descricao: { type: String },
 
+    intervalo: { type: Number },
+    range_rssi: { type: Number },
+
+
     associados: [{
         _id: { type: String, default: shortid.generate },
         id_item: { type: String, ref: 'Item' },
