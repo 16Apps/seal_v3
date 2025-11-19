@@ -135,6 +135,7 @@ app.component('item', {
         .then((res) => {
 
           $timeout(() => {
+            alert(res.length)
             if (res.length > 0) {
               $ctrl._editAssocicao = res[0]
             } else {
