@@ -25,6 +25,7 @@ const GatewaySchema = new mongoose.Schema({
     id_nivel_loc3: { type: String, ref: 'Localizacao' },
     id_nivel_loc4: { type: String, ref: 'Localizacao' },
 
+    
     leitor: { type: String },
     leitor_mac: { type: String },
     leitor_potencia: { type: String },

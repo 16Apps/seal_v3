@@ -32,9 +32,9 @@
                                     aria-selected="true">Cadastro</button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button ng-click="$ctrl.onCarregaNiveisPlanta('02')" class="nav-link rounded-pill"
-                                    id="gateways-b-tab" data-bs-toggle="pill" data-bs-target="#gateways-b" type="button"
-                                    role="tab" aria-controls="gateways-b" aria-selected="false">Tracking</button>
+                                <button class="nav-link rounded-pill" id="gateways-b-tab" data-bs-toggle="pill"
+                                    data-bs-target="#gateways-b" type="button" role="tab" aria-controls="gateways-b"
+                                    aria-selected="false">Coletor</button>
                             </li>
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link rounded-pill" id="gateways-c-tab" data-bs-toggle="pill"
@@ -114,7 +114,8 @@
                                                                 <option value="pre_vinc">Pré Vinculado</option>
                                                             </select>
                                                         </div>
-                                                        <div ng-show="$ctrl._editGateway.id_colaborador_gateway=='pre_vinc'" class="col-sm-6">
+                                                        <div ng-show="$ctrl._editGateway.id_colaborador_gateway=='pre_vinc'"
+                                                            class="col-sm-6">
                                                             <label for="displayName" class="form-label">
                                                                 Colaborador
                                                             </label>
@@ -308,123 +309,133 @@
                                 tabindex="0">
 
                                 <div class="row gx-3">
-                                    <div class="col-sm-3">
+                                    <div class="col-sm-6">
                                         <div class="border rounded-2 p-3 mb-3">
-                                            <div class="list-group">
-
-                                                <div class="list-group-item d-flex align-items-center gap-3">
-                                                    <div
-                                                        class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
-                                                        <i class="bi bi-hdd-network text-primary fs-5"></i>
-                                                    </div>
-
-                                                    <div>
-                                                        <h6 class="mb-1">Distanciar</h6>
-                                                        <p class="m-0 text-muted">Após X.dB do gateway </p>
-                                                    </div>
-
-                                                    <div class="form-check form-switch m-0 ms-auto">
-                                                        <input class="form-check-input" type="checkbox" role="switch"
-                                                            id="n2" checked=""
-                                                            title="Enable or disable messages notifications">
-                                                    </div>
-                                                </div>
-                                                <div class="list-group-item d-flex align-items-center gap-3">
-                                                    <div
-                                                        class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
-                                                        <i class="bi bi-hdd-network text-primary fs-5"></i>
-                                                    </div>
-
-                                                    <div>
-                                                        <h6 class="mb-1">Aproximar</h6>
-                                                        <p class="m-0 text-muted">Após X.dB do gateway</p>
-                                                    </div>
-
-                                                    <div class="form-check form-switch m-0 ms-auto">
-                                                        <input class="form-check-input" type="checkbox" role="switch"
-                                                            id="n2" checked=""
-                                                            title="Enable or disable messages notifications">
-                                                    </div>
-                                                </div>
-                                                <div class="list-group-item d-flex align-items-center gap-3">
-                                                    <div
-                                                        class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
-                                                        <i class="bi bi-hdd-network text-primary fs-5"></i>
-                                                    </div>
-
-                                                    <div>
-                                                        <h6 class="mb-1">Tolerância</h6>
-                                                        <p class="m-0 text-muted">Tempo (min) aceito sem leitura</p>
-                                                    </div>
-
-                                                    <div class="form-check form-switch m-0 ms-auto">
-                                                        <input class="form-check-input" type="checkbox" role="switch"
-                                                            id="n2" checked=""
-                                                            title="Enable or disable messages notifications">
-                                                    </div>
-                                                </div>
-                                                <div class="list-group-item d-flex align-items-center gap-3">
-                                                    <div
-                                                        class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
-                                                        <i class="bi bi-qr-code text-success fs-5"></i>
-                                                    </div>
-
-                                                    <div>
-                                                        <h6 class="mb-1">Ação</h6>
-                                                        <p class="m-0 text-muted">Oque será realizado</p>
-                                                    </div>
-
-                                                    <select ng-model="$ctrl._editGateway.status"
-                                                        class="form-select flex-grow-1 text-end w-auto ms-auto"
-                                                        id="basicSelect" aria-label="Basic select example"
-                                                        style="max-width: 150px;">
-                                                        <option value="ativo">Apenas Registrar</option>
-                                                        <option value="emtransporte">Tag Inteligente</option>
-                                                        <option value="inativo">Disp. Tuya</option>
+                                            <div class="row gx-3 mb-3">
+                                                <div class="col-sm-4">
+                                                    <label for="displayName" class="form-label">
+                                                        Equipamento
+                                                    </label>
+                                                    <select ng-model="$ctrl._editGateway.leitor"
+                                                        class="form-select flex-grow-1" id="basicSelect"
+                                                        aria-label="Basic select example">
+                                                        <option value="beacon">Beacons</option>
+                                                        <option value="icard">iCard RFID</option>
+                                                        <option value="midleware">Midleware Desktop</option>
+                                                        <option value="LLRP">Leitor LLRP</option>
+                                                        <option value="BT900">Acura BT-900</option>
+                                                        <option value="IP30">Intermec IP30</option>
+                                                        <option value="RFD8500BAR">Zebra RFD8500 Barcode</option>
+                                                        <option value="RFD8500">Zebra RFD8500</option>
+                                                        <option value="BTL1000">Acura BTL-1000</option>
+                                                        <option value="DCE">Leitor DCE</option>
+                                                        <option value="RFD40">Zebra RFD40/RFD90</option>
+                                                        <option value="RFD2000">Zebra RFD2000/TC20</option>
+                                                        <option value="MC33">Zebra MC33</option>
+                                                        <option value="RFD90ECONNEX">Zebra RFD40/RFD90 eConnex</option>
+                                                        <option value="RFR900SERIAL">Bluebird RFR900 Serial</option>
+                                                        <option value="RFR900">Bluebird RFR900 Bluetooth</option>
+                                                        <option value="IC71">Chainway IC71</option>
+                                                        <option value="R6">Chainway R6</option>
+                                                        <option value="CS108">CSL CS108</option>
+                                                        <option value="IH25">Intermec IH25</option>
+                                                        <option value="AUTOID9U">AUTOID9U</option>
                                                     </select>
-
-
-                                                    <!-- <input ng-model="$ctrl._editAP.mac" type="text"
-                                                        ng-class="{'is-invalid': !$ctrl._editAP.mac || $ctrl._editAP.mac.trim() === ''}"
-                                                        mask="99:99:99:99:99:99"
-                                                        class="form-control text-end w-auto ms-auto"
-                                                        style="max-width: 150px;"> -->
                                                 </div>
-                                                <div ng-show="$ctrl._editApModo"
-                                                    class="list-group-item d-flex align-items-center gap-3">
-                                                    <div
-                                                        class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
-                                                        <i class="bi bi-wifi text-info fs-5"></i>
-                                                    </div>
-
-                                                    <div>
-                                                        <h6 class="mb-1">RSSI</h6>
-                                                        <p class="m-0 text-muted">Potência de referência</p>
-                                                    </div>
-
-                                                    <input ng-model="$ctrl._editAP.rssi" type="text"
-                                                        ng-class="{'is-invalid': !$ctrl._editAP.rssi || $ctrl._editAP.rssi.trim() === ''}"
-                                                        class="form-control text-end w-auto ms-auto"
-                                                        style="max-width: 100px;">
+                                                <div class="col-sm-3">
+                                                    <label for="displayName" class="form-label">
+                                                        MAC
+                                                    </label>
+                                                    <input ng-model="$ctrl._editGateway.leitor_mac" type="text"
+                                                        ng-class="{'is-invalid': !$ctrl._editGateway.leitor_mac || $ctrl._editGateway.leitor_mac.trim() === ''}"
+                                                        class="form-control">
                                                 </div>
-                                                <div ng-show="$ctrl._editApModo"
-                                                    class="list-group-item d-flex align-items-center gap-3">
-                                                    <div
-                                                        class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
-                                                        <i class="bi bi-broadcast-pin text-warning fs-5"></i>
-                                                    </div>
-
-                                                    <div>
-                                                        <h6 class="mb-1">Range Potência</h6>
-                                                        <p class="m-0 text-muted">Considerado para menos ou mais</p>
-                                                    </div>
-
-                                                    <input ng-model="$ctrl._editAP.range" type="text"
-                                                        class="form-control text-end w-auto ms-auto"
-                                                        style="max-width: 100px;">
+                                            </div>
+                                            <div class="row gx-3 mb-3">
+                                                <div class="col-sm-4">
+                                                    <label for="displayName" class="form-label">
+                                                        Potência
+                                                    </label>
+                                                    <select ng-model="$ctrl._editGateway.leitor_potencia"
+                                                        class="form-select flex-grow-1" id="basicSelect"
+                                                        aria-label="Basic select example">
+                                                        <option value="14">14db</option>
+                                                        <option value="15">15db</option>
+                                                        <option value="16">16db</option>
+                                                        <option value="17">17db</option>
+                                                        <option value="18">18db</option>
+                                                        <option value="19">19db</option>
+                                                        <option value="20">20db</option>
+                                                        <option value="21">21db</option>
+                                                        <option value="22">22db</option>
+                                                        <option value="23">23db</option>
+                                                        <option value="24">24db</option>
+                                                        <option value="25">25db</option>
+                                                        <option value="26">26db</option>
+                                                        <option value="27">27db</option>
+                                                        <option value="28">28db</option>
+                                                        <option value="29">29db</option>
+                                                        <option value="30">30db</option>
+                                                        <option value="31">31db</option>
+                                                        <option value="32">32db</option>
+                                                    </select>
                                                 </div>
-
-
+                                                <div class="col-sm-4">
+                                                    <label for="displayName" class="form-label">
+                                                        Seção
+                                                    </label>
+                                                    <select ng-model="$ctrl._editGateway.leitor_secao"
+                                                        class="form-select flex-grow-1" id="basicSelect"
+                                                        aria-label="Basic select example">
+                                                        <option value="0">0</option>
+                                                        <option value="1">1</option>
+                                                        <option value="2">2</option>
+                                                        <option value="3">3</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-sm-4">
+                                                    <label for="displayName" class="form-label">
+                                                        Estado
+                                                    </label>
+                                                    <select ng-model="$ctrl._editGateway.leitor_estado"
+                                                        class="form-select flex-grow-1" id="basicSelect"
+                                                        aria-label="Basic select example">
+                                                        <option value="a">A</option>
+                                                        <option value="b">B</option>
+                                                        <option value="ab">A ~ B</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="row gx-3 mb-3">
+                                                <div class="col-sm-4">
+                                                    <label for="displayName" class="form-label">
+                                                        Codifição EPC
+                                                    </label>
+                                                    <select ng-model="$ctrl._editGateway.codif_epc"
+                                                        class="form-select flex-grow-1" id="basicSelect"
+                                                        aria-label="Basic select example">
+                                                        <option value="manual">Manual</option>
+                                                        <option value="gtim">GTim</option>
+                                                        <option value="sgtim">sGtim</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-sm-2" ng-show="$ctrl._editGateway.codif_epc=='manual'">
+                                                    <label for="displayName" class="form-label">
+                                                        Posição Inicial
+                                                    </label>
+                                                    <input ng-model="$ctrl._editGateway.codif_epc_inicial" type="text"
+                                                        ng-class="{'is-invalid': !$ctrl._editGateway.descricao || $ctrl._editGateway.descricao.trim() === ''}"
+                                                        class="form-control">
+                                                </div>
+                                                <div class="col-sm-2" ng-show="$ctrl._editGateway.codif_epc=='manual'">
+                                                    <label for="displayName" class="form-label">
+                                                        Comprimento
+                                                    </label>
+                                                    <input ng-model="$ctrl._editGateway.codif_epc_comprimento"
+                                                        type="text"
+                                                        ng-class="{'is-invalid': !$ctrl._editGateway.descricao || $ctrl._editGateway.descricao.trim() === ''}"
+                                                        class="form-control">
+                                                </div>
                                             </div>
                                         </div>
 
