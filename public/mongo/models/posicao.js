@@ -29,12 +29,23 @@ const PosicaoSchema = new mongoose.Schema({
         _id: { type: String, default: shortid.generate },
         id_item: { type: String, ref: 'Item' },
         id_categoria: { type: String, ref: 'Categoria' },
+
+        tag: { type: String },
+        ean: { type: String },
+        rssi: { type: String },
+
         quantidade: { type: Number },
         status: { type: String },
         status_data: { type: Date },
         id_gatweway: { type: String, ref: 'Gateway' },
         id_colaborador: { type: String, ref: 'Colaborador' },
+
+        status_destino: { type: String },
+        status_destino_data: { type: Date },
+
     }],
+
+
 
     id_nivel_loc1_destino: { type: String, ref: 'Localizacao' },
     id_nivel_loc2_destino: { type: String, ref: 'Localizacao' },

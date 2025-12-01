@@ -84,7 +84,8 @@
                                                             <label for="displayName" class="form-label">
                                                                 Descrição
                                                             </label>
-                                                            <input ng-model="$ctrl._editPosicao.descricao" type="text" class="form-control">
+                                                            <input ng-model="$ctrl._editPosicao.descricao" type="text"
+                                                                class="form-control">
                                                         </div>
                                                         <div class="col-sm-3">
                                                             <label for="displayName" class="form-label">
@@ -117,7 +118,7 @@
                                                                 Data
                                                             </label>
                                                             <input ng-model="$ctrl._editPosicao.partida_data"
-                                                            ng-class="{'is-invalid': !$ctrl._editPosicao.partida_data || $ctrl._editPosicao.partida_data.trim() === ''}"
+                                                                ng-class="{'is-invalid': !$ctrl._editPosicao.partida_data || $ctrl._editPosicao.partida_data.trim() === ''}"
                                                                 type="datetime-local" id="abc7"
                                                                 class="form-control datepicker-time-24" />
                                                         </div>
@@ -402,8 +403,9 @@
                                                     </h6>
                                                 </div>
                                                 <div class="form-check form-switch m-0 ms-auto">
-                                                    <input ng-model="$ctrl._editPosicao.previsao_chegada_data" type="datetime-local" id="abc7"
-                                                    ng-class="{'is-invalid': !$ctrl._editPosicao.previsao_chegada_data || $ctrl._editPosicao.previsao_chegada_data.trim() === ''}"
+                                                    <input ng-model="$ctrl._editPosicao.previsao_chegada_data"
+                                                        type="datetime-local" id="abc7"
+                                                        ng-class="{'is-invalid': !$ctrl._editPosicao.previsao_chegada_data || $ctrl._editPosicao.previsao_chegada_data.trim() === ''}"
                                                         class="form-control datepicker-time-24" />
                                                 </div>
                                             </div>
@@ -418,8 +420,8 @@
                                                     </h6>
                                                 </div>
                                                 <div class="form-check form-switch m-0 ms-auto">
-                                                    <input ng-model="$ctrl._editPosicao.previsao_chegada_tolerancia" type="number" 
-                                                        class="form-control" />
+                                                    <input ng-model="$ctrl._editPosicao.previsao_chegada_tolerancia"
+                                                        type="number" class="form-control" />
                                                 </div>
                                             </div>
                                         </div>
@@ -485,7 +487,91 @@
                                                 </select>
                                             </div>
                                         </div>
+                                    </div>
+                                    <div class="col-xxl-9 col-sm-6">
+                                        <div class="invoice-table-container">
+                                            <div class="table-outer">
+                                                <div class="table-responsive">
+                                                    <table class="table table-hover align-middle mb-1">
+                                                        <thead>
+                                                            <tr>
+                                                                <th scope="col" class="w-20">
+                                                                    Identificação
+                                                                </th>
+                                                                <th scope="col" class="w-40">
+                                                                    Descrição
+                                                                </th>
+                                                                <th scope="col" class="w-40">
+                                                                    Quantidade
+                                                                </th>
+                                                                <th scope="col" class="w-20">
+                                                                    Registro
+                                                                </th>
+                                                                <th scope="col">Edição
+                                                                </th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr
+                                                                ng-repeat="item in $ctrl._editPosicao.itens track by $index">
 
+                                                                <td class="text-white fw-semibold">
+                                                                    {{
+                                                                    $ctrl.idItemDescricao(item.id_item,
+                                                                    item.id_categoria,
+                                                                    false) }}
+                                                                </td>
+                                                                <td>
+                                                                    {{
+                                                                    $ctrl.idItemDescricao(item.id_item,
+                                                                    item.id_categoria,
+                                                                    true) }}
+                                                                    <br>
+                                                                    <span ng-show="item.id_item"
+                                                                        class="badge bg-info bg-opacity-10 text-info">
+                                                                        Item
+                                                                    </span>
+                                                                    <span ng-show="item.id_categoria"
+                                                                        class="badge bg-success bg-opacity-10 text-success">
+                                                                        Categoria
+                                                                    </span>
+                                                                </td>
+
+                                                                <td>
+                                                                    {{ item.quantidade }}
+                                                                </td>
+                                                                <td>
+                                                                    {{ item.status_destino ? status_destino : 'Sem Registro' }}
+                                                                </td>
+                                                                <td>
+                                                                    <div class="d-flex gap-1">
+                                                                        <button ng-click=" $ctrl.onEditarAcao(item)"
+                                                                            type="button"
+                                                                            class="btn btn-sm btn-outline-primary"
+                                                                            data-bs-toggle="tooltip"
+                                                                            title="Editar Ação">
+                                                                            <i class="bi bi-pencil"></i>
+                                                                        </button>
+                                                                        <button type="button"
+                                                                            class="btn btn-sm btn-outline-primary"
+                                                                            data-bs-toggle="tooltip"
+                                                                            title="Delete Ação">
+                                                                            <i class="bi bi-trash"></i>
+                                                                        </button>
+
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex justify-content-end gap-1 mt-3">
+                                            <button ng-click="$ctrl.onSalvarAlertaItemRegistro()"
+                                                class="btn btn-warning text-dark" type="button">Registrar</button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

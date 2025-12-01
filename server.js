@@ -10,7 +10,7 @@ const port = process.env.PORT || 3001;
 server = http.createServer(app);
 
 app.set('view engine', 'ejs');  
-app.set('layout', 'layout_login');
+app.set('layout', 'layout_login', 'layout_show');
 
 app.use(expressLayouts);
 
@@ -87,6 +87,10 @@ app.get('/profile', (req, res) => {
 
 server.listen(port, () => {
     console.log(`16Apps Modelo > http://localhost:${port}`);
+});
+
+app.get('/site', (req, res) => {
+  res.render('pages/login/login', { layout: 'layout_show' });
 });
 
 // rotas

@@ -13,6 +13,9 @@ const movimentacao_item = require("../models/movimentacao_item");
 const processos = require("../models/processos");
 const registro_colaborador = require("../models/registro_colaborador");
 
+const sr_solucoes = require("../models/sr_solucoes");
+const sr_categorias = require("../models/sr_categorias");
+
 const shortid = require('shortid');
 const fs = require('fs');
 const readline = require('readline');

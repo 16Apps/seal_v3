@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="">
+  <meta name="author" content="Template Mo">
+  <link href="https://fonts.googleapis.com/css?family=Poppins:100,200,300,400,500,600,700,800,900" rel="stylesheet">
+
+  <title>Seal ShowRoom</title>
+
+  <!-- Bootstrap core CSS -->
+  <link href="../showroom/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Additional CSS Files -->
+  <link rel="stylesheet" href="../showroom/assets/css/fontawesome.css">
+  <link rel="stylesheet" href="../showroom/assets/css/templatemo-edu-meeting.css">
+  <link rel="stylesheet" href="../showroom/assets/css/owl.css">
+  <link rel="stylesheet" href="../showroom/assets/css/lightbox.css">
+  <link rel="stylesheet" href="../showroom/assets/css/extras.css">
+</head>
+
+<body>
+  <div ng-app="myApp" ng-controller="showRoomCtrl">
+
+    <!-- ***** Header Area Start ***** -->
+    <header class="header-area header-sticky">
+      <div class="container">
+        <div class="row">
+          <div class="col-12">
+            <nav class="main-nav">
+              <!-- ***** Logo Start ***** -->
+              <a ng-click="onItem()" class="logo">
+                <span class="text-danger">Seal</span> showroom
+                <!-- <img src="assets/images/logo.fw.png" style="width: 100px;"> -->
+              </a>
+              <!-- ***** Logo End ***** -->
+              <!-- ***** Menu Start ***** -->
+              <!-- <ul class="nav">
+                <li class="scroll-to-section"><a href="#top" class="active">Home</a></li>
+                <li><a href="meetings.html">Meetings</a></li>
+                <li class="scroll-to-section"><a href="#apply">Apply Now</a></li>
+                <li class="has-sub">
+                  <a href="javascript:void(0)">Pages</a>
+                  <ul class="sub-menu">
+                    <li><a href="meetings.html">Upcoming Meetings</a></li>
+                    <li><a href="meeting-details.html">Meeting Details</a></li>
+                  </ul>
+                </li>
+                <li class="scroll-to-section"><a href="#courses">Courses</a></li>
+                <li class="scroll-to-section"><a href="#contact">Contact Us</a></li>
+              </ul>
+              <a class='menu-trigger'>
+                <span>Menu</span>
+              </a> -->
+              <!-- ***** Menu End ***** -->
+            </nav>
+          </div>
+        </div>
+      </div>
+    </header>
+    <!-- ***** Header Area End ***** -->
+
+    <!-- ***** Main Banner Area Start ***** -->
+    <section class="section main-banner" id="top" data-section="section1">
+      <video autoplay muted loop id="bg-video">
+        <source src="showroom/assets/images/course-video.mp4" type="video/mp4" />
+      </video>
+
+      <div class="video-overlay header-text">
+        <div class="container">
+          <div class="row">
+            <div class="col-lg-12">
+              <div class="caption">
+                <h6>INOVAÇÃO, TECNOLOGIA E PERFORMANCE EM TEMPO REAL</h6>
+                <h2>Bem-vindo à nossa operação</h2>
+                <p>
+                  Aqui você acompanha como <a rel="nofollow">nossas soluções</a> conectam máquinas, pessoas e processos
+                  para
+                  entregar mais controle, eficiência e rastreabilidade.
+                  Explore na tela os módulos, visualize os fluxos e descubra como a <a rel="nofollow">tecnologia
+                    transforma</a> cada etapa da operação.
+                <div class="main-button-red">
+                  <div class="scroll-to-section"><a href="#contact">Soluções</a></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ***** Main Banner Area End ***** -->
+
+    <section class="meetings-page" id="contact" style="height: 1300px;">
+      <div class="container">
+        <div class="row">
+          <div class="col-lg-12">
+            <div class="filters">
+              <ul>
+                <li data-filter="*" ng-class="{ active: _filtroCategoria === '' }" ng-click="onFiltraSolucoes('')">Todas
+                  as Áreas</li>
+                <li ng-repeat="item in _listCategorias" ng-class="{ active: _filtroCategoria === item._id }"
+                  ng-click="onFiltraSolucoes(item._id)" data-filter=".cat-{{ item._id }}">
+                  {{ item.titulo }}
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="col-lg-12">
+            <div class="row grid">
+
+              <div ng-repeat="item in _listSolucoes"
+                ng-show="_filtroCategoria === '' || _filtroCategoria === item.id_categoria._id"
+                class="col-lg-4 templatemo-item-col all cat-{{ item.id_categoria._id }}" ng-click="abrirLink(item)">
+
+
+                <div class="meeting-item">
+                  <div class="thumb">
+                    <div class="price">
+                      <span>{{ item.id_categoria.titulo }}</span>
+                    </div>
+                    <a href="#">
+                      <img src="{{ item._banner }}" alt="">
+                    </a>
+                  </div>
+
+                  <div class="down-content">
+                    <div class="date">
+                      <img src="{{ item._icone }}" style="height: 50px; width: 50px; border-radius: 10px;" alt="">
+                    </div>
+                    <h4>{{ item.titulo }}</h4>
+                    <p style="height: 150px;">{{ item.descricao }}</p>
+                  </div>
+                </div>
+
+
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+      <div class="modal fade" id="modalItem" tabindex="-1" aria-labelledby="exampleModalFullscreenLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-fullscreen">
+          <div class="modal-content" style="background-color: #343a40;">
+            <div class="modal-header" ng-click="onFecharItem()">
+              <h2 class="modal-title text-white">Cadastro</h2>
+
+              <button type="button" class="btn-close" ng-click="onFecharItem()">
+              </button>
+            </div>
+            <div class="modal-body" style="margin-top: -140px;">
+              <section class="contact-us" id="contact">
+
+                <div style="display: flex; gap: 10px;">
+
+
+                  <div class="main-button-red" ng-click="onMudaModulo('solucoes')">
+                    <div class="scroll-to-section"><a href="#">Soluções</a></div>
+                  </div>
+                  <div class="main-button-yellow" ng-click="onMudaModulo('categorias')">
+                    <div class="scroll-to-section"><a href="#">Áreas</a></div>
+                  </div>
+                </div>
+
+                <div class="container_ mt-4">
+
+                  <div ng-show="_modoCadastro=='categorias'" class="row">
+                    <div class="col-lg-3">
+                      <div class="right-info" style="background-color: #ffba08;">
+                        <ul>
+                          <li ng-repeat="item in _listCategorias" ng-click="onEditCategoria(item)"
+                            style="cursor: pointer;">
+                            <h6>{{ item.titulo }}</h6>
+                            <span>{{ item.descricao }}</span>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div class="col-lg-9 align-self-center">
+                      <div class="row">
+                        <div class="col-lg-12">
+                          <form id="contact">
+                            <div class="row">
+                              <div class="col-lg-12">
+                                <h2>Aréas</h2>
+                              </div>
+
+                              <div class="row">
+                                <div class="col-lg-2">
+                                  <div class="mb-2">
+                                    <img src="{{ _editCategoria._icone }}"
+                                      class="img-fluid rounded-3 border border-2 border-primary ms-3"
+                                      style="height: 150px; width: 150px;" alt="Admin Templates">
+                                  </div>
+                                  <button ng-click="onGetFoto()" type="button" class="btn btn-primary"
+                                    style="background-color: #6c757d;">
+                                    Carregar Ícone
+                                  </button>
+                                  <input type='file' id="imgLogo" style="display:none" />
+                                </div>
+
+                                <div class="col-lg-10">
+                                  <div class="row">
+                                    <div class="col-lg-4">
+                                      <fieldset>
+                                        <input ng-model="_editCategoria.titulo" type="text" placeholder="TÍTULO..."
+                                          required="">
+                                      </fieldset>
+                                    </div>
+                                    <div class="col-lg-8">
+                                      <fieldset>
+                                        <input ng-model="_editCategoria.descricao" type="text" placeholder="DESCRIÇÃO...">
+                                      </fieldset>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div class="col-lg-12 mt-4" style="text-align: right;">
+                                <fieldset>
+                                  <button ng-click="onSalvarCategoria()" id="form-submit" class="button">SALVAR</button>
+                                </fieldset>
+                              </div>
+                            </div>
+                          </form>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div ng-show="_modoCadastro=='solucoes'" class="row">
+                    <div class="col-lg-3">
+                      <div class="right-info" style="background-color: #a12c2f;">
+                        <ul>
+                          <li ng-repeat="item in _listSolucoes" ng-click="onEditSolucao(item)" style="cursor: pointer;">
+                            <h6>{{ item.titulo }}</h6>
+                            <span>
+                              {{ (item.descricao.length > 50 ? item.descricao.substring(0, 50) + '...' : item.descricao)
+                              }}
+
+
+                            </span>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div class="col-lg-9 align-self-center">
+                      <div class="row">
+                        <div class="col-lg-12">
+                          <form id="contact">
+                            <div class="row">
+                              <div class="col-lg-12">
+                                <h2>Soluções</h2>
+                              </div>
+
+                              <div class="row">
+                                <div class="col-lg-2">
+
+                                  <div class="mb-2">
+                                    <img src="{{ _editSolucao._icone }}"
+                                      class="img-fluid rounded-3 border border-2 border-primary ms-3"
+                                      style="height: 150px; width: 150px;" alt="Admin Templates">
+                                  </div>
+                                  <button ng-click="onGetIconSolucao()" type="button" class="btn btn-primary"
+                                    style="background-color: #6c757d;">
+                                    Carregar Ícone
+                                  </button>
+                                  <input type='file' id="imgIconeSolucao" style="display:none" />
+
+                                  <div class="mb-2 mt-4">
+                                    <img src="{{ _editSolucao._banner }}"
+                                      class="img-fluid rounded-3 border border-2 border-primary ms-3"
+                                      style="height: 150px; width: 150px;" alt="Admin Templates">
+                                  </div>
+                                  <button ng-click="onGetBannerSolucao()" type="button" class="btn btn-primary"
+                                    style="background-color: #6c757d;">
+                                    Carregar Banner
+                                  </button>
+                                  <input type='file' id="imgBannerSolucao" style="display:none" />
+
+
+                                </div>
+
+                                <div class="col-lg-10">
+                                  <div class="row">
+
+                                    <div class="col-lg-4">
+                                      <fieldset>
+                                        <select ng-model="_editSolucao.id_categoria" class="form-select-custom">
+                                          <option value="">SELECIONE A CATEGORIA...</option>
+                                          <option ng-repeat="item in _listCategorias" value="{{ item._id }}">
+                                            {{ item.titulo }}
+                                          </option>
+                                        </select>
+                                      </fieldset>
+                                    </div>
+                                    <div class="col-lg-4">
+                                    </div>
+                                  </div>
+                                  <div class="row mt-4">
+                                    <div class="col-lg-4">
+                                      <fieldset>
+                                        <input ng-model="_editSolucao.titulo" type="text" placeholder="TÍTULO..."
+                                          required="">
+                                      </fieldset>
+                                    </div>
+                                    <div class="col-lg-8">
+                                      <fieldset>
+                                        <textarea ng-model="_editSolucao.descricao" type="text" class="form-control"
+                                          placeholder="DESCRIÇÃO..." required=""></textarea>
+                                      </fieldset>
+                                    </div>
+                                  </div>
+
+                                  <div class="row mt-4">
+                                    <div class="col-lg-12">
+                                      <fieldset>
+                                        <input ng-model="_editSolucao.link" type="text" placeholder="TÍTULO..."
+                                          required="">
+                                      </fieldset>
+                                    </div>
+                                  </div>
+
+                                </div>
+                              </div>
+
+
+
+                              <div class="col-lg-12 mt-4" style="text-align: right;">
+                                <fieldset>
+                                  <button ng-click="onSalvarSolucao()" id="form-submit" class="button">SALVAR</button>
+                                </fieldset>
+                              </div>
+
+                            </div>
+                          </form>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </div>
+
+  </div>
+  
+
+  <!-- Scripts -->
+  <!-- Bootstrap core JavaScript -->
+  <script src="vendor/jquery/jquery.min.js"></script>
+  <script src="vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.5.1/dist/sweetalert2.all.min.js"></script>
+
+  <script src="../showroom/assets/js/isotope.min.js"></script>
+  <script src="../showroom/assets/js/owl-carousel.js"></script>
+  <script src="../showroom/assets/js/lightbox.js"></script>
+  <script src="../showroom/assets/js/tabs.js"></script>
+  <script src="../showroom/assets/js/isotope.js"></script>
+  <script src="../showroom/assets/js/video.js"></script>
+  <script src="../showroom/assets/js/slick-slider.js"></script>
+  <script src="../showroom/assets/js/custom.js"></script>
+
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+
+  <!-- Angular-->
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script>
+
+  <!-- Mask -->
+  <script src="/plugins/ngMask.js"></script>
+
+  <!-- Moment -->
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.9.0/moment.min.js"></script>
+  <script type="text/javascript"
+    src="https://cdnjs.cloudflare.com/ajax/libs/angular-moment/0.9.0/angular-moment.min.js"></script>
+
+  <!-- Controller -->
+  <script src="/controller/showroom.js"></script>
+  <script src="/services/uteis.js"></script>
+
+  <script>
+    //according to loftblog tut
+    $('.nav li:first').addClass('active');
+
+    var showSection = function showSection(section, isAnimate) {
+      var
+        direction = section.replace(/#/, ''),
+        reqSection = $('.section').filter('[data-section="' + direction + '"]'),
+        reqSectionPos = reqSection.offset().top - 0;
+
+      if (isAnimate) {
+        $('body, html').animate({
+          scrollTop: reqSectionPos
+        },
+          800);
+      } else {
+        $('body, html').scrollTop(reqSectionPos);
+      }
+
+    };
+
+    var checkSection = function checkSection() {
+      $('.section').each(function () {
+        var
+          $this = $(this),
+          topEdge = $this.offset().top - 80,
+          bottomEdge = topEdge + $this.height(),
+          wScroll = $(window).scrollTop();
+        if (topEdge < wScroll && bottomEdge > wScroll) {
+          var
+            currentId = $this.data('section'),
+            reqLink = $('a').filter('[href*=\\#' + currentId + ']');
+          reqLink.closest('li').addClass('active').
+            siblings().removeClass('active');
+        }
+      });
+    };
+
+    $('.main-menu, .responsive-menu, .scroll-to-section').on('click', 'a', function (e) {
+      e.preventDefault();
+      showSection($(this).attr('href'), true);
+    });
+
+    $(window).scroll(function () {
+      checkSection();
+    });
+  </script>
+</body>
+
+</div>
+</body>
+
+</html>
