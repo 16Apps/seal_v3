@@ -306,16 +306,29 @@ app.component('posicao', {
       if ($ctrl._regAddItem.id_ref == 'item') {
 
         let iFind = $ctrl._editPosicao.itens.findIndex((item) => item.id_item == $ctrl._regAddItem.id_item)
+        let iFindItem = $ctrl._listItens.findIndex((item) => item._id == $ctrl._regAddItem.id_item)
+
+
         if (iFind == -1) {
           $ctrl._editPosicao.itens.push({
             _id: uteisService.onGetID(),
             id_item: $ctrl._regAddItem.id_item,
             id_categoria: '',
+
+            tag: $ctrl._listItens[iFindItem].tag,
+            ean: '',
+            rssi: '',
+
             quantidade: 1,
             status: 'pendente',
             status_data: '',
             id_gatweway: '',
             id_colaborador: '',
+
+
+            status_destino: '',
+            status_destino_data: '',
+
           })
         } else {
           $ctrl._editPosicao.itens[iFind].quantidade = $ctrl._regAddItem.quantidade

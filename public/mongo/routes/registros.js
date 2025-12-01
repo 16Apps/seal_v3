@@ -237,7 +237,7 @@ module.exports = (app, dbConnection) => {
 
     async function _checkInteracao(movimento, _reg) {
 
-        if(!_reg){
+        if (!_reg) {
             return
         }
 
@@ -1142,5 +1142,60 @@ module.exports = (app, dbConnection) => {
             res.status(500).json({ error: 'Erro ao buscar registros' });
         }
     });
+
+app.get('/posicao/buscar-destino', async (req, res) => {
+    const Posicao = require('../models/posicao');
+    const {
+        id_nivel_loc1_destino,
+        id_nivel_loc2_destino,
+        id_nivel_loc3_destino,
+        id_nivel_loc4_destino,
+        tag
+    } = req.query;
+
+    console.log(req.query);
+
+    try {
+
+        let filtro = { $and: [] };
+
+        if (id_nivel_loc1_destino) filtro.$and.push({ id_nivel_loc1_destino });
+        if (id_nivel_loc2_destino) filtro.$and.push({ id_nivel_loc2_destino });
+        if (id_nivel_loc3_destino) filtro.$and.push({ id_nivel_loc3_destino });
+        if (id_nivel_loc4_destino) filtro.$and.push({ id_nivel_loc4_destino });
+
+        filtro.$and.push({
+            itens: {
+                $elemMatch: {
+                    tag: tag,
+                    $or: [
+                        { status_destino: "pendente" },
+                        { status_destino: "" },
+                        { status_destino: null },
+                        { status_destino: { $exists: false } }
+                    ]
+                }
+            }
+        });
+
+        if (filtro.$and.length === 1) {
+            filtro = filtro.$and[0];
+        }
+
+        const posicao = await Posicao.findOne(filtro);
+
+        if (!posicao) {
+            return res.status(404).send({ message: "Nenhum registro encontrado" });
+        }
+
+        return res.status(200).send(posicao);
+
+    } catch (e) {
+        console.error(e);
+        return res.status(400).send({ error: true, message: e.toString() });
+    }
+});
+
+
 
 }
