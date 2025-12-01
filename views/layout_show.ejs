@@ -35,8 +35,8 @@
             <nav class="main-nav">
               <!-- ***** Logo Start ***** -->
               <a ng-click="onItem()" class="logo">
-                <span class="text-danger">Seal</span> showroom
-                <!-- <img src="assets/images/logo.fw.png" style="width: 100px;"> -->
+                <!-- <span class="text-danger">Seal</span> showroom -->
+                <img src="showroom/assets/images/logo_showroom.fw.png" style="width: 400px;">
               </a>
               <!-- ***** Logo End ***** -->
               <!-- ***** Menu Start ***** -->
@@ -101,9 +101,9 @@
           <div class="col-lg-12">
             <div class="filters">
               <ul>
-                <li data-filter="*" ng-class="{ active: _filtroCategoria === '' }" ng-click="onFiltraSolucoes('')">Todas
+                <li data-filter="*" style="margin-bottom: 10px;" ng-class="{ active: _filtroCategoria === '' }" ng-click="onFiltraSolucoes('')">Todas
                   as Áreas</li>
-                <li ng-repeat="item in _listCategorias" ng-class="{ active: _filtroCategoria === item._id }"
+                <li ng-repeat="item in _listCategorias" style="margin-bottom: 10px;" ng-class="{ active: _filtroCategoria === item._id }"
                   ng-click="onFiltraSolucoes(item._id)" data-filter=".cat-{{ item._id }}">
                   {{ item.titulo }}
                 </li>

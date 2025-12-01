@@ -45,8 +45,6 @@ const PosicaoSchema = new mongoose.Schema({
 
     }],
 
-
-
     id_nivel_loc1_destino: { type: String, ref: 'Localizacao' },
     id_nivel_loc2_destino: { type: String, ref: 'Localizacao' },
     id_nivel_loc3_destino: { type: String, ref: 'Localizacao' },
