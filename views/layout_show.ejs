@@ -93,7 +93,7 @@
     </section>
     <!-- ***** Main Banner Area End ***** -->
 
-    <section class="meetings-page" id="contact" style="height: 1300px;">
+    <section class="meetings-page" id="contact" style="height: 1800px;">
       <div class="container">
         <div class="row">
           <div class="col-lg-12">
@@ -133,7 +133,13 @@
                     </div>
                     <h4>{{ item.titulo }}</h4>
                     <p style="height: 150px;">{{ item.descricao }}</p>
+                    <div class="main-button-red">
+                      <div class="scroll-to-section"><a href="#contact">Apresentação</a></div>
+                      <div class="scroll-to-section"><a href="#contact">Solução</a></div>
+                    </div>
                   </div>
+
+
                 </div>
 
 
@@ -146,218 +152,227 @@
     </section>
 
 
-      <div class="modal fade" id="modalItem" tabindex="-1" aria-labelledby="exampleModalFullscreenLabel"
-        aria-hidden="true">
-        <div class="modal-dialog modal-fullscreen">
-          <div class="modal-content" style="background-color: #343a40;">
-            <div class="modal-header" ng-click="onFecharItem()">
-              <h2 class="modal-title text-white">Cadastro</h2>
+    <div class="modal fade" id="modalItem" tabindex="-1" aria-labelledby="exampleModalFullscreenLabel"
+      aria-hidden="true">
+      <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content" style="background-color: #343a40;">
+          <div class="modal-header" ng-click="onFecharItem()">
+            <h2 class="modal-title text-white">Cadastro</h2>
 
-              <button type="button" class="btn-close" ng-click="onFecharItem()">
-              </button>
-            </div>
-            <div class="modal-body" style="margin-top: -140px;">
-              <section class="contact-us" id="contact">
+            <button type="button" class="btn-close" ng-click="onFecharItem()">
+            </button>
+          </div>
+          <div class="modal-body" style="margin-top: -140px;">
+            <section class="contact-us" id="contact">
 
-                <div style="display: flex; gap: 10px;">
+              <div style="display: flex; gap: 10px;">
 
 
-                  <div class="main-button-red" ng-click="onMudaModulo('solucoes')">
-                    <div class="scroll-to-section"><a href="#">Soluções</a></div>
+                <div class="main-button-red" ng-click="onMudaModulo('solucoes')">
+                  <div class="scroll-to-section"><a href="#">Soluções</a></div>
+                </div>
+                <div class="main-button-yellow" ng-click="onMudaModulo('categorias')">
+                  <div class="scroll-to-section"><a href="#">Áreas</a></div>
+                </div>
+              </div>
+
+              <div class="container_ mt-4">
+
+                <div ng-show="_modoCadastro=='categorias'" class="row">
+                  <div class="col-lg-3">
+                    <div class="right-info" style="background-color: #ffba08;">
+                      <ul>
+                        <li ng-repeat="item in _listCategorias" ng-click="onEditCategoria(item)"
+                          style="cursor: pointer;">
+                          <h6>{{ item.titulo }}</h6>
+                          <span>{{ item.descricao }}</span>
+                        </li>
+                      </ul>
+                    </div>
                   </div>
-                  <div class="main-button-yellow" ng-click="onMudaModulo('categorias')">
-                    <div class="scroll-to-section"><a href="#">Áreas</a></div>
+
+                  <div class="col-lg-9 align-self-center">
+                    <div class="row">
+                      <div class="col-lg-12">
+                        <form id="contact">
+                          <div class="row">
+                            <div class="col-lg-12">
+                              <h2>Aréas</h2>
+                            </div>
+
+                            <div class="row">
+                              <div class="col-lg-2">
+                                <div class="mb-2">
+                                  <img src="{{ _editCategoria._icone }}"
+                                    class="img-fluid rounded-3 border border-2 border-primary ms-3"
+                                    style="height: 150px; width: 150px;" alt="Admin Templates">
+                                </div>
+                                <button ng-click="onGetFoto()" type="button" class="btn btn-primary"
+                                  style="background-color: #6c757d;">
+                                  Carregar Ícone
+                                </button>
+                                <input type='file' id="imgLogo" style="display:none" />
+                              </div>
+
+                              <div class="col-lg-10">
+                                <div class="row">
+                                  <div class="col-lg-4">
+                                    <fieldset>
+                                      <input ng-model="_editCategoria.titulo" type="text" placeholder="TÍTULO..."
+                                        required="">
+                                    </fieldset>
+                                  </div>
+                                  <div class="col-lg-8">
+                                    <fieldset>
+                                      <input ng-model="_editCategoria.descricao" type="text" placeholder="DESCRIÇÃO...">
+                                    </fieldset>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div class="col-lg-12 mt-4" style="text-align: right;">
+                              <fieldset>
+                                <button ng-click="onSalvarCategoria()" id="form-submit" class="button">SALVAR</button>
+                              </fieldset>
+                            </div>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <div class="container_ mt-4">
+                <div ng-show="_modoCadastro=='solucoes'" class="row">
+                  <div class="col-lg-3">
+                    <div class="right-info" style="background-color: #a12c2f;">
+                      <ul>
+                        <li ng-repeat="item in _listSolucoes" ng-click="onEditSolucao(item)" style="cursor: pointer;">
+                          <h6>{{ item.titulo }}</h6>
+                          <span>
+                            {{ (item.descricao.length > 50 ? item.descricao.substring(0, 50) + '...' : item.descricao)
+                            }}
 
-                  <div ng-show="_modoCadastro=='categorias'" class="row">
-                    <div class="col-lg-3">
-                      <div class="right-info" style="background-color: #ffba08;">
-                        <ul>
-                          <li ng-repeat="item in _listCategorias" ng-click="onEditCategoria(item)"
-                            style="cursor: pointer;">
-                            <h6>{{ item.titulo }}</h6>
-                            <span>{{ item.descricao }}</span>
-                          </li>
-                        </ul>
-                      </div>
-                    </div>
 
-                    <div class="col-lg-9 align-self-center">
-                      <div class="row">
-                        <div class="col-lg-12">
-                          <form id="contact">
-                            <div class="row">
-                              <div class="col-lg-12">
-                                <h2>Aréas</h2>
-                              </div>
-
-                              <div class="row">
-                                <div class="col-lg-2">
-                                  <div class="mb-2">
-                                    <img src="{{ _editCategoria._icone }}"
-                                      class="img-fluid rounded-3 border border-2 border-primary ms-3"
-                                      style="height: 150px; width: 150px;" alt="Admin Templates">
-                                  </div>
-                                  <button ng-click="onGetFoto()" type="button" class="btn btn-primary"
-                                    style="background-color: #6c757d;">
-                                    Carregar Ícone
-                                  </button>
-                                  <input type='file' id="imgLogo" style="display:none" />
-                                </div>
-
-                                <div class="col-lg-10">
-                                  <div class="row">
-                                    <div class="col-lg-4">
-                                      <fieldset>
-                                        <input ng-model="_editCategoria.titulo" type="text" placeholder="TÍTULO..."
-                                          required="">
-                                      </fieldset>
-                                    </div>
-                                    <div class="col-lg-8">
-                                      <fieldset>
-                                        <input ng-model="_editCategoria.descricao" type="text" placeholder="DESCRIÇÃO...">
-                                      </fieldset>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div class="col-lg-12 mt-4" style="text-align: right;">
-                                <fieldset>
-                                  <button ng-click="onSalvarCategoria()" id="form-submit" class="button">SALVAR</button>
-                                </fieldset>
-                              </div>
-                            </div>
-                          </form>
-                        </div>
-                      </div>
+                          </span>
+                        </li>
+                      </ul>
                     </div>
                   </div>
 
-                  <div ng-show="_modoCadastro=='solucoes'" class="row">
-                    <div class="col-lg-3">
-                      <div class="right-info" style="background-color: #a12c2f;">
-                        <ul>
-                          <li ng-repeat="item in _listSolucoes" ng-click="onEditSolucao(item)" style="cursor: pointer;">
-                            <h6>{{ item.titulo }}</h6>
-                            <span>
-                              {{ (item.descricao.length > 50 ? item.descricao.substring(0, 50) + '...' : item.descricao)
-                              }}
-
-
-                            </span>
-                          </li>
-                        </ul>
-                      </div>
-                    </div>
-
-                    <div class="col-lg-9 align-self-center">
-                      <div class="row">
-                        <div class="col-lg-12">
-                          <form id="contact">
-                            <div class="row">
-                              <div class="col-lg-12">
-                                <h2>Soluções</h2>
-                              </div>
-
-                              <div class="row">
-                                <div class="col-lg-2">
-
-                                  <div class="mb-2">
-                                    <img src="{{ _editSolucao._icone }}"
-                                      class="img-fluid rounded-3 border border-2 border-primary ms-3"
-                                      style="height: 150px; width: 150px;" alt="Admin Templates">
-                                  </div>
-                                  <button ng-click="onGetIconSolucao()" type="button" class="btn btn-primary"
-                                    style="background-color: #6c757d;">
-                                    Carregar Ícone
-                                  </button>
-                                  <input type='file' id="imgIconeSolucao" style="display:none" />
-
-                                  <div class="mb-2 mt-4">
-                                    <img src="{{ _editSolucao._banner }}"
-                                      class="img-fluid rounded-3 border border-2 border-primary ms-3"
-                                      style="height: 150px; width: 150px;" alt="Admin Templates">
-                                  </div>
-                                  <button ng-click="onGetBannerSolucao()" type="button" class="btn btn-primary"
-                                    style="background-color: #6c757d;">
-                                    Carregar Banner
-                                  </button>
-                                  <input type='file' id="imgBannerSolucao" style="display:none" />
-
-
-                                </div>
-
-                                <div class="col-lg-10">
-                                  <div class="row">
-
-                                    <div class="col-lg-4">
-                                      <fieldset>
-                                        <select ng-model="_editSolucao.id_categoria" class="form-select-custom">
-                                          <option value="">SELECIONE A CATEGORIA...</option>
-                                          <option ng-repeat="item in _listCategorias" value="{{ item._id }}">
-                                            {{ item.titulo }}
-                                          </option>
-                                        </select>
-                                      </fieldset>
-                                    </div>
-                                    <div class="col-lg-4">
-                                    </div>
-                                  </div>
-                                  <div class="row mt-4">
-                                    <div class="col-lg-4">
-                                      <fieldset>
-                                        <input ng-model="_editSolucao.titulo" type="text" placeholder="TÍTULO..."
-                                          required="">
-                                      </fieldset>
-                                    </div>
-                                    <div class="col-lg-8">
-                                      <fieldset>
-                                        <textarea ng-model="_editSolucao.descricao" type="text" class="form-control"
-                                          placeholder="DESCRIÇÃO..." required=""></textarea>
-                                      </fieldset>
-                                    </div>
-                                  </div>
-
-                                  <div class="row mt-4">
-                                    <div class="col-lg-12">
-                                      <fieldset>
-                                        <input ng-model="_editSolucao.link" type="text" placeholder="TÍTULO..."
-                                          required="">
-                                      </fieldset>
-                                    </div>
-                                  </div>
-
-                                </div>
-                              </div>
-
-
-
-                              <div class="col-lg-12 mt-4" style="text-align: right;">
-                                <fieldset>
-                                  <button ng-click="onSalvarSolucao()" id="form-submit" class="button">SALVAR</button>
-                                </fieldset>
-                              </div>
-
+                  <div class="col-lg-9 align-self-center">
+                    <div class="row">
+                      <div class="col-lg-12">
+                        <form id="contact">
+                          <div class="row">
+                            <div class="col-lg-12">
+                              <h2>Soluções</h2>
                             </div>
-                          </form>
-                        </div>
+
+                            <div class="row">
+                              <div class="col-lg-2">
+
+                                <div class="mb-2">
+                                  <img src="{{ _editSolucao._icone }}"
+                                    class="img-fluid rounded-3 border border-2 border-primary ms-3"
+                                    style="height: 150px; width: 150px;" alt="Admin Templates">
+                                </div>
+                                <button ng-click="onGetIconSolucao()" type="button" class="btn btn-primary"
+                                  style="background-color: #6c757d;">
+                                  Carregar Ícone
+                                </button>
+                                <input type='file' id="imgIconeSolucao" style="display:none" />
+
+                                <div class="mb-2 mt-4">
+                                  <img src="{{ _editSolucao._banner }}"
+                                    class="img-fluid rounded-3 border border-2 border-primary ms-3"
+                                    style="height: 150px; width: 150px;" alt="Admin Templates">
+                                </div>
+                                <button ng-click="onGetBannerSolucao()" type="button" class="btn btn-primary"
+                                  style="background-color: #6c757d;">
+                                  Carregar Banner
+                                </button>
+                                <input type='file' id="imgBannerSolucao" style="display:none" />
+
+
+                              </div>
+
+                              <div class="col-lg-10">
+                                <div class="row">
+
+                                  <div class="col-lg-4">
+                                    <fieldset>
+                                      <select ng-model="_editSolucao.id_categoria" class="form-select-custom">
+                                        <option value="">SELECIONE A CATEGORIA...</option>
+                                        <option ng-repeat="item in _listCategorias" value="{{ item._id }}">
+                                          {{ item.titulo }}
+                                        </option>
+                                      </select>
+                                    </fieldset>
+                                  </div>
+                                  <div class="col-lg-4">
+                                  </div>
+                                </div>
+                                <div class="row mt-4">
+                                  <div class="col-lg-4">
+                                    <fieldset>
+                                      <input ng-model="_editSolucao.titulo" type="text" placeholder="TÍTULO..."
+                                        required="">
+                                    </fieldset>
+                                  </div>
+                                  <div class="col-lg-8">
+                                    <fieldset>
+                                      <textarea ng-model="_editSolucao.descricao" type="text" class="form-control"
+                                        placeholder="DESCRIÇÃO..." required=""></textarea>
+                                    </fieldset>
+                                  </div>
+                                </div>
+
+                                <div class="row mt-4">
+                                  <div class="col-lg-12">
+                                    <fieldset>
+                                      <input ng-model="_editSolucao.link" type="text" placeholder="LINK DA SOLUÇÃO..."
+                                        required="">
+                                    </fieldset>
+                                  </div>
+                                </div>
+
+                                <div class="row mt-4">
+                                  <div class="col-lg-12">
+                                    <fieldset>
+                                      <input ng-model="_editSolucao.link_apresentacao" type="text" placeholder="LINK APRESENTAÇÃO..."
+                                        required="">
+                                    </fieldset>
+                                  </div>
+                                </div>
+
+                              </div>
+                            </div>
+
+
+
+                            <div class="col-lg-12 mt-4" style="text-align: right;">
+                              <fieldset>
+                                <button ng-click="onSalvarSolucao()" id="form-submit" class="button">SALVAR</button>
+                              </fieldset>
+                            </div>
+
+                          </div>
+                        </form>
                       </div>
                     </div>
                   </div>
-
                 </div>
-              </section>
-            </div>
+
+              </div>
+            </section>
           </div>
         </div>
       </div>
+    </div>
 
   </div>
-  
+
 
   <!-- Scripts -->
   <!-- Bootstrap core JavaScript -->

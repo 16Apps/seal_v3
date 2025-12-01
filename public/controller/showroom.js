@@ -221,6 +221,7 @@ app.controller('showRoomCtrl', function ($scope, $http, $location, params, uteis
                 titulo: '',
                 descricao: '',
                 link: '',
+                link_apresentacao: '',
                 icone: '',
                 _icone: '../assets/images/icon_cadastro.fw.png',
                 banner: '',

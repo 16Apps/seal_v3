@@ -8,6 +8,7 @@ const SrSolucoesSchema = new mongoose.Schema({
     titulo: { type: String, required: true },
     descricao: { type: String, required: true },
     link: { type: String, required: true },
+    link_apresentacao: { type: String, required: true },
     icone: { type: String, required: true },
     banner: { type: String, required: true },
     imagens: [{
