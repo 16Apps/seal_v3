@@ -68,8 +68,63 @@
     <!-- ***** Main Banner Area Start ***** -->
     <section class="section main-banner" id="top" data-section="section1">
       <video autoplay muted loop id="bg-video">
-        <source src="showroom/assets/images/course-video.mp4" type="video/mp4" />
+        <source src="showroom/assets/images/course-video.mp4" type="video/mp4" style="width: 130%;" />
+        <source src="showroom/assets/images/course-video2.mp4" type="video/mp4" style="width: 130%;" />
+        <source src="showroom/assets/images/course-video3.mp4" type="video/mp4" style="width: 130%;" />
       </video>
+
+      <style>
+        #bg-video {
+          transition: opacity 1s ease-in-out;
+        }
+
+        .fade-out {
+          opacity: 0;
+        }
+
+        .fade-in {
+          opacity: 1;
+        }
+      </style>
+
+      <script>
+        const videoElement = document.getElementById("bg-video");
+
+        // Lista dos vídeos
+        const videos = [
+          "showroom/assets/images/course-video.mp4",
+          "showroom/assets/images/course-video2.mp4",
+          "showroom/assets/images/course-video3.mp4"
+        ];
+
+        let index = 0;
+
+        function trocarVideo() {
+          // fade out
+          videoElement.classList.add("fade-out");
+
+          setTimeout(() => {
+            index = (index + 1) % videos.length; // incrementa circularmente
+
+            videoElement.src = videos[index]; // troca o vídeo
+            videoElement.load();
+            videoElement.play();
+
+            // fade in
+            videoElement.classList.remove("fade-out");
+            videoElement.classList.add("fade-in");
+
+            setTimeout(() => videoElement.classList.remove("fade-in"), 500);
+
+          }, 500); // tempo do fade-out
+        }
+
+        // troca a cada 5 segundos
+        setInterval(trocarVideo, 5000);
+      </script>
+
+
+
 
       <div class="video-overlay header-text">
         <div class="container">
@@ -101,10 +156,12 @@
           <div class="col-lg-12">
             <div class="filters">
               <ul>
-                <li data-filter="*" style="margin-bottom: 10px;" ng-class="{ active: _filtroCategoria === '' }" ng-click="onFiltraSolucoes('')">Todas
+                <li data-filter="*" style="margin-bottom: 10px;" ng-class="{ active: _filtroCategoria === '' }"
+                  ng-click="onFiltraSolucoes('')">Todas
                   as Áreas</li>
-                <li ng-repeat="item in _listCategorias" style="margin-bottom: 10px;" ng-class="{ active: _filtroCategoria === item._id }"
-                  ng-click="onFiltraSolucoes(item._id)" data-filter=".cat-{{ item._id }}">
+                <li ng-repeat="item in _listCategorias" style="margin-bottom: 10px;"
+                  ng-class="{ active: _filtroCategoria === item._id }" ng-click="onFiltraSolucoes(item._id)"
+                  data-filter=".cat-{{ item._id }}">
                   {{ item.titulo }}
                 </li>
               </ul>
@@ -122,16 +179,20 @@
                 <div class="meeting-item">
                   <div class="thumb">
 
-        
+
                     <div class="price">
                       <span>{{ item.id_categoria.titulo }}</span>
                     </div>
 
-                     <div class="price" style="margin-left: 80%; cursor: pointer; background-color: #a12c2f !important;"  ng-click="abrirLink(item.link)">
-                      <span style="background-color: #f77f00 !important; color: #ffffff"><i class="bi bi-lightning"></i></span>
+                    <div class="price" style="margin-left: 80%; cursor: pointer; background-color: #a12c2f !important;"
+                      ng-click="abrirLink(item.link)">
+                      <span style="background-color: #f77f00 !important; color: #ffffff"><i
+                          class="bi bi-lightning"></i></span>
                     </div>
-                       <div class="price" style="margin-left: 65%; cursor: pointer;"  ng-click="abrirLink(item.link_apresentacao)">
-                      <span style="background-color: #00b4d8 !important; color: #ffffff"><i class="bi bi-magic"></i></span>
+                    <div class="price" style="margin-left: 65%; cursor: pointer;"
+                      ng-click="abrirLink(item.link_apresentacao)">
+                      <span style="background-color: #00b4d8 !important; color: #ffffff"><i
+                          class="bi bi-magic"></i></span>
                     </div>
 
                     <a href="#">
