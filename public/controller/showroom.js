@@ -329,9 +329,9 @@ app.controller('showRoomCtrl', function ($scope, $http, $location, params, uteis
         };
     };
 
-    $scope.abrirLink = function (item) {
-        if (!item.link) return;
-        window.open(item.link, '_blank');
+    $scope.abrirLink = function (link) {
+        if (!link) return;
+        window.open(link, '_blank');
 
     };
 
