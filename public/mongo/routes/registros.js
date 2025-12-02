@@ -1197,11 +1197,10 @@ app.get('/posicao/buscar-destino', async (req, res) => {
 });
 
 
-app.post('/patch/check-tag', async (req, res) => {
+app.post('/_bd/check-tag', async (req, res) => {
     res.header("Access-Control-Allow-Origin", "*");
 
     try {
-        const Item = require('../models/item'); // sempre forçando Item
 
         const { tag, ...dados } = req.body;
 
