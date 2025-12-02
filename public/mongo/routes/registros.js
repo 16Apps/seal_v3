@@ -1197,10 +1197,12 @@ app.get('/posicao/buscar-destino', async (req, res) => {
 });
 
 
-app.patch('/_bd/check-tag', async (req, res) => {
+app.patch('/_app/check-tag', async (req, res) => {
     res.header("Access-Control-Allow-Origin", "*");
 
     try {
+
+        
 
         const { tag, ...dados } = req.body;
 
