@@ -1197,5 +1197,31 @@ app.get('/posicao/buscar-destino', async (req, res) => {
 });
 
 
+app.post('/patch/check-tag', async (req, res) => {
+    res.header("Access-Control-Allow-Origin", "*");
+
+    try {
+        const Item = require('../models/item'); // sempre forçando Item
+
+        const { tag, ...dados } = req.body;
+
+        if (!tag) {
+            return res.status(400).send({ error: "TAG não informada" });
+        }
+
+        // findOne + update + create
+        const item = await Item.findOneAndUpdate(
+            { tag: tag },   // filtro
+            { tag, ...dados }, // atualiza ou insere
+            { new: true, upsert: true }
+        );
+
+        return res.status(200).send(item);
+
+    } catch (err) {
+        console.log(err);
+        return res.status(400).send([{ error: err }]);
+    }
+});
 
 }
