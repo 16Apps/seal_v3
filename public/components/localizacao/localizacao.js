@@ -124,6 +124,8 @@ app.component('localizacao', {
           latitude: '',
           longitude: '',
 
+          processo_app: '',
+          
           observacao: ''
         };
 

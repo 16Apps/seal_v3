@@ -23,6 +23,8 @@ const LocalizacaoSchema = new mongoose.Schema({
     latitude: { type: String },
     longitude: { type: String },
 
+    processo_app: { type: String },
+
     observacao: { type: String },
 
     planta: { type: String },
@@ -31,12 +33,12 @@ const LocalizacaoSchema = new mongoose.Schema({
             x: { type: Number },
             y: { type: Number }
         }],
-        
+
         pointsLatLng: [{
             lat: Number,
             lng: Number
         }], // usado em Google Maps
-        
+
         rssiAp: Number,
         pointsAps: [{
             descricao: String,
