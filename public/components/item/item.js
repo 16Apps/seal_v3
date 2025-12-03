@@ -94,6 +94,8 @@ app.component('item', {
           $ctrl._editItem = JSON.parse(JSON.stringify(reg));
           $ctrl._editItem.ativo = "" + $ctrl._editItem.ativo;
           $ctrl._editItem.id_categoria = $ctrl._editItem.id_categoria;
+          $ctrl._editItem.mov_livre = $ctrl._editItem.mov_livre == 1 ? true : false;
+          $ctrl._editItem.mov_tracking = $ctrl._editItem.mov_tracking == 1 ? true : false;
 
           $ctrl._editItem['_foto'] = '../assets/images/icon_cadastro.fw.png'
           if ($ctrl._editItem.foto) {

@@ -542,8 +542,11 @@ module.exports = (app, dbConnection) => {
                     if (!dataPermanecia) continue;
 
                     const diffSegundos = agora.diff(moment(dataPermanecia), 'seconds');
-                    const novoStatus = diffSegundos > tempoLimiteSegundos ? 'perca' : 'ativo';
-
+                    let  novoStatus = item.status;
+                    if (item.mov_tracking === 0) {
+                        novoStatus = diffSegundos > tempoLimiteSegundos ? 'perca' : 'ativo';
+                    }
+                    
                     // 🔍 Caso esteja em perda de sinal, verificar registro e correlacionar colaborador
                     if (novoStatus === 'perca') {
 
@@ -1143,86 +1146,86 @@ module.exports = (app, dbConnection) => {
         }
     });
 
-app.get('/posicao/buscar-destino', async (req, res) => {
-    const Posicao = require('../models/posicao');
-    const {
-        id_nivel_loc1_destino,
-        id_nivel_loc2_destino,
-        id_nivel_loc3_destino,
-        id_nivel_loc4_destino,
-        tag
-    } = req.query;
+    app.get('/posicao/buscar-destino', async (req, res) => {
+        const Posicao = require('../models/posicao');
+        const {
+            id_nivel_loc1_destino,
+            id_nivel_loc2_destino,
+            id_nivel_loc3_destino,
+            id_nivel_loc4_destino,
+            tag
+        } = req.query;
 
-    console.log(req.query);
+        console.log(req.query);
 
-    try {
+        try {
 
-        let filtro = { $and: [] };
+            let filtro = { $and: [] };
 
-        if (id_nivel_loc1_destino) filtro.$and.push({ id_nivel_loc1_destino });
-        if (id_nivel_loc2_destino) filtro.$and.push({ id_nivel_loc2_destino });
-        if (id_nivel_loc3_destino) filtro.$and.push({ id_nivel_loc3_destino });
-        if (id_nivel_loc4_destino) filtro.$and.push({ id_nivel_loc4_destino });
+            if (id_nivel_loc1_destino) filtro.$and.push({ id_nivel_loc1_destino });
+            if (id_nivel_loc2_destino) filtro.$and.push({ id_nivel_loc2_destino });
+            if (id_nivel_loc3_destino) filtro.$and.push({ id_nivel_loc3_destino });
+            if (id_nivel_loc4_destino) filtro.$and.push({ id_nivel_loc4_destino });
 
-        filtro.$and.push({
-            itens: {
-                $elemMatch: {
-                    tag: tag,
-                    $or: [
-                        { status_destino: "pendente" },
-                        { status_destino: "" },
-                        { status_destino: null },
-                        { status_destino: { $exists: false } }
-                    ]
+            filtro.$and.push({
+                itens: {
+                    $elemMatch: {
+                        tag: tag,
+                        $or: [
+                            { status_destino: "pendente" },
+                            { status_destino: "" },
+                            { status_destino: null },
+                            { status_destino: { $exists: false } }
+                        ]
+                    }
                 }
+            });
+
+            if (filtro.$and.length === 1) {
+                filtro = filtro.$and[0];
             }
-        });
 
-        if (filtro.$and.length === 1) {
-            filtro = filtro.$and[0];
+            const posicao = await Posicao.findOne(filtro);
+
+            if (!posicao) {
+                return res.status(404).send({ message: "Nenhum registro encontrado" });
+            }
+
+            return res.status(200).send(posicao);
+
+        } catch (e) {
+            console.error(e);
+            return res.status(400).send({ error: true, message: e.toString() });
         }
+    });
 
-        const posicao = await Posicao.findOne(filtro);
 
-        if (!posicao) {
-            return res.status(404).send({ message: "Nenhum registro encontrado" });
+    app.patch('/_app/check-tag', async (req, res) => {
+        res.header("Access-Control-Allow-Origin", "*");
+
+        try {
+
+
+
+            const { tag, ...dados } = req.body;
+
+            if (!tag) {
+                return res.status(400).send({ error: "TAG não informada" });
+            }
+
+            // findOne + update + create
+            const item = await Item.findOneAndUpdate(
+                { tag: tag },   // filtro
+                { tag, ...dados }, // atualiza ou insere
+                { new: true, upsert: true }
+            );
+
+            return res.status(200).send(item);
+
+        } catch (err) {
+            console.log(err);
+            return res.status(400).send([{ error: err }]);
         }
-
-        return res.status(200).send(posicao);
-
-    } catch (e) {
-        console.error(e);
-        return res.status(400).send({ error: true, message: e.toString() });
-    }
-});
-
-
-app.patch('/_app/check-tag', async (req, res) => {
-    res.header("Access-Control-Allow-Origin", "*");
-
-    try {
-
-        
-
-        const { tag, ...dados } = req.body;
-
-        if (!tag) {
-            return res.status(400).send({ error: "TAG não informada" });
-        }
-
-        // findOne + update + create
-        const item = await Item.findOneAndUpdate(
-            { tag: tag },   // filtro
-            { tag, ...dados }, // atualiza ou insere
-            { new: true, upsert: true }
-        );
-
-        return res.status(200).send(item);
-
-    } catch (err) {
-        console.log(err);
-        return res.status(400).send([{ error: err }]);
-    }
-});
+    });
 
 }
