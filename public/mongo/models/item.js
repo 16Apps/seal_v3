@@ -26,6 +26,8 @@ const ItemSchema = new mongoose.Schema({
     registro_mov: { type: Object },
 
     mov_livre:  { type: Number, enum: [0, 1], default: 1 },
+    mov_tracking:  { type: Number, enum: [0, 1], default: 1 },
+
     mov_acao: { type: String },
     mov_colaborador: { type: String , ref: 'Colaborador' },
     mov_local: { type: String , ref: 'Localizacao' },

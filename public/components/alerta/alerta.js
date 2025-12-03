@@ -214,6 +214,7 @@ app.component('alerta', {
         $ctrl._editAlertaAcao = {
           _id: uteisService.onGetID(),
           acao: '',
+          nivel: 'leve',
           referencia: [{
             valor: '1',
             id_item: '',

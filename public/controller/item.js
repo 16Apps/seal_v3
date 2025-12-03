@@ -44,12 +44,9 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService) {
             .catch((error) => {
                 uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
             });
-
-    }
-
+    };
 
     $scope.onItem = async function (_acao, _edit) {
-
 
         if (modalInstance != undefined) {
             modalInstance.hide();
@@ -63,7 +60,6 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService) {
 
         } else {
 
-
             let _tratComponente = JSON.parse(JSON.stringify(_edit || {}));
 
             if (_acao == 'edit') {
@@ -72,8 +68,7 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService) {
                 _tratComponente.id_nivel_loc2 = _tratComponente.id_nivel_loc2 ? _tratComponente.id_nivel_loc2._id : null
                 _tratComponente.id_nivel_loc3 = _tratComponente.id_nivel_loc3 ? _tratComponente.id_nivel_loc3._id : null
                 _tratComponente.id_nivel_loc4 = _tratComponente.id_nivel_loc4 ? _tratComponente.id_nivel_loc4._id : null
-
-            }
+            };
 
             $scope.funcaoLoc = _acao;
             $scope.editLoc = _tratComponente;

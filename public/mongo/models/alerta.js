@@ -18,6 +18,7 @@ const AlertaSchema = new mongoose.Schema({
     acoes: [{
         _id: { type: String, default: shortid.generate },
         acao: { type: String },
+        nivel: { type: String },
         referencia: [{
             valor: { type: String },
             id_item: { type: String, ref: 'Item' },

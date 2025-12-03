@@ -35,12 +35,12 @@
                                 <button ng-click="$ctrl.onCarregaNiveisPlanta('02')" class="nav-link rounded-pill"
                                     id="categorias-b-tab" data-bs-toggle="pill" data-bs-target="#categorias-b"
                                     type="button" role="tab" aria-controls="categorias-b"
-                                    aria-selected="false">Extras</button>
+                                    aria-selected="false">Associação</button>
                             </li>
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link rounded-pill" id="categorias-c-tab" data-bs-toggle="pill"
                                     data-bs-target="#categorias-c" type="button" role="tab" aria-controls="categorias-c"
-                                    aria-selected="false">SKUs</button>
+                                    aria-selected="false">Itens</button>
                             </li>
 
                         </ul>
@@ -148,7 +148,8 @@
                                                             <div
                                                                 class="bg-light bg-opacity-10 text-light p-2 rounded-2">
                                                                 <p class="m-0">
-                                                                    Esses labels serão utilizados como nomes dos campos exibidos no cadastro de Itens.
+                                                                    Esses labels serão utilizados como nomes dos campos
+                                                                    exibidos no cadastro de Itens.
                                                                 </p>
                                                             </div>
                                                         </div>
@@ -189,123 +190,180 @@
                                 aria-labelledby="categorias-b-tab" tabindex="0">
 
                                 <div class="row gx-3">
-                                    <div class="col-sm-3">
-                                        <div class="border rounded-2 p-3 mb-3">
-                                            <div class="list-group">
-
-                                                <div class="list-group-item d-flex align-items-center gap-3">
-                                                    <div
-                                                        class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
-                                                        <i class="bi bi-hdd-network text-primary fs-5"></i>
-                                                    </div>
-
-                                                    <div>
-                                                        <h6 class="mb-1">Distanciar</h6>
-                                                        <p class="m-0 text-muted">Após X.dB do gateway </p>
-                                                    </div>
-
-                                                    <div class="form-check form-switch m-0 ms-auto">
-                                                        <input class="form-check-input" type="checkbox" role="switch"
-                                                            id="n2" checked=""
-                                                            title="Enable or disable messages notifications">
-                                                    </div>
+                                    <div class="col-xxl-3 col-sm-6">
+                                        <div class="list-group">
+                                            <div class="list-group-item d-flex align-items-center gap-3">
+                                                <div
+                                                    class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
+                                                    <i class="bi bi-envelope text-primary fs-6"></i>
                                                 </div>
-                                                <div class="list-group-item d-flex align-items-center gap-3">
-                                                    <div
-                                                        class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
-                                                        <i class="bi bi-hdd-network text-primary fs-5"></i>
-                                                    </div>
-
-                                                    <div>
-                                                        <h6 class="mb-1">Aproximar</h6>
-                                                        <p class="m-0 text-muted">Após X.dB do gateway</p>
-                                                    </div>
-
-                                                    <div class="form-check form-switch m-0 ms-auto">
-                                                        <input class="form-check-input" type="checkbox" role="switch"
-                                                            id="n2" checked=""
-                                                            title="Enable or disable messages notifications">
-                                                    </div>
+                                                <div>
+                                                    <h6 class="mb-1">
+                                                        Intervalo
+                                                    </h6>
                                                 </div>
-                                                <div class="list-group-item d-flex align-items-center gap-3">
-                                                    <div
-                                                        class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
-                                                        <i class="bi bi-hdd-network text-primary fs-5"></i>
-                                                    </div>
-
-                                                    <div>
-                                                        <h6 class="mb-1">Tolerância</h6>
-                                                        <p class="m-0 text-muted">Tempo (min) aceito sem leitura</p>
-                                                    </div>
-
-                                                    <div class="form-check form-switch m-0 ms-auto">
-                                                        <input class="form-check-input" type="checkbox" role="switch"
-                                                            id="n2" checked=""
-                                                            title="Enable or disable messages notifications">
-                                                    </div>
+                                                <div class="form-check form-switch m-0 ms-auto">
+                                                    <input ng-model="$ctrl._editAssocicao.intervalo" type="number"
+                                                        class="form-control text-end">
                                                 </div>
-                                                <div class="list-group-item d-flex align-items-center gap-3">
-                                                    <div
-                                                        class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
-                                                        <i class="bi bi-qr-code text-success fs-5"></i>
-                                                    </div>
+                                            </div>
+                                            <div class="list-group-item d-flex align-items-center gap-3">
+                                                <div
+                                                    class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
+                                                    <i class="bi bi-envelope text-primary fs-6"></i>
+                                                </div>
+                                                <div>
+                                                    <h6 class="mb-1">
+                                                        Range RSSI
+                                                    </h6>
+                                                </div>
+                                                <div class="form-check form-switch m-0 ms-auto">
+                                                    <input ng-model="$ctrl._editAssocicao.range_rssi" type="number"
+                                                        class="form-control text-end">
+                                                </div>
+                                            </div>
 
-                                                    <div>
-                                                        <h6 class="mb-1">Ação</h6>
-                                                        <p class="m-0 text-muted">Oque será realizado</p>
-                                                    </div>
-
-                                                    <select ng-model="$ctrl._editCategoria.status"
-                                                        class="form-select flex-grow-1 text-end w-auto ms-auto"
-                                                        id="basicSelect" aria-label="Basic select example"
-                                                        style="max-width: 150px;">
-                                                        <option value="ativo">Apenas Registrar</option>
-                                                        <option value="emtransporte">Tag Inteligente</option>
-                                                        <option value="inativo">Disp. Tuya</option>
+                                            <div class="list-group-item d-flex align-items-center gap-3">
+                                                <div
+                                                    class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
+                                                    <i class="bi bi-envelope text-primary fs-6"></i>
+                                                </div>
+                                                <div>
+                                                    <h6 class="mb-1">
+                                                        Identificação dos itens
+                                                    </h6>
+                                                </div>
+                                                <div class="form-check form-switch m-0 ms-auto">
+                                                    <select ng-model="$ctrl._regAddAssociacao.id_ref"
+                                                        class="form-select select2">
+                                                        <option value="item">
+                                                            Item
+                                                        </option>
+                                                        <option value="categoria">
+                                                            Categoria
+                                                        </option>
                                                     </select>
-
-
-                                                    <!-- <input ng-model="$ctrl._editAP.mac" type="text"
-                                                        ng-class="{'is-invalid': !$ctrl._editAP.mac || $ctrl._editAP.mac.trim() === ''}"
-                                                        mask="99:99:99:99:99:99"
-                                                        class="form-control text-end w-auto ms-auto"
-                                                        style="max-width: 150px;"> -->
                                                 </div>
-                                                <div ng-show="$ctrl._editApModo"
-                                                    class="list-group-item d-flex align-items-center gap-3">
-                                                    <div
-                                                        class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
-                                                        <i class="bi bi-wifi text-info fs-5"></i>
-                                                    </div>
-
-                                                    <div>
-                                                        <h6 class="mb-1">RSSI</h6>
-                                                        <p class="m-0 text-muted">Potência de referência</p>
-                                                    </div>
-
-                                                    <input ng-model="$ctrl._editAP.rssi" type="text"
-                                                        ng-class="{'is-invalid': !$ctrl._editAP.rssi || $ctrl._editAP.rssi.trim() === ''}"
-                                                        class="form-control text-end w-auto ms-auto"
-                                                        style="max-width: 100px;">
+                                            </div>
+                                            <div class="list-group-item d-flex align-items-center gap-3">
+                                                <div
+                                                    class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
+                                                    <i class="bi bi-envelope text-primary fs-6"></i>
                                                 </div>
-                                                <div ng-show="$ctrl._editApModo"
-                                                    class="list-group-item d-flex align-items-center gap-3">
-                                                    <div
-                                                        class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
-                                                        <i class="bi bi-broadcast-pin text-warning fs-5"></i>
-                                                    </div>
-
-                                                    <div>
-                                                        <h6 class="mb-1">Range Potência</h6>
-                                                        <p class="m-0 text-muted">Considerado para menos ou mais</p>
-                                                    </div>
-
-                                                    <input ng-model="$ctrl._editAP.range" type="text"
-                                                        class="form-control text-end w-auto ms-auto"
-                                                        style="max-width: 100px;">
+                                                <select ng-show="$ctrl._regAddAssociacao.id_ref=='item'"
+                                                    ng-model="$ctrl._regAddAssociacao.id_item"
+                                                    ng-change="$ctrl.onDefineLocal(true)" class="form-select select2">
+                                                    <option value="{{ item._id }}" ng-repeat="item in $ctrl._listItens">
+                                                        {{ item.id_categoria.descricao |
+                                                        limitTo:15
+                                                        }}&nbsp;&nbsp;&nbsp;{{ item.tag
+                                                        }}
+                                                    </option>
+                                                </select>
+                                                <select ng-show="$ctrl._regAddAssociacao.id_ref=='categoria'"
+                                                    ng-model="$ctrl._regAddAssociacao.id_categoria"
+                                                    class="form-select select2">
+                                                    <option value="{{ item._id }}"
+                                                        ng-repeat="item in $ctrl._listCategorias">
+                                                        {{ item.descricao | limitTo:15
+                                                        }}
+                                                    </option>
+                                                </select>
+                                            </div>
+                                            <div ng-show="$ctrl._regAddAssociacao.id_ref=='categoria' && $ctrl._regAddAssociacao.id_categoria !=''"
+                                                class="list-group-item d-flex align-items-center gap-3">
+                                                <div
+                                                    class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
+                                                    <i class="bi bi-envelope text-primary fs-6"></i>
                                                 </div>
+                                                <div>
+                                                    <h6 class="mb-1">Quantidade </h6>
+                                                </div>
+                                                <div class="form-check form-switch m-0 ms-auto">
+                                                    <input ng-model="$ctrl._regAddAssociacao.quantidade" type="number"
+                                                        class="form-control text-end">
+                                                </div>
+                                            </div>
 
+                                            <div class="d-flex justify-content-end gap-1 mt-3">
+                                                <button ng-click="$ctrl.onAddAssociacao()" class="btn btn-info"
+                                                    type="button">Incluir</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-xxl-9 col-sm-6">
+                                        <div class="invoice-table-container">
+                                            <div class="table-outer">
+                                                <div class="table-responsive">
+                                                    <table class="table table-hover align-middle mb-1">
+                                                        <thead>
+                                                            <tr>
+                                                                <th scope="col" class="w-20">
+                                                                    Identificação
+                                                                </th>
+                                                                <th scope="col" class="w-40">
+                                                                    Descrição
+                                                                </th>
+                                                                <th scope="col" class="w-40">
+                                                                    Quantidade
+                                                                </th>
+                                                                <th scope="col">Edição
+                                                                </th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr
+                                                                ng-repeat="item in $ctrl._editAssocicao.associados track by $index">
 
+                                                                <td class="text-white fw-semibold">
+                                                                    {{
+                                                                    $ctrl.idItemDescricao(item.id_item,
+                                                                    item.id_categoria,
+                                                                    false) }}
+                                                                </td>
+                                                                <td>
+                                                                    {{
+                                                                    $ctrl.idItemDescricao(item.id_item,
+                                                                    item.id_categoria,
+                                                                    true) }}
+                                                                    <br>
+                                                                    <span ng-show="item.id_item"
+                                                                        class="badge bg-info bg-opacity-10 text-info">
+                                                                        Item
+                                                                    </span>
+                                                                    <span ng-show="item.id_categoria"
+                                                                        class="badge bg-success bg-opacity-10 text-success">
+                                                                        Categoria
+                                                                    </span>
+                                                                </td>
+
+                                                                <td>
+                                                                    {{ item.quantidade }}
+                                                                </td>
+
+                                                                <td>
+                                                                    <div class="d-flex gap-1">
+                                                                        <button ng-click=" $ctrl.onEditarAcao(item)"
+                                                                            type="button"
+                                                                            class="btn btn-sm btn-outline-primary"
+                                                                            data-bs-toggle="tooltip"
+                                                                            title="Editar Associação">
+                                                                            <i class="bi bi-pencil"></i>
+                                                                        </button>
+                                                                        <button type="button"
+                                                                            class="btn btn-sm btn-outline-primary"
+                                                                            data-bs-toggle="tooltip"
+                                                                            title="Apagar Associação">
+                                                                            <i class="bi bi-trash"></i>
+                                                                        </button>
+
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+
+                                                        </tbody>
+                                                    </table>
+                                                </div>
                                             </div>
                                         </div>
 

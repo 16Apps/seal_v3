@@ -78,7 +78,8 @@ app.component('item', {
           registro_atual: {},
           registro_anterior: {},
 
-          mov_livre: '0',
+          mov_livre: 0,
+          mov_tracking: 0,
           mov_acao: 'em_transporte',
           mov_colaborador: 'indiferente',
           mov_local: '',

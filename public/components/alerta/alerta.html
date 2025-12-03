@@ -174,8 +174,7 @@
 
                                             <!-- Row start -->
                                             <div class="row justify-content-between mb-4">
-                                                <div class="col-sm-4">
-
+                                                <div class="col-sm-3">
                                                     <div class="input-group">
                                                         <span class="input-group-text">
                                                             <i class="bi bi-lightning text-muted"></i>
@@ -189,7 +188,6 @@
                                                             <option value="itens_fixo">Itens Fixo</option>
                                                             <option value="tol_max">Tolerância Máxima</option>
                                                             <option value="tol_min">Tolerância Mínima</option>
-
                                                         </select>
                                                         <script>
                                                             const texto = getOptionTextByValue('acaoSelect', 'tol_max');
@@ -197,8 +195,22 @@
                                                         </script>
                                                     </div>
                                                 </div>
+                                                <div class="col-sm-3">
+                                                    <div class="input-group">
+                                                        <span class="input-group-text">
+                                                            <i class="bi bi-bell text-muted"></i>
+                                                        </span>
+                                                        <select ng-model="$ctrl._editAlertaAcao.nivel"
+                                                            class="form-select">
+                                                            <option value="" disabled>Nível...</option>
+                                                            <option value="leve">Leve</option>
+                                                            <option value="importante">Importante</option>
+                                                            <option value="critico">Crítico</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
 
-                                                <div class="col-sm-8">
+                                                <div class="col-sm-6">
                                                     <div ng-show="$ctrl._editAlertaAcao.acao!=''"
                                                         class="d-flex align-items-end gap-2 justify-content-end">
 

@@ -46,7 +46,7 @@
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link rounded-pill" id="itens-c-tab" data-bs-toggle="pill"
                                     data-bs-target="#itens-c" type="button" role="tab" aria-controls="itens-c"
-                                    aria-selected="false">Movimentação</button>
+                                    aria-selected="false">Histórico</button>
                             </li>
 
                         </ul>
@@ -311,11 +311,12 @@
                                                     </div>
 
                                                     <div class="form-check form-switch m-0 ms-auto">
-                                                        <input class="form-check-input" type="checkbox" role="switch"
-                                                            id="n2" checked=""
-                                                            title="Enable or disable messages notifications">
+                                                        <input ng-model="$ctrl._editItem.mov_livre" class="form-check-input" type="checkbox" role="switch"
+                                                            checked="">
                                                     </div>
                                                 </div>
+
+
                                                 <div class="list-group-item d-flex align-items-center gap-3">
                                                     <div
                                                         class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
@@ -323,34 +324,17 @@
                                                     </div>
 
                                                     <div>
-                                                        <h6 class="mb-1">Notificar WhatsApp</h6>
-                                                        <p class="m-0 text-muted">Envio de mensagem</p>
+                                                        <h6 class="mb-1">Tracking</h6>
+                                                        <p class="m-0 text-muted">Rastreado em tempo real</p>
                                                     </div>
 
                                                     <div class="form-check form-switch m-0 ms-auto">
-                                                        <input class="form-check-input" type="checkbox" role="switch"
-                                                            id="n2" checked=""
-                                                            title="Enable or disable messages notifications">
+                                                        <input ng-model="$ctrl._editItem.mov_tracking" class="form-check-input" type="checkbox" role="switch"
+                                                            checked="">
                                                     </div>
                                                 </div>
-                                                <div class="list-group-item d-flex align-items-center gap-3">
-                                                    <div
-                                                        class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
-                                                        <i class="bi bi-hdd-network text-primary fs-5"></i>
-                                                    </div>
-
-                                                    <div>
-                                                        <h6 class="mb-1">Notificar e-Mail</h6>
-                                                        <p class="m-0 text-muted">Envio de mensagem</p>
-                                                    </div>
-
-                                                    <div class="form-check form-switch m-0 ms-auto">
-                                                        <input class="form-check-input" type="checkbox" role="switch"
-                                                            id="n2" checked=""
-                                                            title="Enable or disable messages notifications">
-                                                    </div>
-                                                </div>
-                                                <div class="list-group-item d-flex align-items-center gap-3">
+                            
+                                                <!-- <div class="list-group-item d-flex align-items-center gap-3">
                                                     <div
                                                         class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
                                                         <i class="bi bi-qr-code text-success fs-5"></i>
@@ -369,14 +353,7 @@
                                                         <option value="emtransporte">Tag Inteligente</option>
                                                         <option value="inativo">Disp. Tuya</option>
                                                     </select>
-
-
-                                                    <!-- <input ng-model="$ctrl._editAP.mac" type="text"
-                                                        ng-class="{'is-invalid': !$ctrl._editAP.mac || $ctrl._editAP.mac.trim() === ''}"
-                                                        mask="99:99:99:99:99:99"
-                                                        class="form-control text-end w-auto ms-auto"
-                                                        style="max-width: 150px;"> -->
-                                                </div>
+                                                </div> -->
                                                 <div ng-show="$ctrl._editApModo"
                                                     class="list-group-item d-flex align-items-center gap-3">
                                                     <div
