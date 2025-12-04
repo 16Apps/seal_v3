@@ -563,6 +563,8 @@ module.exports = (app, dbConnection) => {
                         const inicioJanela = base.clone().subtract(30, 'seconds').toDate();
                         const fimJanela = base.clone().add(30, 'seconds').toDate();
 
+                        console.log(inicioJanela)
+
                         // ✍️ Atualiza status do item se mudou
 
                         //    ESTA PEGANDO O ITEM DE OUTRA BASE, NAO ESTÁ MAS NAO ESTÁ ATUALIZADO
