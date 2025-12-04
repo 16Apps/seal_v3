@@ -13,6 +13,13 @@ app.component('categoria', {
     $ctrl._editCategoria = {};
     $ctrl._regConta = {};
 
+    $ctrl._regAddAssociacao = {
+      id_ref: 'categoria',
+      id_item: '',
+      id_categoria: '',
+      quantidade: 1
+    };
+
     $ctrl.options = {
       headers: { 'Content-Type': 'application/json' }
     };
@@ -33,6 +40,9 @@ app.component('categoria', {
     };
 
     $ctrl.onEditar = async function (reg) {
+
+      await $ctrl.onCarregaCategorias();
+      await $ctrl.onCarregaItens();
 
       if (reg == undefined) {
 
@@ -70,8 +80,47 @@ app.component('categoria', {
           $ctrl._editCategoria._foto = uteisService.apiUrl_() + '/image/' + $ctrl._editCategoria.foto
         };
 
+        $ctrl.onBaseAssocicao();
+
       };
 
+    };
+
+    $ctrl.onCarregaItens = async function () {
+
+      // !!! Itens vinculados ao local escolhido
+      let _url = '/_bd?c=item&id_conta=' + $ctrl._regConta._id
+      _url += '&pop=id_categoria';
+
+      await uteisService.getBase(_url)
+        .then((res) => {
+
+          $timeout(() => {
+            $ctrl._listItens = res
+          }, 10);
+
+        })
+        .catch((error) => {
+          uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
+        });
+    };
+
+    $ctrl.onCarregaCategorias = async function () {
+
+      let _url = '/_bd?c=categoria&id_conta=' + $ctrl._regConta._id
+      _url += '&sort=descricao'
+
+      await uteisService.getBase(_url)
+        .then((res) => {
+
+          $timeout(() => {
+            $ctrl._listCategorias = res
+          }, 10);
+
+        })
+        .catch((error) => {
+          uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
+        });
     };
 
     $ctrl.onGetFoto = function () {
@@ -102,6 +151,99 @@ app.component('categoria', {
       };
     };
 
+    $ctrl.onBaseAssocicao = async function () {
+
+      let _url = '/_bd?c=associacao&id_categoria=' + $ctrl._editCategoria._id
+
+      await uteisService.getBase(_url)
+        .then((res) => {
+
+          $timeout(() => {
+
+            if (res.length > 0) {
+              $ctrl._editAssocicao = res[0]
+            } else {
+              $ctrl._editAssocicao = {
+                _id: uteisService.onGetID(),
+                id_conta: $ctrl._regConta._id,
+                id_colaborador: '',
+                id_item: '',
+                id_categoria: $ctrl._editCategoria._id,
+                ativo: 1,
+                intervalo: 10,
+                range_rssi: 30,
+                descricao: '',
+                associados: []
+              }
+
+            }
+          }, 10);
+
+        })
+        .catch((error) => {
+          uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
+        });
+
+    }
+
+    $ctrl.onAddAssociacao = async function () {
+
+      if ($ctrl._regAddAssociacao.id_ref == 'item') {
+
+        let iFind = $ctrl._editAssocicao.associados.findIndex((item) => item.id_item == $ctrl._regAddAssociacao.id_item)
+        if (iFind == -1) {
+          $ctrl._editAssocicao.associados.push({
+            _id: uteisService.onGetID(),
+            id_item: $ctrl._regAddAssociacao.id_item,
+            id_categoria: '',
+            quantidade: 1
+          })
+        } else {
+          $ctrl.$ctrl._editAssocicao.associados[iFind].quantidade = $ctrl._regAddAssociacao.quantidade
+        }
+
+      } else {
+
+
+        let iFind = $ctrl._editAssocicao.associados.findIndex((item) => item.id_categoria == $ctrl._regAddAssociacao.id_categoria)
+        if (iFind == -1) {
+          $ctrl._editAssocicao.associados.push({
+            _id: uteisService.onGetID(),
+            id_item: '',
+            id_categoria: $ctrl._regAddAssociacao.id_categoria,
+            quantidade: $ctrl._regAddAssociacao.quantidade
+          })
+        } else {
+          $ctrl._editAssocicao.associados[iFind].quantidade = $ctrl._regAddAssociacao.quantidade
+        }
+
+      }
+
+
+    };
+
+    $ctrl.idItemDescricao = function (_idItem, _idCategoria, desc) {
+
+      if (_idItem != '') {
+        let iFind = $ctrl._listItens.findIndex((item) => item._id == _idItem)
+        if (desc) {
+          return $ctrl._listItens[iFind].id_categoria.descricao;
+        } else {
+          return $ctrl._listItens[iFind].tag
+        }
+
+      } else {
+        let iFind = $ctrl._listCategorias.findIndex((item) => item._id == _idCategoria)
+        if (desc) {
+          return $ctrl._listCategorias[iFind].descricao;
+        } else {
+          return $ctrl._listCategorias[iFind].ean
+        }
+
+      };
+
+    };
+
 
     $ctrl.onSalvar = function () {
 
@@ -112,6 +254,9 @@ app.component('categoria', {
 
       uteisService.patchBase('/categoria', $ctrl._editCategoria)
         .then((res) => {
+
+          uteisService.patchBase('/associacao', $ctrl._editAssocicao)
+
           uteisService.onToast('Registrado!', 'success', 3000, 'top-end');
           $ctrl.onFechar();
         })

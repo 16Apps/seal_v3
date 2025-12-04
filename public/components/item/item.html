@@ -444,6 +444,7 @@
                                                         Identificação dos itens
                                                     </h6>
                                                 </div>
+                                                
                                                 <div class="form-check form-switch m-0 ms-auto">
                                                     <select ng-model="$ctrl._regAddAssociacao.id_ref"
                                                         class="form-select select2">
@@ -561,7 +562,7 @@
                                                                             title="Editar Associação">
                                                                             <i class="bi bi-pencil"></i>
                                                                         </button>
-                                                                        <button type="button"
+                                                                        <button ng-click="$ctrl.onRemoveAssociacao(item)" type="button"
                                                                             class="btn btn-sm btn-outline-primary"
                                                                             data-bs-toggle="tooltip"
                                                                             title="Apagar Associação">

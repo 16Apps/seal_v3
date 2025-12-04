@@ -9,6 +9,7 @@ const Localizacao = require("../models/localizacao");
 const Registro = require("../models/registro");
 const Alerta = require("../models/alerta");
 const Posicao = require("../models/posicao");
+const Associacao = require("../models/associacao");
 
 const Interacao = require("../models/interacao");
 const Colaborador = require("../models/colaborador");
@@ -45,7 +46,6 @@ module.exports = (app, dbConnection) => {
         // Verificar Localização
         let retorno;
         let status;
-
 
         // Inibir leituras repetidas em menos de 5 segundos
         const agora = Date.now();
@@ -107,6 +107,8 @@ module.exports = (app, dbConnection) => {
                 bateria,
                 temperatura,
 
+                associados: [],
+
                 id_nivel_loc1: id_nivel_loc1,
                 id_nivel_loc2: id_nivel_loc2,
                 id_nivel_loc3: id_nivel_loc3,
@@ -131,6 +133,8 @@ module.exports = (app, dbConnection) => {
             console.log("..................." + '_addReg')
             _checkAlerta(novoRegistro)
             _checkInteracao('entrada', novoRegistro)
+            _checkAssociacao('entrada', novoRegistro)
+
         };
 
         let _updItem = async (_reg) => {
@@ -142,6 +146,8 @@ module.exports = (app, dbConnection) => {
             item.id_nivel_loc4 = id_nivel_loc4;
             item.registro_atual = _reg
             await item.save();
+
+            // _checkAssociacao('neutro', _reg)
 
         };
 
@@ -178,7 +184,11 @@ module.exports = (app, dbConnection) => {
         if (ultimoRegistro) {
 
             if (ultimoRegistro?.data_permanecia && ultimoRegistro?.data_registro) {
-                const diffMs = new Date(ultimoRegistro.data_permanecia) - new Date(ultimoRegistro.data_registro);
+                // const diffMs = new Date(ultimoRegistro.data_permanecia) - new Date(ultimoRegistro.data_registro);
+                //const diffMs = new Date(new Date().getTime()) - new Date(ultimoRegistro.data_permanecia);
+                
+                const diffMs = new Date(data_leitura) - new Date(ultimoRegistro.data_permanecia);
+
                 const diffSegundos = Math.floor(diffMs / 1000);
                 console.log(`Diferença: ${diffSegundos} segundos ${gateway.intervalo_ausencia}`);
 
@@ -234,6 +244,57 @@ module.exports = (app, dbConnection) => {
         })
     });
 
+
+    async function _checkAssociacao(movimento, _reg) {
+
+
+        // 1️⃣ Verifica se o ITEM LIDO possui associação
+        let associacao = await Associacao.findOne({
+            id_item: _reg.id_item,
+            ativo: '1'
+        });
+
+        if (!associacao) {
+            return; // item sem associação
+        }
+
+        console.log("_checkAssociacao:", associacao._id);
+
+        // 2️⃣ Define intervalo de ±5 segundos
+        let base = new Date(_reg.data_permanecia);
+        let inicio = new Date(base.getTime() - 5000);
+        let fim = new Date(base.getTime() + 5000);
+
+        // 3️⃣ Percorre os itens associados
+        for (let associado of associacao.associados) {
+
+            if (!associado.id_item || associado.id_item === "") continue;
+
+            console.log(" ➡ Verificando associado:", associado.id_item);
+
+            // Verifica leitura do item associado
+            let regAssociado = await Registro.findOne({
+                id_item: associado.id_item,
+                data_permanecia: { $gte: inicio, $lte: fim }
+            });
+
+            associado['encontrado'] = null
+            if (regAssociado) {
+                associado.encontrado = regAssociado.data_permanecia;
+                console.log(`   ✔ Associado ${associado.id_item} encontrado no intervalo`);
+            } else {
+                console.log(`   ❌ Associado ${associado.id_item} NÃO encontrado no intervalo`);
+            }
+
+            _reg.associados.push(associado)
+            console.log(_reg.associados)
+            // 4️⃣ Atualiza o Registro no banco incluindo os associados
+            await Registro.updateOne(
+                { _id: _reg._id },
+                { $set: { associados: _reg.associados } }
+            );
+        }
+    }
 
     async function _checkInteracao(movimento, _reg) {
 
@@ -508,6 +569,7 @@ module.exports = (app, dbConnection) => {
         await verificarAlertasSair();
     });
 
+
     async function verificarAlertasSair() {
         try {
             // 1️⃣ Buscar alertas com ação "sair"
@@ -555,20 +617,7 @@ module.exports = (app, dbConnection) => {
                     // 🔍 Caso esteja em perda de sinal, verificar registro e correlacionar colaborador
                     if (novoStatus === 'perca') {
 
-                        if (item.tag == 'A-040') {
-                            console.log("2::::" + novoStatus)
-                        }
-
-                        const base = moment(dataPermanecia);
-                        const inicioJanela = base.clone().subtract(30, 'seconds').toDate();
-                        const fimJanela = base.clone().add(30, 'seconds').toDate();
-
-                        console.log(inicioJanela)
-
                         // ✍️ Atualiza status do item se mudou
-
-                        //    ESTA PEGANDO O ITEM DE OUTRA BASE, NAO ESTÁ MAS NAO ESTÁ ATUALIZADO
-
                         if (item.status !== novoStatus) {
 
                             await Item.updateOne(
@@ -579,7 +628,16 @@ module.exports = (app, dbConnection) => {
                             console.log(`🔄 Item ${item._id} -> ${novoStatus} (${diffSegundos}s)`);
                         }
 
-                        // Busca o registro principal do item
+                        // ✅ Verifica correlação com associação
+
+
+
+                        // ✅ Verifica correlação com colaborador
+                        const base = moment(dataPermanecia);
+                        const inicioJanela = base.clone().subtract(30, 'seconds').toDate();
+                        const fimJanela = base.clone().add(30, 'seconds').toDate();
+
+                        // Busca o ultimo registro do item
                         const registroItem = await Registro.findOne({
                             id_item: item._id,
                             id_conta: alerta.id_conta

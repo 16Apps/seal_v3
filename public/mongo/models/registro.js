@@ -21,6 +21,19 @@ const RegistroSchema = new mongoose.Schema({
     bateria: { type: String },
     temperatura: { type: String },
 
+    associados: {
+        type: [
+            {
+                _id: { type: String, default: shortid.generate },
+                id_item: { type: String, ref: 'Item' },
+                id_categoria: { type: String, ref: 'Categoria' },
+                quantidade: { type: Number },
+                encontrado: { type: Date }   
+            }
+        ],
+        default: []
+    },
+
     id_nivel_loc1: { type: String, ref: 'Localizacao' },
     id_nivel_loc2: { type: String, ref: 'Localizacao' },
     id_nivel_loc3: { type: String, ref: 'Localizacao' },
