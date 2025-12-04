@@ -541,21 +541,34 @@ module.exports = (app, dbConnection) => {
                     const dataPermanecia = item.updatedAt
                     if (!dataPermanecia) continue;
 
-                    const diffSegundos = agora.diff(moment(dataPermanecia), 'seconds');
-                    let  novoStatus = item.status;
-                    if (item.mov_tracking === 0) {
-                        novoStatus = diffSegundos > tempoLimiteSegundos ? 'perca' : 'ativo';
+                    if (item.tag == 'A-040') {
+                        console.log("1::::" + item.status)
                     }
-                    
+
+                    let novoStatus = item.status;
+                    const diffSegundos = agora.diff(moment(dataPermanecia), 'seconds');
+
+                    if (item.mov_tracking === 1) {
+                        novoStatus = diffSegundos > tempoLimiteSegundos ? 'perca' : 'ativo';
+                    };
+
                     // 🔍 Caso esteja em perda de sinal, verificar registro e correlacionar colaborador
                     if (novoStatus === 'perca') {
+
+                        if (item.tag == 'A-040') {
+                            console.log("2::::" + novoStatus)
+                        }
 
                         const base = moment(dataPermanecia);
                         const inicioJanela = base.clone().subtract(30, 'seconds').toDate();
                         const fimJanela = base.clone().add(30, 'seconds').toDate();
 
                         // ✍️ Atualiza status do item se mudou
+
+                        //    ESTA PEGANDO O ITEM DE OUTRA BASE, NAO ESTÁ MAS NAO ESTÁ ATUALIZADO
+
                         if (item.status !== novoStatus) {
+
                             await Item.updateOne(
                                 { _id: item._id },
                                 { $set: { status: novoStatus } }
