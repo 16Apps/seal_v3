@@ -186,7 +186,7 @@ module.exports = (app, dbConnection) => {
             if (ultimoRegistro?.data_permanecia && ultimoRegistro?.data_registro) {
                 // const diffMs = new Date(ultimoRegistro.data_permanecia) - new Date(ultimoRegistro.data_registro);
                 //const diffMs = new Date(new Date().getTime()) - new Date(ultimoRegistro.data_permanecia);
-                
+
                 const diffMs = new Date(data_leitura) - new Date(ultimoRegistro.data_permanecia);
 
                 const diffSegundos = Math.floor(diffMs / 1000);
@@ -248,6 +248,10 @@ module.exports = (app, dbConnection) => {
     async function _checkAssociacao(movimento, _reg) {
 
 
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
         // 1️⃣ Verifica se o ITEM LIDO possui associação
         let associacao = await Associacao.findOne({
             id_item: _reg.id_item,
@@ -259,6 +263,10 @@ module.exports = (app, dbConnection) => {
         }
 
         console.log("_checkAssociacao:", associacao._id);
+
+        // 🕒 Aguarda 6 segundos para garantir que as outras leituras chegaram
+        console.log("⏳ Associação encontrada, aguardando 6s para confirmar leituras...");
+        await delay(8000);
 
         // 2️⃣ Define intervalo de ±5 segundos
         let base = new Date(_reg.data_permanecia);
@@ -278,20 +286,29 @@ module.exports = (app, dbConnection) => {
                 data_permanecia: { $gte: inicio, $lte: fim }
             });
 
-            associado['encontrado'] = null
+            let obj = associado.toObject();
+            obj.encontrado = null;
+            let statusAssociacao = _reg.status
             if (regAssociado) {
                 associado.encontrado = regAssociado.data_permanecia;
+                obj.encontrado = regAssociado.data_permanecia;
                 console.log(`   ✔ Associado ${associado.id_item} encontrado no intervalo`);
             } else {
+                statusAssociacao = 'associacao_erro'
                 console.log(`   ❌ Associado ${associado.id_item} NÃO encontrado no intervalo`);
             }
 
-            _reg.associados.push(associado)
-            console.log(_reg.associados)
+            _reg.associados.push(obj)
+            console.log(obj)
             // 4️⃣ Atualiza o Registro no banco incluindo os associados
             await Registro.updateOne(
                 { _id: _reg._id },
-                { $set: { associados: _reg.associados } }
+                {
+                    $set: {
+                        status: statusAssociacao,
+                        associados: _reg.associados
+                    }
+                }
             );
         }
     }

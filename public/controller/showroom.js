@@ -275,6 +275,24 @@ app.controller('showRoomCtrl', function ($scope, $http, $location, params, uteis
             })
     };
 
+    $scope.onApagaSolucao = function () {
+
+        uteisService.onQuestion("Atenção!", "Deseja realmente limpar sua base?")
+            .then(async (res) => {
+                if (res) {
+                    uteisService.delBase('sr_solucoes/_id/' + $scope._editSolucao._id).then((res) => {
+uteisService.onToast('Solução Excluida!', 'success', 3000, 'top-end');
+                    $scope.onCarregaSolucoes();
+                    $scope.onEditSolucao(undefined)
+
+                     });
+                    
+                }
+            })
+
+
+    }
+
     $scope.onGetIconSolucao = function () {
 
         document.getElementById('imgIconeSolucao').click();

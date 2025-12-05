@@ -142,7 +142,6 @@ module.exports = (app, dbConnection) => {
         }
     });
 
-
     app.delete('/_bd/:collection/:field/:value', async (req, res) => {
         const collection = require('../models/' + req.params.collection);
 
