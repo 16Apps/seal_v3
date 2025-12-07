@@ -121,6 +121,8 @@ app.component('item', {
             }, 200)
           }
 
+          $ctrl.onCarregaPosicoes()
+
         }, 10)
 
 
@@ -185,6 +187,23 @@ app.component('item', {
         });
     };
 
+    $ctrl.onCarregaPosicoes = async function () {
+
+      let _url = '/posicao/item/' + $ctrl._editItem._id
+
+      await uteisService.getBase(_url)
+        .then((res) => {
+
+          $timeout(() => {
+            $ctrl._listPosicoes = res
+          }, 10);
+
+        })
+        .catch((error) => {
+          uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
+        });
+    };
+
     $ctrl.onCarregaCategorias = async function () {
 
       let _url = '/_bd?c=categoria&id_conta=' + $ctrl._regConta._id
@@ -205,26 +224,56 @@ app.component('item', {
 
     $ctrl.onCategoria = async function (_acao, _edit) {
 
-      $timeout(() => {
-        $ctrl.funcaoLoc = _acao;
-        $ctrl.editLoc = _edit;
-      }, 10);
+      $ctrl._editCategoria = {
 
-      if (modalInstance != undefined) {
-        modalInstance.hide();
-        modalInstance = undefined
+        _id: uteisService.onGetID(),
+        id_conta: $ctrl._regConta._id,
+        ativo: '1',
+        descricao: '',
+        ean: '',
+        observacao: '',
+        foto: '',
+        _foto: '../assets/images/icon_cadastro.fw.png',
+        labelInf1: '',
+        labelInf2: '',
+        labelInf3: '',
+        labelInf4: '',
+        labelInf5: '',
+        estoque_minimo: 0,
+        estoque_maximo: 0,
+        valor: '0',
+        id_nivel_cat1: '',
+        id_nivel_cat2: '',
+        id_nivel_cat3: '',
+        id_nivel_cat4: '',
+      };
 
-        $ctrl.onCarregaCategorias()
-        $ctrl.funcaoLoc = '';
-        $ctrl.editLoc = undefined;
-
-        $ctrl.$apply();
-      } else {
-        modalInstance = new bootstrap.Modal(document.getElementById('modalCategoria'));
-        modalInstance.show();
-      }
+      const off = bootstrap.Offcanvas.getOrCreateInstance('#offcanvasBottom');
+      off.show();
 
     };
+
+
+    $ctrl.onSalvarCategoria = function () {
+
+      if ($ctrl._editCategoria.descricao == '') {
+        uteisService.onToast('Informe uma descrição para o Item.', 'warning', 3000, 'top-end');
+        return;
+      };
+
+      uteisService.patchBase('/categoria', $ctrl._editCategoria)
+        .then((res) => {
+          uteisService.onToast('Item registrado!', 'success', 3000, 'top-end');
+          $ctrl.onCarregaCategorias();
+          $timeout(() => {
+            $ctrl._editItem.id_categoria = $ctrl._editCategoria._id
+          }, 1200);
+          const off = bootstrap.Offcanvas.getOrCreateInstance('#offcanvasBottom');
+          off.hide();
+        })
+
+    };
+
 
     $ctrl.onCarregaNiveis = async function (nivel) {
 
@@ -393,6 +442,11 @@ app.component('item', {
       $ctrl._listNivel3 = [];
       $ctrl._listNivel4 = [];
       $ctrl.onFechar();
+    };
+
+    $ctrl.formataDataHora = function (data) {
+      const date = moment(data, 'YYYY-MM-DD HH:mm:ss'); // Parse the complete date and time
+      return date.format('DDMMM HH[h]mm'); // Format the date and time
     };
 
   },

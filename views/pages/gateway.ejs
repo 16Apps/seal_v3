@@ -10,7 +10,7 @@
           <i class="bi bi-house lh-1"></i>
           <a href="index.html" class="text-decoration-none">Extras</a>
         </li>
-        <li class="breadcrumb-item" aria-current="page">Gateways</li>
+        <li class="breadcrumb-item" aria-current="page">Coletores</li>
       </ol>
       <!-- Breadcrumb end -->
 
@@ -48,15 +48,44 @@
                   <table class="table align-middle table-hover m-0">
                     <thead>
                       <tr>
-                        <th>Descrição</th>
-                        <th class="w-30"></th>
-                        <th class="w-60">Modo</th>
-                        <th class="w-10">Tokem</th>
+
+                        <!-- Descrição -->
+                        <th>
+
+                        </th>
+
+                        <th class="w-30" class="sortable" ng-click="sortBy('descricao')">Descrição
+                          <i class="bi" ng-class="{
+            'bi-caret-up-fill': sortField=='descricao' && !sortReverse,
+            'bi-caret-down-fill': sortField=='descricao' && sortReverse
+         }"></i>
+                        </th>
+
+                        <!-- Modo -->
+                        <th class="w-60 sortable" ng-click="sortBy('modo')">
+                          Modo
+                          <i class="bi" ng-class="{
+            'bi-caret-up-fill': sortField=='modo' && !sortReverse,
+            'bi-caret-down-fill': sortField=='modo' && sortReverse
+         }"></i>
+                        </th>
+
+                        <!-- Tokem -->
+                        <th class="w-10 sortable" ng-click="sortBy('tokem')">
+                          Tokem
+                          <i class="bi" ng-class="{
+            'bi-caret-up-fill': sortField=='tokem' && !sortReverse,
+            'bi-caret-down-fill': sortField=='tokem' && sortReverse
+         }"></i>
+                        </th>
+
                         <th>Ações</th>
+
                       </tr>
                     </thead>
+
                     <tbody>
-                      <tr ng-repeat="item in _listGateways">
+                      <tr ng-repeat="item in _listGateways | orderBy:sortField:sortReverse">
                         <td>
                           <img class="rounded-circle img-3x me-2" src="{{ item._foto }}" alt="Wrapmarket" />
                         </td>

@@ -3,7 +3,9 @@ app.controller('localizacaoCtrl', function ($scope, $http, params, uteisService)
     $scope._regConta = {};
     $scope._regColaborador = []
     $scope._listLocalizacoes = []
-
+    $scope.sortField = 'descricao';
+    $scope.sortReverse = false;
+    
     var modalInstance = undefined;
 
     $scope.$watch('$viewContentLoaded', async function () {
@@ -21,7 +23,7 @@ app.controller('localizacaoCtrl', function ($scope, $http, params, uteisService)
 
     $scope.onCarregaRegistros = async function () {
 
-        let _url = '/_bd?c=localizacao&id_conta=' + $scope._regConta._id 
+        let _url = '/_bd?c=localizacao&id_conta=' + $scope._regConta._id
         _url += '&id_nivel=null'
         _url += '&_sort=descricao'
 
@@ -46,7 +48,16 @@ app.controller('localizacaoCtrl', function ($scope, $http, params, uteisService)
                 uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
             });
 
-    }
+    };
+
+    $scope.sortBy = function (field) {
+        if ($scope.sortField === field) {
+            $scope.sortReverse = !$scope.sortReverse;
+        } else {
+            $scope.sortField = field;
+            $scope.sortReverse = false;
+        }
+    };
 
 
     $scope.onLocalizacao = async function (_acao, _edit) {

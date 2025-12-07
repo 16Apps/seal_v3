@@ -2,7 +2,9 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService) {
 
     $scope._regConta = {};
     $scope._regColaborador = []
-    $scope._listCategorias = []
+    $scope._listItens = []
+    $scope.sortField = 'descricao';
+    $scope.sortReverse = false;
 
     var modalInstance = undefined;
 
@@ -38,12 +40,21 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService) {
                 });
 
 
-                $scope._listCategorias = res
+                $scope._listItens = res
                 $scope.$apply();
             })
             .catch((error) => {
                 uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
             });
+    };
+
+    $scope.sortBy = function (field) {
+        if ($scope.sortField === field) {
+            $scope.sortReverse = !$scope.sortReverse;
+        } else {
+            $scope.sortField = field;
+            $scope.sortReverse = false;
+        }
     };
 
     $scope.onItem = async function (_acao, _edit) {

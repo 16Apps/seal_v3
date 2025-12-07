@@ -1,7 +1,7 @@
 <div class="modal-content">
     <div class="modal-header">
         <h5 class="modal-title h4" id="exampleModalFullscreenLabel">
-            Itens
+            SKU
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
     </div>
@@ -10,7 +10,7 @@
         <ol class="breadcrumb d-none d-lg-flex mb-4">
             <li class="breadcrumb-item">
                 <i class="bi bi-geo-alt lh-1"></i>
-                <a href="index.html" class="text-decoration-none">Item</a>
+                <a href="index.html" class="text-decoration-none">SKU</a>
             </li>
             <li class="breadcrumb-item" aria-current="page">
                 <a href="index.html" class="text-decoration-none text-info">
@@ -46,7 +46,7 @@
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link rounded-pill" id="itens-c-tab" data-bs-toggle="pill"
                                     data-bs-target="#itens-c" type="button" role="tab" aria-controls="itens-c"
-                                    aria-selected="false">Histórico</button>
+                                    aria-selected="false">Movimentação</button>
                             </li>
 
                         </ul>
@@ -81,7 +81,7 @@
                                                     <div class="row gx-3 mb-3">
                                                         <div class="col-sm-6">
                                                             <label for="displayName" class="form-label">
-                                                                Categoria
+                                                                Item
                                                             </label>
 
                                                             <div class="input-group">
@@ -306,12 +306,13 @@
                                                     </div>
 
                                                     <div>
-                                                        <h6 class="mb-1">Livre Movimentação  </h6>
+                                                        <h6 class="mb-1">Livre Movimentação </h6>
                                                         <p class="m-0 text-muted">Regra sobrepoe os Alertas</p>
                                                     </div>
 
                                                     <div class="form-check form-switch m-0 ms-auto">
-                                                        <input ng-model="$ctrl._editItem.mov_livre" class="form-check-input" type="checkbox" role="switch"
+                                                        <input ng-model="$ctrl._editItem.mov_livre"
+                                                            class="form-check-input" type="checkbox" role="switch"
                                                             checked="">
                                                     </div>
                                                 </div>
@@ -329,11 +330,12 @@
                                                     </div>
 
                                                     <div class="form-check form-switch m-0 ms-auto">
-                                                        <input ng-model="$ctrl._editItem.mov_tracking" class="form-check-input" type="checkbox" role="switch"
+                                                        <input ng-model="$ctrl._editItem.mov_tracking"
+                                                            class="form-check-input" type="checkbox" role="switch"
                                                             checked="">
                                                     </div>
                                                 </div>
-                            
+
                                                 <!-- <div class="list-group-item d-flex align-items-center gap-3">
                                                     <div
                                                         class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
@@ -444,7 +446,7 @@
                                                         Identificação dos itens
                                                     </h6>
                                                 </div>
-                                                
+
                                                 <div class="form-check form-switch m-0 ms-auto">
                                                     <select ng-model="$ctrl._regAddAssociacao.id_ref"
                                                         class="form-select select2">
@@ -518,7 +520,7 @@
                                                                 </th>
                                                                 <th scope="col" class="w-40">
                                                                     Quantidade
-                                                                </th>                                                                
+                                                                </th>
                                                                 <th scope="col">Edição
                                                                 </th>
                                                             </tr>
@@ -552,7 +554,7 @@
                                                                 <td>
                                                                     {{ item.quantidade }}
                                                                 </td>
-                                                                
+
                                                                 <td>
                                                                     <div class="d-flex gap-1">
                                                                         <button ng-click=" $ctrl.onEditarAcao(item)"
@@ -562,7 +564,9 @@
                                                                             title="Editar Associação">
                                                                             <i class="bi bi-pencil"></i>
                                                                         </button>
-                                                                        <button ng-click="$ctrl.onRemoveAssociacao(item)" type="button"
+                                                                        <button
+                                                                            ng-click="$ctrl.onRemoveAssociacao(item)"
+                                                                            type="button"
                                                                             class="btn btn-sm btn-outline-primary"
                                                                             data-bs-toggle="tooltip"
                                                                             title="Apagar Associação">
@@ -578,7 +582,7 @@
                                                 </div>
                                             </div>
                                         </div>
-                                       
+
                                     </div>
                                 </div>
 
@@ -587,9 +591,62 @@
                             <div class="tab-pane fade" id="itens-c" role="tabpanel" aria-labelledby="itens-c-tab"
                                 tabindex="0">
 
-                                <div class="border rounded-2 p-3 mb-3">
 
+                                <div class="invoice-table-container">
+                                    <div class="table-outer">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover align-middle mb-1">
+                                                <thead>
+                                                    <tr>
+                                                        <th scope="col" class="w-20">
+                                                            iD DOC
+                                                        </th>
+                                                        <th scope="col" class="w-40">
+                                                            Partida / Leitura
+                                                        </th>
+                                                        <th scope="col" class="w-40">
+                                                            Destino
+                                                        </th>
+                                                        <th scope="col">Status
+                                                        </th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr ng-repeat="item in $ctrl._listPosicoes track by $index">
+
+                                                        <td class="text-white fw-semibold">
+                                                            {{ item.id_doc }}
+                                                        </td>
+                                                        <td>
+                                                            <span class="text-white fw-semibold">
+                                                                {{ $ctrl.formataDataHora(item.partida_data) }}
+                                                            </span>
+                                                            <br>
+                                                            <span>
+                                                                {{ item.localizacao_origem }}
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <span class="text-white fw-semibold">
+                                                                {{ $ctrl.formataDataHora(item.previsao_chegada_data) }}
+                                                            </span>
+                                                            
+                                                            <br>
+                                                            <span>
+                                                                {{ item.localizacao_destino }}
+                                                            </span>
+                                                        </td>
+                                                        <td class="text-white fw-semibold">
+                                                            {{ item.status.toUpperCase() }}
+                                                        </td>
+                                                    </tr>
+
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </div>
+
 
                             </div>
 
@@ -614,4 +671,110 @@
             <span role="status">Saving...</span> -->
         </button>
     </div>
+
+
+    <div class="offcanvas offcanvas-bottom" tabindex="-1" id="offcanvasBottom" aria-labelledby="offcanvasBottomLabel"
+        style="height: 50% !important;">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="offcanvasBottomLabel">Cadastro de Item</h5>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+
+            <div class="row gx-3">
+                <div class="col-xxl-6 col-sm-6">
+
+                    <!-- Row start -->
+                    <div class="row gx-3 mb-3">
+                        <div class="col-sm-6">
+                            <label for="displayName" class="form-label">
+                                Descrição
+                            </label>
+                            <input ng-model="$ctrl._editCategoria.descricao" type="text"
+                                ng-class="{'is-invalid': !$ctrl._editCategoria.descricao || $ctrl._editCategoria.descricao.trim() === ''}"
+                                class="form-control">
+                        </div>
+                        <div class="col-sm-3">
+                            <label for="displayName" class="form-label">
+                                EAN
+                            </label>
+                            <input ng-model="$ctrl._editCategoria.ean" type="text" class="form-control">
+                        </div>
+                        <div class="col-sm-3">
+                            <label for="displayName" class="form-label">
+                                Ativo
+                            </label>
+                            <select ng-model="$ctrl._editCategoria.ativo" class="form-select flex-grow-1"
+                                id="basicSelect" aria-label="Basic select example">
+                                <option value="0">Não</option>
+                                <option value="1">Sim</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row gx-3 mb-3 mt-4">
+                        <div class="col-sm-12 col-12">
+                            <div class="bg-primary bg-opacity-10 text-primary p-2 rounded-2">
+                                <p class="m-0">
+                                    Informações adicionais sobre a categoria
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row gx-3 mb-1">
+                        <div class="col-sm-3">
+                            <label for="displayName" class="form-label">
+                                Label 1
+                            </label>
+                            <input ng-model="$ctrl._editCategoria.labelInf1" type="text" class="form-control">
+                        </div>
+                        <div class="col-sm-3">
+                            <label for="displayName" class="form-label">
+                                Label 2
+                            </label>
+                            <input ng-model="$ctrl._editCategoria.labelInf2" type="text" class="form-control">
+                        </div>
+                        <div class="col-sm-3">
+                            <label for="displayName" class="form-label">
+                                Label 3
+                            </label>
+                            <input ng-model="$ctrl._editCategoria.labelInf3" type="text" class="form-control">
+                        </div>
+                        <div class="col-sm-3">
+                            <label for="displayName" class="form-label">
+                                Label 4
+                            </label>
+                            <input ng-model="$ctrl._editCategoria.labelInf4" type="text" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="row gx-3 mb-3 mt-2">
+                        <div class="col-sm-12 col-12">
+                            <div class="bg-light bg-opacity-10 text-light p-2 rounded-2">
+                                <p class="m-0">
+                                    Esses labels serão utilizados como nomes dos campos
+                                    exibidos no cadastro de Itens.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Row end -->
+
+                </div>
+            </div>
+
+        </div>
+
+        <div class="offcanvas-footer d-flex justify-content-end p-3 border-top">
+
+            <button ng-click="$ctrl.onSalvarCategoria()" class="btn btn-primary" type="button">
+                <span role="status">Salvar</span>
+            </button>
+
+        </div>
+
+    </div>
+
 </div>

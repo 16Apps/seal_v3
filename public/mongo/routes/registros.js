@@ -1318,4 +1318,105 @@ module.exports = (app, dbConnection) => {
         }
     });
 
+    app.get('/posicao/item/:id_item', async (req, res) => {
+        const Posicao = require('../models/posicao');
+        const id_item = req.params.id_item;
+
+        try {
+            const result = await Posicao.aggregate([
+
+                // Explode o array de itens
+                { $unwind: '$itens' },
+
+                // Filtra apenas itens do ID desejado
+                { $match: { 'itens.id_item': id_item } },
+
+                // Lookup da localização origem
+                {
+                    $lookup: {
+                        from: 'localizacaos',
+                        localField: 'id_nivel_loc1',
+                        foreignField: '_id',
+                        as: 'localizacao_origem'
+                    }
+                },
+
+                // Lookup da localização destino
+                {
+                    $lookup: {
+                        from: 'localizacaos',
+                        localField: 'id_nivel_loc1_destino',
+                        foreignField: '_id',
+                        as: 'localizacao_destino'
+                    }
+                },
+
+                // Lookup do gateway do item
+                {
+                    $lookup: {
+                        from: 'gateways',
+                        localField: 'itens.id_gatweway',
+                        foreignField: '_id',
+                        as: 'gateway'
+                    }
+                },
+
+                // Lookup do colaborador do item
+                {
+                    $lookup: {
+                        from: 'colaboradors',
+                        localField: 'itens.id_colaborador',
+                        foreignField: '_id',
+                        as: 'colaborador'
+                    }
+                },
+
+                // Reduzir arrays simples
+                {
+                    $project: {
+                        _id: 1,
+                        id_conta: 1,
+                        id_doc: 1,
+                        descricao: 1,
+
+                        // Origem / Destino
+                        localizacao_origem: { $arrayElemAt: ['$localizacao_origem.descricao', 0] },
+                        localizacao_destino: { $arrayElemAt: ['$localizacao_destino.descricao', 0] },
+
+                        // Gateway
+                        gateway: { $arrayElemAt: ['$gateway.descricao', 0] },
+
+                        // Colaborador
+                        colaborador: { $arrayElemAt: ['$colaborador.nome', 0] },
+
+                        // Dados do item
+                        item: {
+                            id_item: '$itens.id_item',
+                            tag: '$itens.tag',
+                            ean: '$itens.ean',
+                            quantidade: '$itens.quantidade',
+                            status: '$itens.status',
+                            status_data: '$itens.status_data',
+                            status_destino: '$itens.status_destino',
+                            status_destino_data: '$itens.status_destino_data'
+                        },
+
+                        // Datas gerais da posição
+                        partida_data: 1,
+                        previsao_chegada_data: 1,
+                        status: 1,
+                        status_data: 1
+                    }
+                }
+            ]);
+
+            return res.status(200).send(result);
+
+        } catch (err) {
+            console.error(err);
+            return res.status(500).send({ erro: err });
+        }
+    });
+
+
 }

@@ -68,3 +68,26 @@
 
   z-index: 99;   /* 🔥 ESSENCIAL */
 }
+
+.offcanvas-footer {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    background: #fff;
+}
+.offcanvas-body {
+    margin-bottom: 70px; /* espaço para o footer */
+}
+
+.sortable {
+    cursor: pointer;
+    user-select: none;
+}
+.sortable i {
+    font-size: 12px;
+    margin-left: 5px;
+    opacity: 0.6;
+}
+.sortable:hover i {
+    opacity: 1;
+}

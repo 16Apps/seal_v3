@@ -48,14 +48,51 @@
                   <table class="table align-middle table-hover m-0">
                     <thead>
                       <tr>
-                        <th class="w-5">iD Doc</th>
-                        <th class="w-20"></th>
-                        <th class="w-35">Partida</th>
-                        <th class="w-10">Itens</th>
-                        <th class="w-35">Chegada</th>
+
+                        <!-- ID Doc -->
+                        <th >
+                          
+                        </th> 
+
+                        <th class="w-20" class="w-5 sortable" ng-click="sortBy('id_doc')">iD Doc
+                          <i class="bi" ng-class="{
+            'bi-caret-up-fill': sortField=='id_doc' && !sortReverse,
+            'bi-caret-down-fill': sortField=='id_doc' && sortReverse
+         }"></i></th>
+
+                        <!-- Partida -->
+                        <th class="w-35 sortable" ng-click="sortBy('partida_data')">
+                          Partida
+                          <i class="bi" ng-class="
+         {
+            'bi-caret-up-fill': sortField=='partida' && !sortReverse,
+            'bi-caret-down-fill': sortField=='partida' && sortReverse
+         }"></i>
+                        </th>
+
+                        <!-- Itens -->
+                        <th class="w-10 sortable" ng-click="sortBy('itens')">
+                          Itens
+                          <i class="bi" ng-class="{
+            'bi-caret-up-fill': sortField=='itens' && !sortReverse,
+            'bi-caret-down-fill': sortField=='itens' && sortReverse
+         }"></i>
+                        </th>
+
+                        <!-- Chegada -->
+                        <th class="w-35 sortable" ng-click="sortBy('previsao_chegada_data')">
+                          Chegada
+                          <i class="bi" ng-class="{
+            'bi-caret-up-fill': sortField=='chegada' && !sortReverse,
+            'bi-caret-down-fill': sortField=='chegada' && sortReverse
+         }"></i>
+                        </th>
+
                         <th>Ações</th>
+
                       </tr>
                     </thead>
+
                     <tbody>
                       <style>
                         .status-circle {
@@ -81,7 +118,7 @@
                           /* cinza */
                         }
                       </style>
-                      <tr ng-repeat="item in _listPosicoes">
+                      <tr ng-repeat="item in _listPosicoes | orderBy:sortField:sortReverse">
                         <td class="align-top">
 
                           <span ng-class="{

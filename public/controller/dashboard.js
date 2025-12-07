@@ -113,7 +113,7 @@ app.controller('dashboardCtrl', function ($scope, $http, params, uteisService, $
             chartAgrupadoLocal1.updateOptions({
                 series: [
                     { name: "Ativos", data: seriesAtivos },
-                    { name: "Perca", data: seriesPerca },
+                    { name: "Perda", data: seriesPerca },
                 ],
                 xaxis: { categories: labels }
             });
@@ -143,7 +143,7 @@ app.controller('dashboardCtrl', function ($scope, $http, params, uteisService, $
             stroke: { show: true, width: 2, colors: ["transparent"] },
             series: [
                 { name: "Ativos", data: seriesAtivos },
-                { name: "Perca", data: seriesPerca },
+                { name: "Perda", data: seriesPerca },
             ],
             xaxis: {
                 categories: labels,

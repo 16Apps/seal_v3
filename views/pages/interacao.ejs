@@ -48,23 +48,45 @@
                   <table class="table align-middle table-hover m-0">
                     <thead>
                       <tr>
-                        <th>Descrição</th>
-                        <th class="w-70"></th>
-                        <th class="w-30">Localização</th>
+
+                        <!-- Descrição -->
+                        <th >
+                          
+                        </th>
+
+                        <th class="w-70" class="sortable" ng-click="sortBy('descricao')">
+                          Descrição
+                          <i class="bi" ng-class="{
+            'bi-caret-up-fill': sortField=='descricao' && !sortReverse,
+            'bi-caret-down-fill': sortField=='descricao' && sortReverse
+         }"></i>
+                        </th>
+
+                        <!-- Localização -->
+                        <th class="w-30 sortable" ng-click="sortBy('id_nivel_loc1.descricao')">
+                          Localização
+                          <i class="bi" ng-class="{
+            'bi-caret-up-fill': sortField=='id_nivel_loc1.descricao' && !sortReverse,
+            'bi-caret-down-fill': sortField=='id_nivel_loc1.descricao' && sortReverse
+         }"></i>
+                        </th>
+
                         <th>Ações</th>
+
                       </tr>
                     </thead>
+
                     <tbody>
-                      <tr ng-repeat="item in _listInteracoes">
+                      <tr ng-repeat="item in _listInteracoes | orderBy:sortField:sortReverse">
                         <td>
                           <img class="rounded-circle img-3x me-2" src="{{ item._icone }}" alt="Wrapmarket" />
                         </td>
                         <td>{{ item.descricao }}</td>
-                   
+
                         <td>
                           {{ item.id_nivel_loc1 ? item.id_nivel_loc1.descricao : 'Em Transporte' }}
                           {{ item.id_nivel_loc2 ? ' - ' + item.id_nivel_loc2.descricao : '' }}
-                          
+
                           <span ng-show="item.id_nivel_loc3" class="text-muted">
                             <br>
                             {{ item.id_nivel_loc3 ? item.id_nivel_loc3.descricao : '' }}

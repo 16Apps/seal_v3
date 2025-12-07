@@ -3,6 +3,8 @@ app.controller('gatewayCtrl', function ($scope, $http, params, uteisService) {
     $scope._regConta = {};
     $scope._regColaborador = []
     $scope._listGateways = []
+    $scope.sortField = 'descricao';
+    $scope.sortReverse = false;
 
     var modalInstance = undefined;
 
@@ -21,7 +23,7 @@ app.controller('gatewayCtrl', function ($scope, $http, params, uteisService) {
 
     $scope.onCarregaRegistros = async function () {
 
-        let _url = '/_bd?c=gateway&id_conta=' + $scope._regConta._id 
+        let _url = '/_bd?c=gateway&id_conta=' + $scope._regConta._id
         _url += '&_sort=descricao'
 
         await uteisService.getBase(_url)
@@ -45,7 +47,17 @@ app.controller('gatewayCtrl', function ($scope, $http, params, uteisService) {
                 uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
             });
 
-    }
+    };
+
+
+    $scope.sortBy = function (field) {
+        if ($scope.sortField === field) {
+            $scope.sortReverse = !$scope.sortReverse;
+        } else {
+            $scope.sortField = field;
+            $scope.sortReverse = false;
+        }
+    };
 
 
     $scope.onGateway = async function (_acao, _edit) {

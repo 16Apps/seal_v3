@@ -248,7 +248,7 @@ app.component('categoria', {
     $ctrl.onSalvar = function () {
 
       if ($ctrl._editCategoria.descricao == '') {
-        uteisService.onToast('Informe uma descrição para o Gateway.', 'warning', 3000, 'top-end');
+        uteisService.onToast('Informe uma descrição para o Item.', 'warning', 3000, 'top-end');
         return;
       };
 

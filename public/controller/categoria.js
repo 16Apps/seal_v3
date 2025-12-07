@@ -3,6 +3,8 @@ app.controller('categoriaCtrl', function ($scope, $http, params, uteisService) {
     $scope._regConta = {};
     $scope._regColaborador = []
     $scope._listCategorias = []
+    $scope.sortField = 'descricao';
+    $scope.sortReverse = false;
 
     var modalInstance = undefined;
 
@@ -42,7 +44,16 @@ app.controller('categoriaCtrl', function ($scope, $http, params, uteisService) {
                 uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
             });
 
-    }
+    };
+
+    $scope.sortBy = function (field) {
+        if ($scope.sortField === field) {
+            $scope.sortReverse = !$scope.sortReverse;
+        } else {
+            $scope.sortField = field;
+            $scope.sortReverse = false;
+        }
+    };
 
 
     $scope.onCategoria = async function (_acao, _edit) {
