@@ -83,7 +83,8 @@
                           <img class=" rounded-circle img-3x me-2" src="{{ item._foto }}" alt="Wrapmarket" />
                       </td>
                       <td>
-                        {{ item.id_categoria.descricao }}
+                        
+                        {{ item.id_categoria.descricao ? item.id_categoria.descricao : 'Item N/A' }}
                         <br>
                         <span ng-show="item.status!='ativo'"
                           class="badge bg-danger bg-opacity-10 text-danger text-uppercase">

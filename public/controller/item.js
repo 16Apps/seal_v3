@@ -74,7 +74,7 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService) {
             let _tratComponente = JSON.parse(JSON.stringify(_edit || {}));
 
             if (_acao == 'edit') {
-                _tratComponente.id_categoria = _tratComponente.id_categoria._id
+                _tratComponente.id_categoria = _tratComponente.id_categoria ? _tratComponente.id_categoria._id : null
                 _tratComponente.id_nivel_loc1 = _tratComponente.id_nivel_loc1 ? _tratComponente.id_nivel_loc1._id : null
                 _tratComponente.id_nivel_loc2 = _tratComponente.id_nivel_loc2 ? _tratComponente.id_nivel_loc2._id : null
                 _tratComponente.id_nivel_loc3 = _tratComponente.id_nivel_loc3 ? _tratComponente.id_nivel_loc3._id : null

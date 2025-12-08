@@ -328,6 +328,7 @@
                                                                     $ctrl.idItemDescricao(item.id_item,
                                                                     item.id_categoria,
                                                                     false) }}
+                                                                    {{ item.tag}}
                                                                 </td>
                                                                 <td>
                                                                     {{
@@ -516,11 +517,13 @@
                                                             <tr
                                                                 ng-repeat="item in $ctrl._editPosicao.itens track by $index">
 
-                                                                <td class="text-white fw-semibold">
+                                                                <td class="text-white fw-semibold">                                                                 
                                                                     {{
                                                                     $ctrl.idItemDescricao(item.id_item,
                                                                     item.id_categoria,
                                                                     false) }}
+
+                                                                    {{ item.tag}}
                                                                 </td>
                                                                 <td>
                                                                     {{

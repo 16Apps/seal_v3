@@ -442,18 +442,26 @@ app.component('posicao', {
 
       if (_idItem != '') {
         let iFind = $ctrl._listItens.findIndex((item) => item._id == _idItem)
-        if (desc) {
-          return $ctrl._listItens[iFind].id_categoria.descricao;
+        if (iFind != -1) {
+          if (desc) {
+            return $ctrl._listItens[iFind].id_categoria.descricao;
+          } else {
+            return $ctrl._listItens[iFind].tag
+          }
         } else {
-          return $ctrl._listItens[iFind].tag
+          return 'SKU N/A'
         }
 
       } else {
         let iFind = $ctrl._listCategorias.findIndex((item) => item._id == _idCategoria)
-        if (desc) {
-          return $ctrl._listCategorias[iFind].descricao;
+        if (iFind != -1) {
+          if (desc) {
+            return $ctrl._listCategorias[iFind].descricao;
+          } else {
+            return $ctrl._listCategorias[iFind].ean
+          }
         } else {
-          return $ctrl._listCategorias[iFind].ean
+          return 'Item N/A'
         }
 
       };

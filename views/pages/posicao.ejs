@@ -120,12 +120,12 @@
                       </style>
                       <tr ng-repeat="item in _listPosicoes | orderBy:sortField:sortReverse">
                         <td class="align-top">
-
+                    
                           <span ng-class="{
         'status-circle': true,
         'status-concluido': item.status === 'concluido',
         'status-parcial': item.status === 'parcial',
-        'status-pendente': item.status === 'aberta'
+        'status-pendente': item.status === 'aberta' || item.status === 'partida'
       }">
                           </span>
 
