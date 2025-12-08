@@ -90,7 +90,7 @@
                                                                     ng-class="{'is-invalid': !$ctrl._editItem.id_categoria || $ctrl._editItem.id_categoria.trim() === ''}"
                                                                     class="form-select flex-grow-1" id="basicSelect"
                                                                     aria-label="Basic select example">
-                                                                    <option value="" disabled>Selecione uma categoria...
+                                                                    <option value="" disabled>Selecione um item...
                                                                     </option>
                                                                     <option ng-repeat="item in $ctrl._listCategorias"
                                                                         value="{{ item._id }}">
@@ -152,31 +152,59 @@
                                                             <input ng-model="$ctrl._editItem.tag_secundaria" type="text"
                                                                 class="form-control">
                                                         </div>
+
+                                                        <div class="col-sm-6">
+                                                              <label for="displayName" class="form-label">
+                                                                Categoria
+                                                            </label>
+                                                            <div class="input-group">
+                                                                <select ng-model="$ctrl._editItem.id_categoria_reg1"
+                                                                    ng-change="$ctrl.onLabelsCategoria()"
+                                                                    class="form-select flex-grow-1" id="basicSelect"
+                                                                    aria-label="Basic select example">
+                                                                    <option value="" disabled>Selecione uma categoria...
+                                                                    </option>
+                                                                    <option
+                                                                        ng-repeat="item in $ctrl._listCategoriasItens"
+                                                                        value="{{ item._id }}">
+                                                                        {{ item.descricao }}
+                                                                    </option>
+                                                                </select>
+
+                                                            </div>
+                                                        </div>
+
+
                                                     </div>
 
-                                                    <div ng-show="$ctrl._labelsCategoria!=undefined" class="row gx-3 mb-3">
-                                                        <div ng-show="$ctrl._labelsCategoria.labelInf1" class="col-sm-3">
+                                                    <div ng-show="$ctrl._labelsCategoria!=undefined"
+                                                        class="row gx-3 mb-3">
+                                                        <div ng-show="$ctrl._labelsCategoria.labelInf1"
+                                                            class="col-sm-3">
                                                             <label for="displayName" class="form-label">
                                                                 {{ $ctrl._labelsCategoria.labelInf1 }}
                                                             </label>
                                                             <input ng-model="$ctrl._editItem.inf_compl1" type="text"
                                                                 class="form-control">
                                                         </div>
-                                                        <div ng-show="$ctrl._labelsCategoria.labelInf2" class="col-sm-3">
+                                                        <div ng-show="$ctrl._labelsCategoria.labelInf2"
+                                                            class="col-sm-3">
                                                             <label for="displayName" class="form-label">
                                                                 {{ $ctrl._labelsCategoria.labelInf2 }}
                                                             </label>
                                                             <input ng-model="$ctrl._editItem.inf_compl2" type="text"
                                                                 class="form-control">
                                                         </div>
-                                                        <div ng-show="$ctrl._labelsCategoria.labelInf3" class="col-sm-3">
+                                                        <div ng-show="$ctrl._labelsCategoria.labelInf3"
+                                                            class="col-sm-3">
                                                             <label for="displayName" class="form-label">
                                                                 {{ $ctrl._labelsCategoria.labelInf3 }}
                                                             </label>
                                                             <input ng-model="$ctrl._editItem.inf_compl3" type="text"
                                                                 class="form-control">
                                                         </div>
-                                                        <div ng-show="$ctrl._labelsCategoria.labelInf4" class="col-sm-3">
+                                                        <div ng-show="$ctrl._labelsCategoria.labelInf4"
+                                                            class="col-sm-3">
                                                             <label for="displayName" class="form-label">
                                                                 {{ $ctrl._labelsCategoria.labelInf4 }}
                                                             </label>
@@ -630,23 +658,31 @@
                                                             </span>
                                                             <br>
                                                             <span>
-                                                                {{ item.localizacao_origem.nivel1 ?   item.localizacao_origem.nivel1 : '' }}
-                                                                {{ item.localizacao_origem.nivel2 ?  ' - ' + item.localizacao_origem.nivel2 : '' }}
-                                                                {{ item.localizacao_origem.nivel3 ?  ' - ' + item.localizacao_origem.nivel3 : '' }}
-                                                                {{ item.localizacao_origem.nivel4 ?  ' - ' + item.localizacao_origem.nivel4 : '' }}
+                                                                {{ item.localizacao_origem.nivel1 ?
+                                                                item.localizacao_origem.nivel1 : '' }}
+                                                                {{ item.localizacao_origem.nivel2 ? ' - ' +
+                                                                item.localizacao_origem.nivel2 : '' }}
+                                                                {{ item.localizacao_origem.nivel3 ? ' - ' +
+                                                                item.localizacao_origem.nivel3 : '' }}
+                                                                {{ item.localizacao_origem.nivel4 ? ' - ' +
+                                                                item.localizacao_origem.nivel4 : '' }}
                                                             </span>
                                                         </td>
                                                         <td>
                                                             <span class="text-white fw-semibold">
                                                                 {{ $ctrl.formataDataHora(item.previsao_chegada_data) }}
                                                             </span>
-                                                            
+
                                                             <br>
                                                             <span>
-                                                                {{ item.localizacao_destino.nivel1 ?   item.localizacao_destino.nivel1 : '' }}
-                                                                {{ item.localizacao_destino.nivel2 ?  ' - ' + item.localizacao_destino.nivel2 : '' }}
-                                                                {{ item.localizacao_destino.nivel3 ?  ' - ' + item.localizacao_destino.nivel3 : '' }}
-                                                                {{ item.localizacao_destino.nivel4 ?  ' - ' + item.localizacao_destino.nivel4 : '' }}
+                                                                {{ item.localizacao_destino.nivel1 ?
+                                                                item.localizacao_destino.nivel1 : '' }}
+                                                                {{ item.localizacao_destino.nivel2 ? ' - ' +
+                                                                item.localizacao_destino.nivel2 : '' }}
+                                                                {{ item.localizacao_destino.nivel3 ? ' - ' +
+                                                                item.localizacao_destino.nivel3 : '' }}
+                                                                {{ item.localizacao_destino.nivel4 ? ' - ' +
+                                                                item.localizacao_destino.nivel4 : '' }}
                                                             </span>
                                                         </td>
                                                         <td class="text-white fw-semibold">
@@ -675,7 +711,7 @@
 
     </div>
     <div class="modal-footer">
-        <button ng-click="$ctrl.onExcluir()"  class="btn btn-danger me-3" type="button">Excluir</button>
+        <button ng-click="$ctrl.onExcluir()" class="btn btn-danger me-3" type="button">Excluir</button>
         <button ng-click="$ctrl.fechar()" class="btn btn-light" type="button">Fechar</button>
 
         <button ng-click="$ctrl.onSalvar()" class="btn btn-primary" type="button">

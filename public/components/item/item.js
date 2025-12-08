@@ -53,6 +53,7 @@ app.component('item', {
       await $ctrl.onCarregaCategorias();
       await $ctrl.onCarregaItens();
       await $ctrl.onCarregaNiveis('01');
+      await $ctrl.onCarregaCategoriasItens();
 
       const tabTrigger = document.querySelector('#itens-a-tab');
       const tab = new bootstrap.Tab(tabTrigger);
@@ -234,6 +235,25 @@ app.component('item', {
           uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
         });
     };
+
+    $ctrl.onCarregaCategoriasItens = async function () {
+
+      let _url = '/_bd?c=categoria_item&id_conta=' + $ctrl._regConta._id
+      _url += '&sort=descricao'
+
+      await uteisService.getBase(_url)
+        .then((res) => {
+
+          $timeout(() => {
+            $ctrl._listCategoriasItens = res
+          }, 10);
+
+        })
+        .catch((error) => {
+          uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
+        });
+    };
+
 
     $ctrl.onCategoria = async function (_acao, _edit) {
 

@@ -20,17 +20,23 @@ const ItemSchema = new mongoose.Schema({
     id_nivel_loc2: { type: String, ref: 'Localizacao' },
     id_nivel_loc3: { type: String, ref: 'Localizacao' },
     id_nivel_loc4: { type: String, ref: 'Localizacao' },
+
+    id_categoria_reg1: { type: String, ref: 'CategoriaItem' },
+    id_categoria_reg2: { type: String, ref: 'CategoriaItem' },
+    id_categoria_reg3: { type: String, ref: 'CategoriaItem' },
+    id_categoria_reg4: { type: String, ref: 'CategoriaItem' },
+
     observacao: { type: String },
     registro_atual: { type: Object },
     registro_anterior: { type: Object },
     registro_mov: { type: Object },
 
-    mov_livre:  { type: Number, enum: [0, 1], default: 1 },
-    mov_tracking:  { type: Number, enum: [0, 1], default: 1 },
+    mov_livre: { type: Number, enum: [0, 1], default: 1 },
+    mov_tracking: { type: Number, enum: [0, 1], default: 1 },
 
     mov_acao: { type: String },
-    mov_colaborador: { type: String , ref: 'Colaborador' },
-    mov_local: { type: String , ref: 'Localizacao' },
+    mov_colaborador: { type: String, ref: 'Colaborador' },
+    mov_local: { type: String, ref: 'Localizacao' },
     mov_data_hora: { type: Date },
 
 }, {

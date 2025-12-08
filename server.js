@@ -67,6 +67,10 @@ app.get('/item', (req, res) => {
 app.get('/categoria', (req, res) => {
   res.render('pages/categoria', { layout: 'layout' });
 });
+app.get('/categoria_item', (req, res) => {
+  res.render('pages/categoria_item', { layout: 'layout' });
+});
+
 app.get('/importar', (req, res) => {
   res.render('pages/importar', { layout: 'layout' });
 });

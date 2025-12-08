@@ -1,0 +1,156 @@
+<div class="modal-content">
+    <div class="modal-header">
+        <h5 class="modal-title h4" id="exampleModalFullscreenLabel">
+            Item
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    </div>
+    <div class="modal-body">
+
+        <ol class="breadcrumb d-none d-lg-flex mb-4">
+            <li class="breadcrumb-item">
+                <i class="bi bi-geo-alt lh-1"></i>
+                <a href="index.html" class="text-decoration-none">Item</a>
+            </li>
+            <li class="breadcrumb-item" aria-current="page">
+                <a href="index.html" class="text-decoration-none text-info">
+                    {{ $ctrl._editCategoria.descricao || 'Novo'}}
+                </a>
+            </li>
+        </ol>
+
+        <div class="row gx-3">
+            <div class="col-sm-12">
+                <div class="card mb-3">
+                    <div class="card-body">
+
+                        <!-- Tabs starts -->
+                        <ul class="nav nav-pills mb-3 gap-1" id="categorias-tab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link rounded-pill active " id="categorias-a-tab"
+                                    data-bs-toggle="pill" data-bs-target="#categorias-a" type="button" role="tab"
+                                    aria-controls="categorias-a" aria-selected="true">Cadastro</button>
+                            </li>
+   
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link rounded-pill" id="categorias-c-tab" data-bs-toggle="pill"
+                                    data-bs-target="#categorias-c" type="button" role="tab" aria-controls="categorias-c"
+                                    aria-selected="false">Itens</button>
+                            </li>
+
+                        </ul>
+                        <div class="tab-content" id="categorias-tabContent">
+                            <div class="tab-pane fade show active" id="categorias-a" role="tabpanel"
+                                aria-labelledby="categorias-a-tab" tabindex="0">
+
+                                <!-- Row start -->
+                                <div class="row gx-3">
+                                    <div class="col-xxl-6 col-sm-12">
+                                        <div class="border rounded-2 p-3 mb-3">
+
+                                            <!-- Row start -->
+                                            <div class="row gx-3">
+                                                <div class="col-xxl-2 col-sm-4">
+                                                    <div class="mb-2">
+                                                        <img src="{{ $ctrl._editCategoria._foto }}"
+                                                            class="img-fluid rounded-3 border border-2 border-primary"
+                                                            style="height: 120px;" alt="Admin Templates">
+                                                    </div>
+                                                    <button ng-click="$ctrl.onGetFoto()" type="button"
+                                                        class="btn btn-primary">Carregar
+                                                        Ícone</button>
+                                                    <div class="form-text">
+                                                        Máximo 1MB
+                                                    </div>
+                                                    <input type='file' id="imgLogo" style="display:none" />
+                                                </div>
+                                                <div class="col-xxl-10 col-sm-8">
+
+                                                    <!-- Row start -->
+                                                    <div class="row gx-3 mb-3">
+                                                        <div class="col-sm-9">
+                                                            <label for="displayName" class="form-label">
+                                                                Descrição
+                                                            </label>
+                                                            <input ng-model="$ctrl._editCategoria.descricao" type="text"
+                                                                ng-class="{'is-invalid': !$ctrl._editCategoria.descricao || $ctrl._editCategoria.descricao.trim() === ''}"
+                                                                class="form-control">
+                                                        </div>
+                                                       
+                                                        <div class="col-sm-3">
+                                                            <label for="displayName" class="form-label">
+                                                                Ativo
+                                                            </label>
+                                                            <select ng-model="$ctrl._editCategoria.ativo"
+                                                                class="form-select flex-grow-1" id="basicSelect"
+                                                                aria-label="Basic select example">
+                                                                <option value="0">Não</option>
+                                                                <option value="1">Sim</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+
+
+                                                    <div class="row gx-3 mb-0">
+                                                        <div class="col-sm-12">
+                                                            <label for="displayName" class="form-label">
+                                                                Observações
+                                                            </label>
+                                                            <textarea ng-model="$ctrl._editCategoria.observacao"
+                                                                class="form-control mb-3" rows="3">
+                                                            </textarea>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- Row end -->
+
+                                                </div>
+                                            </div>
+                                            <!-- Row end -->
+
+                                        </div>
+                                    </div>
+
+
+
+
+
+
+
+
+                                </div>
+                                <!-- Row end -->
+
+                            </div>
+                            
+                            <div class="tab-pane fade" id="categorias-c" role="tabpanel"
+                                aria-labelledby="categorias-c-tab" tabindex="0">
+
+                                <div class="border rounded-2 p-3 mb-3">
+
+                                </div>
+
+                            </div>
+
+
+
+                        </div>
+                        <!-- Tabs ends -->
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <div class="modal-footer">
+        <button ng-click="$ctrl.onExcluir()"  class="btn btn-danger me-3" type="button">Excluir</button>
+        <button ng-click="$ctrl.fechar()" class="btn btn-light" type="button">Fechar</button>
+
+        <button ng-click="$ctrl.onSalvar()" class="btn btn-primary" type="button">
+            <span role="status">Salvar</span>
+            <!-- <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+            <span role="status">Saving...</span> -->
+        </button>
+    </div>
+</div>

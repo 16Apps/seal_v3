@@ -230,7 +230,8 @@
               </a>
             </li>
 
-            <li class="treeview" ng-class="{'active current-page': isActive('alerta') || isActive('posicao') || isActive('interacao') || isActive('associacao') }">
+            <li class="treeview"
+              ng-class="{'active current-page': isActive('alerta') || isActive('posicao') || isActive('interacao') || isActive('associacao') }">
               <a href="#!">
                 <i class="bi bi-eye"></i>
                 <span class="menu-text">Monitoramento</span>
@@ -243,7 +244,8 @@
               </ul>
             </li>
 
-            <li ng-class="{'active current-page': isActive('categoria') || isActive('item') || isActive('importar')}"
+            <li
+              ng-class="{'active current-page': isActive('categoria') || isActive('item') || isActive('importar') || isActive('categoria_item')}"
               class="treeview">
               <a href="#!">
                 <i class="bi bi-ui-checks-grid"></i>
@@ -255,6 +257,9 @@
                 </li>
                 <li>
                   <a href="/categoria">Itens</a>
+                </li>
+                <li>
+                  <a href="/categoria_item">Categorias</a>
                 </li>
                 <li>
                   <a href="/importar">Importar</a>
@@ -366,6 +371,7 @@
 
   <script src="/controller/item.js"></script>
   <script src="/controller/categoria.js"></script>
+  <script src="/controller/categoria_item.js"></script>
   <script src="/controller/importar.js"></script>
   <script src="/controller/localizacao.js"></script>
   <script src="/controller/gateway.js"></script>
@@ -373,16 +379,20 @@
 
   <script src="/components/localizacao/localizacao.js"></script>
   <script src="/components/item/item.js"></script>
+  <script src="/components/categoriaitem/categoriaitem.js"></script>
+
   <script src="/components/gateway/gateway.js"></script>
   <script src="/components/posicao/posicao.js"></script>
   <script src="/components/alerta/alerta.js"></script>
   <script src="/components/interacao/interacao.js"></script>
-  
+
+
 
   <script src="/components/categoria/categoria.js"></script>
   <script src="/components/equipamento/equipamento.js"></script>
   <script src="/components/mapa/mapa.js"></script>
   <script src="/components/planta/planta.js"></script>
+
 
   <!-- *************
 			************ Vendor Js Files *************
