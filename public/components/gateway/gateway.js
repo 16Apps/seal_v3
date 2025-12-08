@@ -87,7 +87,7 @@ app.component('gateway', {
 
         };
 
-         $ctrl._modoFixo = true;
+        $ctrl._modoFixo = true;
 
       } else {
 
@@ -117,7 +117,7 @@ app.component('gateway', {
 
     $ctrl.onMudaModo = async function () {
       $timeout(() => {
-         $ctrl._editGateway.modo = $ctrl._modoFixo ? 'fixo' : 'movel';
+        $ctrl._editGateway.modo = $ctrl._modoFixo ? 'fixo' : 'movel';
       }, 10);
     };
 
@@ -177,7 +177,7 @@ app.component('gateway', {
               $ctrl._listNivel2 = res
               $ctrl._listNivel3 = [];
               $ctrl._listNivel4 = [];
-              
+
             } else if (nivel == '03') {
               $ctrl._listNivel3 = res
               $ctrl._listNivel4 = [];
@@ -240,6 +240,19 @@ app.component('gateway', {
         })
 
     };
+
+    $ctrl.onExcluir = function () {
+
+      uteisService.onQuestion("Atenção!", "Deseja realmente excluir esse Registro?")
+        .then(async (res) => {
+          if (res) {
+            uteisService.delBase('gateway/_id/' + $ctrl._editGateway._id)
+            uteisService.onToast('Registrado excuido!', 'success', 3000, 'top-end');
+            $ctrl.fechar();
+          }
+        })
+    }
+
 
     $ctrl.fechar = function () {
       // dispara o callback do pai

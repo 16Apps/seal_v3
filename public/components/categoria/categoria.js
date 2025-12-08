@@ -263,6 +263,20 @@ app.component('categoria', {
 
     };
 
+    $ctrl.onExcluir = function () {
+
+      uteisService.onQuestion("Atenção!", "Deseja realmente excluir esse Registro?")
+        .then(async (res) => {
+          if (res) {
+            uteisService.delBase('categoria/_id/' + $ctrl._editCategoria._id)
+            uteisService.onToast('Registrado excuido!', 'success', 3000, 'top-end');
+            $ctrl.fechar();
+          }
+        })
+    }
+
+
+
     $ctrl.fechar = function () {
       // dispara o callback do pai
       $ctrl.onFechar();

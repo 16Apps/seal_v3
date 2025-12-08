@@ -125,7 +125,7 @@ app.component('localizacao', {
           longitude: '',
 
           processo_app: '',
-          
+
           observacao: ''
         };
 
@@ -216,7 +216,7 @@ app.component('localizacao', {
 
       $timeout(() => {
         $ctrl['_editNivelSub' + nivel] = undefined;
-        
+
         if (nivel == "2") {
           $ctrl._editNivelSub3 = undefined;
           $ctrl._editNivelSub4 = undefined;
@@ -287,6 +287,18 @@ app.component('localizacao', {
         })
 
     };
+
+    $ctrl.onExcluir = function () {
+
+      uteisService.onQuestion("Atenção!", "Deseja realmente excluir esse Registro?")
+        .then(async (res) => {
+          if (res) {
+            uteisService.delBase('localizacao/_id/' + $ctrl._regNivel._id)
+            uteisService.onToast('Registrado excuido!', 'success', 3000, 'top-end');
+            $ctrl.fechar();
+          }
+        })
+    }
 
     $ctrl.onGetCEP = async function () {
 

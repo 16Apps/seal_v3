@@ -13,6 +13,7 @@ app.component('item', {
     var modalInstance = undefined;
 
     $ctrl._editItem = {};
+    $ctrl._labelsCategoria = undefined
     $ctrl._regConta = {};
     $ctrl._listCategorias = [];
     $ctrl._listNivel1 = [];
@@ -122,6 +123,7 @@ app.component('item', {
           }
 
           $ctrl.onCarregaPosicoes()
+          $ctrl.onLabelsCategoria();
 
         }, 10)
 
@@ -131,6 +133,17 @@ app.component('item', {
 
 
     };
+
+    $ctrl.onLabelsCategoria = async function () {
+
+      $timeout(async () => {
+        let iFind = $ctrl._listCategorias.findIndex((item) => item._id == $ctrl._editItem.id_categoria)
+        $ctrl._labelsCategoria = $ctrl._listCategorias[iFind]
+      }, 10)
+
+
+    };
+
 
     $ctrl.onBaseAssocicao = async function () {
 
@@ -432,6 +445,18 @@ app.component('item', {
         })
 
     };
+
+    $ctrl.onExcluir = function () {
+
+      uteisService.onQuestion("Atenção!", "Deseja realmente excluir esse Registro?")
+        .then(async (res) => {
+          if (res) {
+            uteisService.delBase('item/_id/' + $ctrl._editItem._id)
+            uteisService.onToast('Registrado excuido!', 'success', 3000, 'top-end');
+            $ctrl.fechar();
+          }
+        })
+    }
 
     $ctrl.fechar = function () {
       // dispara o callback do pai

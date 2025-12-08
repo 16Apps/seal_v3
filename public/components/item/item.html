@@ -86,6 +86,7 @@
 
                                                             <div class="input-group">
                                                                 <select ng-model="$ctrl._editItem.id_categoria"
+                                                                    ng-change="$ctrl.onLabelsCategoria()"
                                                                     ng-class="{'is-invalid': !$ctrl._editItem.id_categoria || $ctrl._editItem.id_categoria.trim() === ''}"
                                                                     class="form-select flex-grow-1" id="basicSelect"
                                                                     aria-label="Basic select example">
@@ -153,31 +154,31 @@
                                                         </div>
                                                     </div>
 
-                                                    <div class="row gx-3 mb-3">
-                                                        <div class="col-sm-3">
+                                                    <div ng-show="$ctrl._labelsCategoria!=undefined" class="row gx-3 mb-3">
+                                                        <div ng-show="$ctrl._labelsCategoria.labelInf1" class="col-sm-3">
                                                             <label for="displayName" class="form-label">
-                                                                Label 1
+                                                                {{ $ctrl._labelsCategoria.labelInf1 }}
                                                             </label>
                                                             <input ng-model="$ctrl._editItem.inf_compl1" type="text"
                                                                 class="form-control">
                                                         </div>
-                                                        <div class="col-sm-3">
+                                                        <div ng-show="$ctrl._labelsCategoria.labelInf2" class="col-sm-3">
                                                             <label for="displayName" class="form-label">
-                                                                Label 2
+                                                                {{ $ctrl._labelsCategoria.labelInf2 }}
                                                             </label>
                                                             <input ng-model="$ctrl._editItem.inf_compl2" type="text"
                                                                 class="form-control">
                                                         </div>
-                                                        <div class="col-sm-3">
+                                                        <div ng-show="$ctrl._labelsCategoria.labelInf3" class="col-sm-3">
                                                             <label for="displayName" class="form-label">
-                                                                Label 3
+                                                                {{ $ctrl._labelsCategoria.labelInf3 }}
                                                             </label>
                                                             <input ng-model="$ctrl._editItem.inf_compl3" type="text"
                                                                 class="form-control">
                                                         </div>
-                                                        <div class="col-sm-3">
+                                                        <div ng-show="$ctrl._labelsCategoria.labelInf4" class="col-sm-3">
                                                             <label for="displayName" class="form-label">
-                                                                Label 4
+                                                                {{ $ctrl._labelsCategoria.labelInf4 }}
                                                             </label>
                                                             <input ng-model="$ctrl._editItem.inf_compl4" type="text"
                                                                 class="form-control">
@@ -674,7 +675,7 @@
 
     </div>
     <div class="modal-footer">
-        <button class="btn btn-danger me-3" type="button">Excluir</button>
+        <button ng-click="$ctrl.onExcluir()"  class="btn btn-danger me-3" type="button">Excluir</button>
         <button ng-click="$ctrl.fechar()" class="btn btn-light" type="button">Fechar</button>
 
         <button ng-click="$ctrl.onSalvar()" class="btn btn-primary" type="button">
