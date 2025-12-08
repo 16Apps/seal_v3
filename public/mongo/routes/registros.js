@@ -589,7 +589,6 @@ module.exports = (app, dbConnection) => {
 
     async function verificarAlertasSair() {
 
-        return; 
         try {
             // 1️⃣ Buscar alertas com ação "sair"
             const alertas = await Alerta.find({ "acoes.acao": "sair", ativo: "1" });
@@ -633,11 +632,11 @@ module.exports = (app, dbConnection) => {
                         console.log("2::::" + item.mov_tracking + ":::"+ novoStatus)
                     }
                     if (item.mov_tracking === 1) {
-                        novoStatus = diffSegundos > tempoLimiteSegundos ? 'perca' : 'ativo';
+                        novoStatus = diffSegundos > tempoLimiteSegundos ? 'perda' : 'ativo';
                     };
 
                     // 🔍 Caso esteja em perda de sinal, verificar registro e correlacionar colaborador
-                    if (novoStatus === 'perca') {
+                    if (novoStatus === 'perda') {
 
                         // ✍️ Atualiza status do item se mudou
                         if (item.status !== novoStatus) {
@@ -879,7 +878,7 @@ module.exports = (app, dbConnection) => {
                         // total de perdas
                         perca: {
                             $sum: {
-                                $cond: [{ $eq: ['$status', 'perca'] }, 1, 0]
+                                $cond: [{ $eq: ['$status', 'perda'] }, 1, 0]
                             }
                         }
                     }
@@ -1116,7 +1115,7 @@ module.exports = (app, dbConnection) => {
                         },
                         perca: {
                             $sum: {
-                                $cond: [{ $eq: ['$status', 'perca'] }, 1, 0]
+                                $cond: [{ $eq: ['$status', 'perda'] }, 1, 0]
                             }
                         }
                     }

@@ -6,7 +6,7 @@ const ItemSchema = new mongoose.Schema({
     id_conta: { type: String, ref: 'Conta' },
     id_categoria: { type: String, ref: 'Categoria' },
     id_externo: { type: String },
-    status: { type: String, enum: ['ativo', 'inativo', 'manutencao', 'descartado', 'emtransporte', 'perca'], default: 'ativo' },
+    status: { type: String, enum: ['ativo', 'inativo', 'manutencao', 'descartado', 'emtransporte', 'perca', 'perda'], default: 'ativo' },
     foto: { type: String },
     tag: { type: String },
     tag_secundaria: { type: String },
