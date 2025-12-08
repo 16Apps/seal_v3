@@ -620,13 +620,16 @@ module.exports = (app, dbConnection) => {
                     const dataPermanecia = item.updatedAt
                     if (!dataPermanecia) continue;
 
-                    if (item.tag == 'A-040') {
+                    if (item.tag == 'C3:00:00:44:8A:D6') {
                         console.log("1::::" + item.status)
                     }
 
                     let novoStatus = item.status;
                     const diffSegundos = agora.diff(moment(dataPermanecia), 'seconds');
 
+                    if(item.tag == 'C3:00:00:44:8A:D6'){
+                        console.log("2::::" + item.mov_tracking + ":::"+ novoStatus)
+                    }
                     if (item.mov_tracking === 1) {
                         novoStatus = diffSegundos > tempoLimiteSegundos ? 'perca' : 'ativo';
                     };
