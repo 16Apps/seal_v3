@@ -98,45 +98,45 @@ app.service('uteisService', ['$rootScope', '$http', function ($rootScope, $http)
 
   // interação
   //  -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_
-this.onToast = function (msg, icon, time, position = 'bottom') {
-  const Toast = Swal.mixin({
-    toast: true,
-    position: position,
-    showConfirmButton: false,
-    timer: time,
-    timerProgressBar: true,
-    background: '#1e293b', // fundo escuro (Slate)
-    color: '#f8fafc', // texto claro
-    customClass: {
-      popup: 'toast-dark', // classe custom opcional
-    },
-    didOpen: (toast) => {
-      toast.addEventListener('mouseenter', Swal.stopTimer)
-      toast.addEventListener('mouseleave', Swal.resumeTimer)
-    }
-  });
+  this.onToast = function (msg, icon, time, position = 'bottom') {
+    const Toast = Swal.mixin({
+      toast: true,
+      position: position,
+      showConfirmButton: false,
+      timer: time,
+      timerProgressBar: true,
+      background: '#1e293b', // fundo escuro (Slate)
+      color: '#f8fafc', // texto claro
+      customClass: {
+        popup: 'toast-dark', // classe custom opcional
+      },
+      didOpen: (toast) => {
+        toast.addEventListener('mouseenter', Swal.stopTimer)
+        toast.addEventListener('mouseleave', Swal.resumeTimer)
+      }
+    });
 
-  Toast.fire({
-    icon: icon,
-    title: msg
-  });
-};
+    Toast.fire({
+      icon: icon,
+      title: msg
+    });
+  };
 
-this.onMsgBox = function (titulo, msg, tipo) {
-  Swal.fire({
-    title: titulo,
-    text: msg,
-    icon: tipo,
-    background: '#1e293b', // Fundo escuro elegante
-    color: '#f8fafc', // Texto claro
-    confirmButtonColor: '#3b82f6', // Azul brilhante (coerente com seu tema)
-    customClass: {
-      popup: 'msgbox-dark',
-      title: 'msgbox-title',
-      confirmButton: 'msgbox-confirm'
-    }
-  });
-};
+  this.onMsgBox = function (titulo, msg, tipo) {
+    Swal.fire({
+      title: titulo,
+      text: msg,
+      icon: tipo,
+      background: '#1e293b', // Fundo escuro elegante
+      color: '#f8fafc', // Texto claro
+      confirmButtonColor: '#3b82f6', // Azul brilhante (coerente com seu tema)
+      customClass: {
+        popup: 'msgbox-dark',
+        title: 'msgbox-title',
+        confirmButton: 'msgbox-confirm'
+      }
+    });
+  };
 
   this.onQuestion = function (titulo, msg) {
     return new Promise((resolve, reject) => {
@@ -148,7 +148,14 @@ this.onMsgBox = function (titulo, msg, tipo) {
         confirmButtonColor: '#689F38',
         confirmButtonText: 'Sim, desejo',
         cancelButtonColor: '#E53935',
-        cancelButtonText: 'Não'
+        cancelButtonText: 'Não',
+        background: '#1e293b', // Fundo escuro elegante
+        color: '#f8fafc', // Texto claro
+        customClass: {
+          popup: 'msgbox-dark',
+          title: 'msgbox-title',
+          confirmButton: 'msgbox-confirm'
+        }
       }).then((result) => {
         if (result.isConfirmed) {
           resolve(true);

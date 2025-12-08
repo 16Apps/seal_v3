@@ -25,6 +25,7 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService) {
 
         let _url = '/_bd?c=item&id_conta=' + $scope._regConta._id;
         _url += '&pop=id_categoria&pop=id_nivel_loc1&pop=id_nivel_loc2&pop=id_nivel_loc3&pop=id_nivel_loc4';
+        _url += '&pop=id_categoria_reg1'
 
         await uteisService.getBase(_url)
             .then((res) => {
@@ -75,6 +76,8 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService) {
 
             if (_acao == 'edit') {
                 _tratComponente.id_categoria = _tratComponente.id_categoria ? _tratComponente.id_categoria._id : null
+                _tratComponente.id_categoria_reg1 = _tratComponente.id_categoria_reg1 ? _tratComponente.id_categoria_reg1._id : null
+
                 _tratComponente.id_nivel_loc1 = _tratComponente.id_nivel_loc1 ? _tratComponente.id_nivel_loc1._id : null
                 _tratComponente.id_nivel_loc2 = _tratComponente.id_nivel_loc2 ? _tratComponente.id_nivel_loc2._id : null
                 _tratComponente.id_nivel_loc3 = _tratComponente.id_nivel_loc3 ? _tratComponente.id_nivel_loc3._id : null

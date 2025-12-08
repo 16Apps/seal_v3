@@ -438,6 +438,19 @@ app.component('posicao', {
 
     };
 
+    $ctrl.onExcluir = function () {
+
+      uteisService.onQuestion("Atenção!", "Deseja realmente excluir esse Registro?")
+        .then(async (res) => {
+          if (res) {
+            uteisService.delBase('posicao/_id/' + $ctrl._editPosicao._id)
+            uteisService.onToast('Registrado excuido!', 'success', 3000, 'top-end');
+            $ctrl.fechar();
+          }
+        })
+    }
+
+
     $ctrl.idItemDescricao = function (_idItem, _idCategoria, desc) {
 
       if (_idItem != '') {
