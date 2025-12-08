@@ -588,6 +588,8 @@ module.exports = (app, dbConnection) => {
 
 
     async function verificarAlertasSair() {
+
+        return; 
         try {
             // 1️⃣ Buscar alertas com ação "sair"
             const alertas = await Alerta.find({ "acoes.acao": "sair", ativo: "1" });
