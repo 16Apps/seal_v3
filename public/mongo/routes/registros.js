@@ -628,8 +628,8 @@ module.exports = (app, dbConnection) => {
                     let novoStatus = item.status;
                     const diffSegundos = agora.diff(moment(dataPermanecia), 'seconds');
 
-                    if(item.tag == 'C3:00:00:44:8A:D6'){
-                        console.log("2::::" + item.mov_tracking + ":::"+ novoStatus)
+                    if (item.tag == 'C3:00:00:44:8A:D6') {
+                        console.log("2::::" + item.mov_tracking + ":::" + novoStatus)
                     }
                     if (item.mov_tracking === 1) {
                         novoStatus = diffSegundos > tempoLimiteSegundos ? 'perda' : 'ativo';
@@ -1336,12 +1336,45 @@ module.exports = (app, dbConnection) => {
                 { $match: { 'itens.id_item': id_item } },
 
                 // Lookup da localização origem
+                //{
+                //     $lookup: {
+                //         from: 'localizacaos',
+                //         localField: 'id_nivel_loc1',
+                //         foreignField: '_id',
+                //         as: 'localizacao_origem'
+                //     }
+                // },
+
                 {
                     $lookup: {
                         from: 'localizacaos',
                         localField: 'id_nivel_loc1',
                         foreignField: '_id',
-                        as: 'localizacao_origem'
+                        as: 'origem_n1'
+                    }
+                },
+                {
+                    $lookup: {
+                        from: 'localizacaos',
+                        localField: 'id_nivel_loc2',
+                        foreignField: '_id',
+                        as: 'origem_n2'
+                    }
+                },
+                {
+                    $lookup: {
+                        from: 'localizacaos',
+                        localField: 'id_nivel_loc3',
+                        foreignField: '_id',
+                        as: 'origem_n3'
+                    }
+                },
+                {
+                    $lookup: {
+                        from: 'localizacaos',
+                        localField: 'id_nivel_loc4',
+                        foreignField: '_id',
+                        as: 'origem_n4'
                     }
                 },
 
@@ -1351,11 +1384,35 @@ module.exports = (app, dbConnection) => {
                         from: 'localizacaos',
                         localField: 'id_nivel_loc1_destino',
                         foreignField: '_id',
-                        as: 'localizacao_destino'
+                        as: 'destino_n1'
+                    }
+                },
+                {
+                    $lookup: {
+                        from: 'localizacaos',
+                        localField: 'id_nivel_loc2_destino',
+                        foreignField: '_id',
+                        as: 'destino_n2'
+                    }
+                },
+                {
+                    $lookup: {
+                        from: 'localizacaos',
+                        localField: 'id_nivel_loc3_destino',
+                        foreignField: '_id',
+                        as: 'destino_n3'
+                    }
+                },
+                {
+                    $lookup: {
+                        from: 'localizacaos',
+                        localField: 'id_nivel_loc4_destino',
+                        foreignField: '_id',
+                        as: 'destino_n4'
                     }
                 },
 
-                // Lookup do gateway do item
+                // Lookup do gateway
                 {
                     $lookup: {
                         from: 'gateways',
@@ -1365,7 +1422,7 @@ module.exports = (app, dbConnection) => {
                     }
                 },
 
-                // Lookup do colaborador do item
+                // Lookup do colaborador
                 {
                     $lookup: {
                         from: 'colaboradors',
@@ -1375,7 +1432,51 @@ module.exports = (app, dbConnection) => {
                     }
                 },
 
-                // Reduzir arrays simples
+                // Lookup da categoria principal
+                {
+                    $lookup: {
+                        from: 'categorias',
+                        localField: 'itens.id_categoria',
+                        foreignField: '_id',
+                        as: 'categoria'
+                    }
+                },
+
+                // Lookup dos níveis (CategoriaItem)
+                {
+                    $lookup: {
+                        from: 'categoriaitems',
+                        localField: 'categoria.id_nivel_cat1',
+                        foreignField: '_id',
+                        as: 'cat_nivel_1'
+                    }
+                },
+                {
+                    $lookup: {
+                        from: 'categoriaitems',
+                        localField: 'categoria.id_nivel_cat2',
+                        foreignField: '_id',
+                        as: 'cat_nivel_2'
+                    }
+                },
+                {
+                    $lookup: {
+                        from: 'categoriaitems',
+                        localField: 'categoria.id_nivel_cat3',
+                        foreignField: '_id',
+                        as: 'cat_nivel_3'
+                    }
+                },
+                {
+                    $lookup: {
+                        from: 'categoriaitems',
+                        localField: 'categoria.id_nivel_cat4',
+                        foreignField: '_id',
+                        as: 'cat_nivel_4'
+                    }
+                },
+
+                // Reduzir arrays
                 {
                     $project: {
                         _id: 1,
@@ -1384,14 +1485,33 @@ module.exports = (app, dbConnection) => {
                         descricao: 1,
 
                         // Origem / Destino
-                        localizacao_origem: { $arrayElemAt: ['$localizacao_origem.descricao', 0] },
-                        localizacao_destino: { $arrayElemAt: ['$localizacao_destino.descricao', 0] },
+                        localizacao_origem: {
+                            nivel1: { $arrayElemAt: ['$origem_n1.descricao', 0] },
+                            nivel2: { $arrayElemAt: ['$origem_n2.descricao', 0] },
+                            nivel3: { $arrayElemAt: ['$origem_n3.descricao', 0] },
+                            nivel4: { $arrayElemAt: ['$origem_n4.descricao', 0] }
+                        },
 
+                        localizacao_destino: {
+                            nivel1: { $arrayElemAt: ['$destino_n1.descricao', 0] },
+                            nivel2: { $arrayElemAt: ['$destino_n2.descricao', 0] },
+                            nivel3: { $arrayElemAt: ['$destino_n3.descricao', 0] },
+                            nivel4: { $arrayElemAt: ['$destino_n4.descricao', 0] }
+                        },
                         // Gateway
                         gateway: { $arrayElemAt: ['$gateway.descricao', 0] },
 
                         // Colaborador
                         colaborador: { $arrayElemAt: ['$colaborador.nome', 0] },
+
+                        // Categoria e níveis
+                        categoria: {
+                            descricao: { $arrayElemAt: ['$categoria.descricao', 0] },
+                            nivel1: { $arrayElemAt: ['$cat_nivel_1.descricao', 0] },
+                            nivel2: { $arrayElemAt: ['$cat_nivel_2.descricao', 0] },
+                            nivel3: { $arrayElemAt: ['$cat_nivel_3.descricao', 0] },
+                            nivel4: { $arrayElemAt: ['$cat_nivel_4.descricao', 0] },
+                        },
 
                         // Dados do item
                         item: {

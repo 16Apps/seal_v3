@@ -614,8 +614,14 @@
                                                 <tbody>
                                                     <tr ng-repeat="item in $ctrl._listPosicoes track by $index">
 
-                                                        <td class="text-white fw-semibold">
-                                                            {{ item.id_doc }}
+                                                        <td>
+                                                            <span class="text-white fw-semibold">
+                                                                {{ item.categoria[0].descricao }}
+                                                            </span>
+                                                            <br>
+                                                            <span>
+                                                                {{ item.id_doc }}
+                                                            </span>
                                                         </td>
                                                         <td>
                                                             <span class="text-white fw-semibold">
@@ -623,7 +629,10 @@
                                                             </span>
                                                             <br>
                                                             <span>
-                                                                {{ item.localizacao_origem }}
+                                                                {{ item.localizacao_origem.nivel1 ?   item.localizacao_origem.nivel1 : '' }}
+                                                                {{ item.localizacao_origem.nivel2 ?  ' - ' + item.localizacao_origem.nivel2 : '' }}
+                                                                {{ item.localizacao_origem.nivel3 ?  ' - ' + item.localizacao_origem.nivel3 : '' }}
+                                                                {{ item.localizacao_origem.nivel4 ?  ' - ' + item.localizacao_origem.nivel4 : '' }}
                                                             </span>
                                                         </td>
                                                         <td>
@@ -633,7 +642,10 @@
                                                             
                                                             <br>
                                                             <span>
-                                                                {{ item.localizacao_destino }}
+                                                                {{ item.localizacao_destino.nivel1 ?   item.localizacao_destino.nivel1 : '' }}
+                                                                {{ item.localizacao_destino.nivel2 ?  ' - ' + item.localizacao_destino.nivel2 : '' }}
+                                                                {{ item.localizacao_destino.nivel3 ?  ' - ' + item.localizacao_destino.nivel3 : '' }}
+                                                                {{ item.localizacao_destino.nivel4 ?  ' - ' + item.localizacao_destino.nivel4 : '' }}
                                                             </span>
                                                         </td>
                                                         <td class="text-white fw-semibold">
