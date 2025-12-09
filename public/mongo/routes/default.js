@@ -1,4 +1,5 @@
 const categoria = require("../models/categoria");
+const categoria_item = require("../models/categoria_item");
 const colaborador = require("../models/colaborador");
 const conta = require("../models/conta");
 const funcao = require("../models/funcao");

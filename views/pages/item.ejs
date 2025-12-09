@@ -18,7 +18,7 @@
       <!-- Filter start -->
       <div class="ms-auto d-flex flex-row gap-1 ">
         <div class="search-container d-lg-flex d-none">
-          <input type="text" class="form-control" id="searchData" placeholder="Pesquisar">
+          <input ng-model="_pesquisa" ng-change="onPesquisa()" type="text" class="form-control" id="searchData" placeholder="Pesquisar">
           <i class="bi bi-search"></i>
         </div>
         <button ng-click="onItem('add', undefined)" type="button"
@@ -59,14 +59,25 @@
         }"></i>
                         </th>
 
+                        <th class="w-10 sortable" ng-click="sortBy('inf_compl1')">
+                          Inf. Compl.
+                          <i class="bi" ng-class="{
+              'bi-caret-up-fill': sortField=='inf_compl1' && !sortReverse,
+              'bi-caret-down-fill': sortField=='inf_compl1' && sortReverse
+        }"></i>
+                        </th>
 
-                        <th class="w-20 sortable" ng-click="sortBy('id_categoria_reg1.descricao')">
+
+                        <th class="w-10 sortable" ng-click="sortBy('id_categoria_reg1.descricao')">
                           Categoria
                           <i class="bi" ng-class="{
               'bi-caret-up-fill': sortField=='id_categoria_reg1.descricao' && !sortReverse,
               'bi-caret-down-fill': sortField=='id_categoria_reg1.descricao' && sortReverse
         }"></i>
                         </th>
+
+                        
+
 
 
                         <th class="w-40 sortable" ng-click="sortBy('tag')">
@@ -106,6 +117,8 @@
                           <i class="bi bi-check me-1 "></i>{{ item.status }}
                         </span>
                       </td>
+
+                      <td>{{ item.inf_compl1 }}</td>
 
                       <td>{{ item.id_categoria_reg1.descricao }}</td>
 

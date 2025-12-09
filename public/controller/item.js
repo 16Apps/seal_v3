@@ -3,6 +3,8 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService) {
     $scope._regConta = {};
     $scope._regColaborador = []
     $scope._listItens = []
+    $scope._listItensBase = []
+    $scope._pesquisa = ''
     $scope.sortField = 'descricao';
     $scope.sortReverse = false;
 
@@ -42,12 +44,53 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService) {
 
 
                 $scope._listItens = res
+                $scope._listItensBase = res
+
+                console.log(JSON.stringify(res))
                 $scope.$apply();
             })
             .catch((error) => {
                 uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
             });
     };
+
+    $scope.onPesquisa = async function () {
+
+        const pesquisa = $scope._pesquisa
+            ? $scope._pesquisa.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+            : '';
+
+        if (pesquisa !== '') {
+            $scope._listItens = $scope._listItensBase.filter((item) => {
+
+                const norm = (v) =>
+                    (v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+                // Campos da pesquisa
+                const catDesc = norm(item.id_categoria?.descricao);
+                const tag = norm(item.tag);
+                const inf1 = norm(item.inf_compl1);
+                const inf2 = norm(item.inf_compl2);
+                const inf3 = norm(item.inf_compl3);
+                const inf4 = norm(item.inf_compl4);
+
+                return (
+                    catDesc.includes(pesquisa) ||
+                    tag.includes(pesquisa) ||
+                    inf1.includes(pesquisa) ||
+                    inf2.includes(pesquisa) ||
+                    inf3.includes(pesquisa) ||
+                    inf4.includes(pesquisa)
+                );
+            });
+
+        } else {
+            $scope._listItens = $scope._listItensBase;
+        }
+
+    }
+
+
 
     $scope.sortBy = function (field) {
         if ($scope.sortField === field) {
