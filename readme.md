@@ -33,4 +33,3 @@
 
   $ heroku logs --tail -a seal
   
-https://itour-53fabe9a3dca.herokuapp.com/

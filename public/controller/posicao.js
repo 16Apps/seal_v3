@@ -93,9 +93,11 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService) {
 
     };
 
-    $scope.formataDataHora = function (data) {
-        const date = moment(data, 'YYYY-MM-DD HH:mm:ss'); // Parse the complete date and time
-        return date.format('DDMMM HH[h]mm'); // Format the date and time
-    };
+$scope.formataDataHora = function (data) {
+    const date = moment(data, 'YYYY-MM-DD HH:mm:ss')
+        .subtract(3, 'hours'); // Remove 3 horas
+
+    return date.format('DDMMM HH[h]mm');
+};
 
 });

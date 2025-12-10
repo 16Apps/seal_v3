@@ -59,11 +59,11 @@
         }"></i>
                         </th>
 
-                        <th class="w-10 sortable" ng-click="sortBy('inf_compl1')">
-                          Inf. Compl.
+                        <th class="w-10 sortable" ng-click="sortBy('id_externo')">
+                          N. Série
                           <i class="bi" ng-class="{
-              'bi-caret-up-fill': sortField=='inf_compl1' && !sortReverse,
-              'bi-caret-down-fill': sortField=='inf_compl1' && sortReverse
+              'bi-caret-up-fill': sortField=='id_externo' && !sortReverse,
+              'bi-caret-down-fill': sortField=='id_externo' && sortReverse
         }"></i>
                         </th>
 
@@ -118,7 +118,7 @@
                         </span>
                       </td>
 
-                      <td>{{ item.inf_compl1 }}</td>
+                      <td>{{ item.id_externo }}</td>
 
                       <td>{{ item.id_categoria_reg1.descricao }}</td>
 
