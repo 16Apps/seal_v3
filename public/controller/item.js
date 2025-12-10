@@ -69,6 +69,8 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService) {
                 // Campos da pesquisa
                 const catDesc = norm(item.id_categoria?.descricao);
                 const tag = norm(item.tag);
+                const id_externo = norm(item.id_externo);
+
                 const inf1 = norm(item.inf_compl1);
                 const inf2 = norm(item.inf_compl2);
                 const inf3 = norm(item.inf_compl3);
@@ -76,6 +78,7 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService) {
 
                 return (
                     catDesc.includes(pesquisa) ||
+                    id_externo.includes(pesquisa) ||
                     tag.includes(pesquisa) ||
                     inf1.includes(pesquisa) ||
                     inf2.includes(pesquisa) ||
