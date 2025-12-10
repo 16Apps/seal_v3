@@ -8,7 +8,7 @@
       <ol class="breadcrumb d-none d-lg-flex">
         <li class="breadcrumb-item">
           <i class="bi bi-house lh-1"></i>
-          <a  class="text-decoration-none">Gestão de Itens</a>
+          <a class="text-decoration-none">Gestão de Itens</a>
         </li>
         <li class="breadcrumb-item" aria-current="page">Itens</li>
       </ol>
@@ -22,6 +22,9 @@
         </div>
         <button ng-click="onCategoria('add', undefined)" type="button"
           class="btn btn-warning btn-sm ms-3 text-dark">Novo</button>
+        <button ng-click="onImportar()" type="button" class="btn btn-info btn-sm ms-3 text-white">
+          Importar
+        </button>
       </div>
       <!-- Filter end -->
 
@@ -93,6 +96,68 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div class="offcanvas offcanvas-bottom" tabindex="-1" id="offcanvasImportar"
+        aria-labelledby="offcanvasBottomLabel" style="height: 550px !important;">
+        <div class="offcanvas-header">
+          <h5 class="offcanvas-title" id="offcanvasBottomLabel">Importar</h5>
+          <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+
+          <div class="ms-auto d-flex flex-row gap-1">
+            <div class="search-container d-lg-flex d-none">
+              <input type="file" id="fileImport" accept=".csv" class="form-control"
+                onchange="angular.element(this).scope().onLerArquivoImportacao(event)">
+            </div>
+
+            <button ng-click="onExecutarImportacao()" type="button" class="btn btn-warning btn-sm ms-3 text-dark">
+              <i class="bi bi-box-arrow-in-down me-1"></i> Importar
+            </button>
+          </div>
+
+          <div class="row gx-3">
+            <div class="col-xxl-12">
+              <div class="card mb-3">
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <div class="table-outer">
+                      <table class="table align-middle table-hover m-0">
+                        <thead>
+                          <tr>
+                            <th>Descrição</th>
+                            <th class="w-30"></th>
+                            <th class="w-40">EAN</th>
+                            <th class="w-30">Labels</th>    
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr ng-repeat="item in _dadosImportacao">
+                            <td>
+                              <img class="rounded-circle img-3x me-2" src="{{ item._foto }}" alt="Wrapmarket" />
+                            </td>
+                            <td>{{ item.descricao }}</td>
+                            <td>{{ item.ean}}</td>
+                            <td>
+                              {{ item.labelInf1}}
+                              {{ item.labelInf2 ? ' - ' + item.labelInf2 : '' }}
+                              {{ item.labelInf3 ? ' - ' + item.labelInf3 : '' }}
+                              {{ item.labelInf4 ? ' - ' + item.labelInf4 : '' }}
+                              {{ item.labelInf5 ? ' - ' + item.labelInf5 : '' }}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+
         </div>
       </div>
 

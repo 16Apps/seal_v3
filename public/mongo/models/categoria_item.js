@@ -8,10 +8,18 @@ const CategoriaItemSchema = new mongoose.Schema({
     ativo: { type: Number, enum: [0, 1], default: 1 },
     descricao: { type: String },
     foto: { type: String },
+    
+
+    codif_epc: { type: String },
+    codif_epc_inicial: { type: String },
+    codif_epc_comprimento: { type: String },
     tag: { type: String },
+    
     observacao: { type: String },
 }, {
     versionKey: false
 });
+
+
 
 module.exports = mongoose.model('CategoriaItem', CategoriaItemSchema);

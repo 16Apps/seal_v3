@@ -49,6 +49,9 @@ app.component('categoriaitem', {
           descricao: '',
           foto: '',
           _foto: '../assets/images/icon_cadastro.fw.png',
+          codif_epc: 'manual',
+          codif_epc_inicial: '',
+          codif_epc_comprimento: '',
           tag: '',
           observacao: ''
         };

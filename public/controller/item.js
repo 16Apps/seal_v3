@@ -102,6 +102,10 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService) {
     }
 
 
+  
+
+
+
 
     $scope.sortBy = function (field) {
         if ($scope.sortField === field) {

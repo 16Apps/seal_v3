@@ -1543,4 +1543,71 @@ module.exports = (app, dbConnection) => {
     });
 
 
+    app.post('/_bd/categoria/importar', async (req, res) => {
+ 
+        const lista = req.body; // array de objetos enviados
+        const id_conta = req.body[0].id_conta;
+
+        console.log(req.body.length + " itens recebidos para importação");
+
+        if (!Array.isArray(lista)) {
+            return res.status(400).json({ erro: "Lista inválida" });
+        }
+
+        let criados = 0;
+        let atualizados = 0;
+        let erros = [];
+
+        for (const item of lista) {
+            try {
+                let filter = {
+                    id_conta: id_conta,
+                    ean: item.ean
+                };
+
+                let update = {
+                    descricao: item.descricao,
+                    observacao: item.observacao || '',
+                    foto: item.foto || '',
+                    labelInf1: item.labelInf1 || '',
+                    labelInf2: item.labelInf2 || '',
+                    labelInf3: item.labelInf3 || '',
+                    labelInf4: item.labelInf4 || '',
+                    labelInf5: item.labelInf5 || '',
+                    estoque_minimo: item.estoque_minimo || 0,
+                    estoque_maximo: item.estoque_maximo || 0,
+                    valor: item.valor || 0,
+                    id_nivel_cat1: item.id_nivel_cat1 || '',
+                    id_nivel_cat2: item.id_nivel_cat2 || '',
+                    id_nivel_cat3: item.id_nivel_cat3 || '',
+                    id_nivel_cat4: item.id_nivel_cat4 || ''
+                };
+
+                let result = await Categoria.findOneAndUpdate(
+                    filter,
+                    update,
+                    { new: true, upsert: true, setDefaultsOnInsert: true }
+                );
+
+                if (result.createdAt === result.updatedAt) {
+                    criados++;
+                } else {
+                    atualizados++;
+                }
+
+            } catch (err) {
+                erros.push({ item: item.ean, erro: err.message });
+            }
+        }
+
+        return res.json({
+            status: "ok",
+            total_recebidos: lista.length,
+            criados,
+            atualizados,
+            erros
+        });
+    });
+
+
 }
