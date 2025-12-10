@@ -489,10 +489,15 @@ app.component('item', {
       $ctrl.onFechar();
     };
 
+
+
     $ctrl.formataDataHora = function (data) {
-      const date = moment(data, 'YYYY-MM-DD HH:mm:ss'); // Parse the complete date and time
-      return date.format('DDMMM HH[h]mm'); // Format the date and time
+      const date = moment(data, 'YYYY-MM-DD HH:mm:ss')
+        .subtract(3, 'hours'); // Remove 3 horas
+
+      return date.format('DDMMM HH[h]mm');
     };
+
 
   },
   templateUrl: 'components/item/item.html'
