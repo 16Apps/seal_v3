@@ -70,6 +70,10 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService) {
                 const catDesc = norm(item.id_categoria?.descricao);
                 const tag = norm(item.tag);
                 const id_externo = norm(item.id_externo);
+                const nv1Desc = norm(item.id_nivel_loc1?.descricao);
+                const nv2Desc = norm(item.id_nivel_loc2?.descricao);
+                const nv3Desc = norm(item.id_nivel_loc3?.descricao);
+                const nv4Desc = norm(item.id_nivel_loc4?.descricao);
 
                 const inf1 = norm(item.inf_compl1);
                 const inf2 = norm(item.inf_compl2);
@@ -83,7 +87,11 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService) {
                     inf1.includes(pesquisa) ||
                     inf2.includes(pesquisa) ||
                     inf3.includes(pesquisa) ||
-                    inf4.includes(pesquisa)
+                    inf4.includes(pesquisa)||
+                    nv1Desc.includes(pesquisa)||
+                    nv2Desc.includes(pesquisa)||
+                    nv3Desc.includes(pesquisa)||
+                    nv4Desc.includes(pesquisa)
                 );
             });
 
