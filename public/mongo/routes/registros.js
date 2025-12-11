@@ -348,12 +348,13 @@ module.exports = (app, dbConnection) => {
                 console.log('✔ Associado Qnt '+ regAssociado.length +'::' + associado.id_categoria)
 
                 let obj = associado.toObject();
-                obj.encontrado = 0;
+                obj.encontrado = null;
+                 obj.encontrado_categoria = 0;
 
                 if (regAssociado.length > 0) {
 
                     associado.encontrado = regAssociado.length;
-                    obj.encontrado = regAssociado.length;
+                    obj.encontrado_categoria = regAssociado.length;;
 
                     if (regAssociado.length >= associado.quantidade) {
                         console.log(`   ✔ Associado ${associado.id_item} encontrado no intervalo`);
