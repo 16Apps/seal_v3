@@ -28,7 +28,8 @@ const RegistroSchema = new mongoose.Schema({
                 id_item: { type: String, ref: 'Item' },
                 id_categoria: { type: String, ref: 'Categoria' },
                 quantidade: { type: Number },
-                encontrado: { type: Date }   
+                encontrado: { type: Date }  ,
+                encontrado_categoria: { type: Number }   
             }
         ],
         default: []

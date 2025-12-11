@@ -133,6 +133,8 @@ module.exports = (app, dbConnection) => {
             console.log("..................." + '_addReg')
             _checkAlerta(novoRegistro)
             _checkInteracao('entrada', novoRegistro)
+
+            console.log("_checkAssociacao:1");
             _checkAssociacao('entrada', novoRegistro)
 
         };
@@ -146,6 +148,8 @@ module.exports = (app, dbConnection) => {
             item.id_nivel_loc4 = id_nivel_loc4;
             item.registro_atual = _reg
             await item.save();
+
+            console.log("_checkAssociacao:2");
 
             // _checkAssociacao('neutro', _reg)
 
@@ -247,6 +251,7 @@ module.exports = (app, dbConnection) => {
 
     async function _checkAssociacao(movimento, _reg) {
 
+        let tpAssociacao = 'item';
 
         function delay(ms) {
             return new Promise(resolve => setTimeout(resolve, ms));
@@ -259,59 +264,124 @@ module.exports = (app, dbConnection) => {
         });
 
         if (!associacao) {
-            return; // item sem associação
+
+            tpAssociacao = 'categoria';
+
+            console.log('✔ Associado Qnt '+ _reg.id_categoria)
+
+            // 1️⃣ 1️⃣ Verifica se a CATEGORIA LIDA possui associação
+            associacao = await Associacao.findOne({
+                id_categoria: _reg.id_categoria,
+                ativo: '1'
+            });
+
+            if (!associacao) {
+                return; // item sem associação
+            }
+
         }
 
         console.log("_checkAssociacao:", associacao._id);
 
         // 🕒 Aguarda 6 segundos para garantir que as outras leituras chegaram
-        console.log("⏳ Associação encontrada, aguardando 6s para confirmar leituras...");
-        await delay(8000);
+        console.log("⏳ Associação encontrada, aguardando 6s para confirmar leituras..." + tpAssociacao);
+
 
         // 2️⃣ Define intervalo de ±5 segundos
         let base = new Date(_reg.data_permanecia);
-        let inicio = new Date(base.getTime() - 5000);
-        let fim = new Date(base.getTime() + 5000);
+        let inicio = new Date(base.getTime() - (associacao.intervalo * 1000) || 5000);
+        let fim = new Date(base.getTime() + (associacao.intervalo * 1000) || 5000);
+        await delay((associacao.intervalo * 1000) + 3000 || 8000);
 
         // 3️⃣ Percorre os itens associados
         for (let associado of associacao.associados) {
 
-            if (!associado.id_item || associado.id_item === "") continue;
+            if (tpAssociacao == 'item') {
+                if (!associado.id_item || associado.id_item === "") continue;
 
-            console.log(" ➡ Verificando associado:", associado.id_item);
+                // Verifica leitura do item associado
+                let regAssociado = await Registro.findOne({
+                    id_item: associado.id_item,
+                    id_gateway: _reg.id_gateway,
+                    data_permanecia: { $gte: inicio, $lte: fim }
+                });
 
-            // Verifica leitura do item associado
-            let regAssociado = await Registro.findOne({
-                id_item: associado.id_item,
-                data_permanecia: { $gte: inicio, $lte: fim }
-            });
+                let obj = associado.toObject();
 
-            let obj = associado.toObject();
-            obj.encontrado = null;
-            let statusAssociacao = _reg.status
-            if (regAssociado) {
-                associado.encontrado = regAssociado.data_permanecia;
-                obj.encontrado = regAssociado.data_permanecia;
-                console.log(`   ✔ Associado ${associado.id_item} encontrado no intervalo`);
-            } else {
-                statusAssociacao = 'associacao_erro'
-                console.log(`   ❌ Associado ${associado.id_item} NÃO encontrado no intervalo`);
-            }
-
-            _reg.associados.push(obj)
-            console.log(obj)
-            // 4️⃣ Atualiza o Registro no banco incluindo os associados
-            await Registro.updateOne(
-                { _id: _reg._id },
-                {
-                    $set: {
-                        status: statusAssociacao,
-                        associados: _reg.associados
-                    }
+                obj.encontrado = null;
+                let statusAssociacao = _reg.status
+                if (regAssociado) {
+                    associado.encontrado = regAssociado.data_permanecia;
+                    obj.encontrado = regAssociado.data_permanecia;
+                    console.log(`   ✔ Associado ${associado.id_item} encontrado no intervalo`);
+                } else {
+                    statusAssociacao = 'associacao_erro'
+                    console.log(`   ❌ Associado ${associado.id_item} NÃO encontrado no intervalo`);
                 }
-            );
-        }
-    }
+
+                _reg.associados.push(obj)
+
+                // 4️⃣ Atualiza o Registro no banco incluindo os associados
+                await Registro.updateOne(
+                    { _id: _reg._id },
+                    {
+                        $set: {
+                            status: statusAssociacao,
+                            associados: _reg.associados
+                        }
+                    }
+                );
+
+            } else {
+
+                if (!associado.id_categoria || associado.id_categoria === "") continue;
+
+                // Verifica leitura do item associado
+                let regAssociado = await Registro.find({
+                    id_categoria: associado.id_categoria,
+                    id_gateway: _reg.id_gateway,
+                    data_permanecia: { $gte: inicio, $lte: fim }
+                });
+
+                let statusAssociacao = _reg.status
+
+                console.log('✔ Associado Qnt '+ regAssociado.length +'::' + associado.id_categoria)
+
+                let obj = associado.toObject();
+                obj.encontrado = 0;
+
+                if (regAssociado.length > 0) {
+
+                    associado.encontrado = regAssociado.length;
+                    obj.encontrado = regAssociado.length;
+
+                    if (regAssociado.length >= associado.quantidade) {
+                        console.log(`   ✔ Associado ${associado.id_item} encontrado no intervalo`);
+                    } else {
+                        statusAssociacao = 'associacao_erro'
+                        console.log(`   ❌ Associado ${associado.id_item} QNT encontrado no intervalo`);
+                    }
+
+                } else {
+                    statusAssociacao = 'associacao_erro'
+                    console.log(`   ❌ Associado ${associado.id_item} NÃO encontrado no intervalo`);
+                }
+
+                _reg.associados.push(obj)
+
+                // 4️⃣ Atualiza o Registro no banco incluindo os associados
+                await Registro.updateOne(
+                    { _id: _reg._id },
+                    {
+                        $set: {
+                            status: statusAssociacao,
+                            associados: _reg.associados
+                        }
+                    }
+                );
+            };
+        };
+    };
 
     async function _checkInteracao(movimento, _reg) {
 
@@ -762,7 +832,6 @@ module.exports = (app, dbConnection) => {
             }
 
             const id_colaborador = colaborador._id;
-
 
             // ✅ 4️⃣ Busca último registro do colaborador
             const ultimo = await RegistroColaborador.findOne({
@@ -1544,7 +1613,7 @@ module.exports = (app, dbConnection) => {
 
 
     app.post('/_bd/categoria/importar', async (req, res) => {
- 
+
         const lista = req.body; // array de objetos enviados
         const id_conta = req.body[0].id_conta;
 

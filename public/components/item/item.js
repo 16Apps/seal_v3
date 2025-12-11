@@ -415,7 +415,6 @@ app.component('item', {
     };
 
     $ctrl.onRemoveAssociacao = async function (item) {
-      alert(item._id)
       $ctrl._editAssocicao.associados = $ctrl._editAssocicao.associados.filter((assoc) => assoc._id != item._id);
     }
 

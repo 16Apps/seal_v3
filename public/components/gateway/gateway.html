@@ -439,6 +439,40 @@
                                             </div>
                                         </div>
 
+                                        <div class="row gx-3 mb-3">
+                                            <div class="col-sm-12 col-12">
+                                                <div class="bg-warning bg-opacity-10 text-warning p-2 rounded-2">
+                                                    <p class="m-0">
+                                                        Regras Ciclo de Registro
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row gx-3 mb-3">
+                                                <div class="col-sm-2" ng-show="$ctrl._editGateway.codif_epc=='manual'">
+                                                    <label for="displayName" class="form-label">
+                                                        Intervalo (segundos)
+                                                    </label>
+                                                    <input ng-model="$ctrl._editGateway.intervalo_ausencia" type="text"                                                       
+                                                        class="form-control">
+                                                </div>
+                                                <div class="col-sm-2" ng-show="$ctrl._editGateway.codif_epc=='manual'">
+                                                    <label for="displayName" class="form-label">
+                                                        Range GPS (metros)
+                                                    </label>
+                                                    <input ng-model="$ctrl._editGateway.intervalo_reg_gps" type="text"
+                                                        class="form-control">
+                                                </div>
+                                                <div class="col-sm-2" ng-show="$ctrl._editGateway.codif_epc=='manual'">
+                                                    <label for="displayName" class="form-label">
+                                                        Range RSSI (dBm)
+                                                    </label>
+                                                    <input ng-model="$ctrl._editGateway.intervalo_reg_rssi" type="text"
+                                                        class="form-control">
+                                                </div>
+                                            </div>
+
                                     </div>
                                 </div>
 
