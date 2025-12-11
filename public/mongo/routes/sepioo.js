@@ -135,7 +135,7 @@ module.exports = (app, dbConnection) => {
     }
   });
 
-    app.post('/sepioo/object', async (req, res) => {
+  app.post('/sepioo/object', async (req, res) => {
     try {
       const { objectId, deviceIds, customFields } = req.body;
 
@@ -178,6 +178,56 @@ module.exports = (app, dbConnection) => {
       });
     }
   });
+
+app.get('/sepioo/object/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Substitua pelos valores reais da sua conta
+    const account = "industry_seal_eu";
+    const location = "sealbrengenharia";
+
+    const url = `https://api.sepioo.com/v2.0/${account}/${location}/objects/${id}`;
+
+    console.log('🔗 URL Sepioo:', url);
+
+    const response = await axios.get(url, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Ocp-Apim-Subscription-Key': subscriptionKey
+      }
+    });
+
+    res.json({
+      ok: true,
+      id_consultado: id,
+      objectId: response.data.objectId,
+      customFields: response.data.customFields,
+      devices: response.data.devices,
+      lastChange: response.data.lastChange,
+      raw: response.data
+    });
+
+  } catch (error) {
+    console.error(
+      '❌ Erro ao consultar objeto Sepioo:',
+      error.response?.status || 'SEM STATUS',
+      error.response?.data || error.message
+    );
+
+    res.status(error.response?.status || 500).json({
+      ok: false,
+      msg: 'Erro ao consultar objeto na Sepioo',
+      erro: error.response?.data || error.message
+    });
+  }
+});
+
+
+
+
+
+
 
 
 
