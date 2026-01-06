@@ -239,7 +239,7 @@
                                             <div class="col-sm-12 col-12">
                                                 <div class="bg-warning bg-opacity-10 text-warning p-2 rounded-2">
                                                     <p class="m-0">
-                                                        Localização
+                                                        Endeereço
                                                     </p>
                                                 </div>
                                             </div>
@@ -645,7 +645,7 @@
 
                                                         <td>
                                                             <span class="text-white fw-semibold">
-                                                                {{ item.categoria[0].descricao }}
+                                                                {{ item.categoria[0].descricao ? item.categoria[0].descricao : 'Sem Vinculo Tipo de Item' }}
                                                             </span>
                                                             <br>
                                                             <span>
@@ -669,12 +669,12 @@
                                                             </span>
                                                         </td>
                                                         <td>
-                                                            <span class="text-white fw-semibold">
+                                                            <span ng-show="item.item.status=='concluido'" class="text-white fw-semibold">
                                                                 {{ $ctrl.formataDataHora(item.previsao_chegada_data) }}
                                                             </span>
 
                                                             <br>
-                                                            <span>
+                                                            <span ng-show="item.item.status=='concluido'" >
                                                                 {{ item.localizacao_destino.nivel1 ?
                                                                 item.localizacao_destino.nivel1 : '' }}
                                                                 {{ item.localizacao_destino.nivel2 ? ' - ' +
@@ -686,7 +686,7 @@
                                                             </span>
                                                         </td>
                                                         <td class="text-white fw-semibold">
-                                                            {{ item.status.toUpperCase() }}
+                                                            {{ item.item.status }}
                                                         </td>
                                                     </tr>
 

@@ -5,6 +5,7 @@ const axios = require('axios'); // se for enviar via HTTP
 const Gateway = require("../models/gateway");
 const Item = require("../models/item");
 const Categoria = require("../models/categoria");
+const CategoriaItem = require("../models/categoria_item");
 const Localizacao = require("../models/localizacao");
 const Registro = require("../models/registro");
 const Alerta = require("../models/alerta");
@@ -267,7 +268,7 @@ module.exports = (app, dbConnection) => {
 
             tpAssociacao = 'categoria';
 
-            console.log('✔ Associado Qnt '+ _reg.id_categoria)
+            console.log('✔ Associado Qnt ' + _reg.id_categoria)
 
             // 1️⃣ 1️⃣ Verifica se a CATEGORIA LIDA possui associação
             associacao = await Associacao.findOne({
@@ -345,11 +346,11 @@ module.exports = (app, dbConnection) => {
 
                 let statusAssociacao = _reg.status
 
-                console.log('✔ Associado Qnt '+ regAssociado.length +'::' + associado.id_categoria)
+                console.log('✔ Associado Qnt ' + regAssociado.length + '::' + associado.id_categoria)
 
                 let obj = associado.toObject();
                 obj.encontrado = null;
-                 obj.encontrado_categoria = 0;
+                obj.encontrado_categoria = 0;
 
                 if (regAssociado.length > 0) {
 
@@ -948,7 +949,7 @@ module.exports = (app, dbConnection) => {
                         // total de perdas
                         perca: {
                             $sum: {
-                                $cond: [{ $eq: ['$status', 'perda'] }, 1, 0]
+                                $cond: [{ $ne: ['$status', 'ativo'] }, 1, 0]
                             }
                         }
                     }
@@ -1035,10 +1036,6 @@ module.exports = (app, dbConnection) => {
     });
 
 
-
-
-
-
     app.post('/_bd/importar-csv-itens', async (req, res) => {
         try {
             const { id_conta, itens } = req.body; // o front envia { id_conta, itens: [...] }
@@ -1047,8 +1044,10 @@ module.exports = (app, dbConnection) => {
 
             for (const linha of itens) {
                 const {
+                    tag,
                     id_interno,
                     categoria,
+                    categoria_item,
                     label1,
                     label2,
                     label3,
@@ -1088,6 +1087,17 @@ module.exports = (app, dbConnection) => {
                 }
 
                 // =====================================================
+                // 1️⃣ Verificar / criar / atualizar Categoria Item
+                // =====================================================
+                let cat_item = await CategoriaItem.findOne({ id_conta, descricao: categoria_item });
+                if (!cat_item) {
+                    cat_item = await CategoriaItem.create({
+                        id_conta,
+                        descricao: categoria_item
+                    });
+                }
+
+                // =====================================================
                 // 2️⃣ Verificar / criar / atualizar Localizações (níveis)
                 // =====================================================
                 async function getOrCreateLocal(descricao, nivel, id_conta, id_pai = null) {
@@ -1122,12 +1132,13 @@ module.exports = (app, dbConnection) => {
                 // =====================================================
                 // 3️⃣ Verificar / atualizar ou criar Item
                 // =====================================================
-                let item = await Item.findOne({ id_conta, tag: id_interno });
+                let item = await Item.findOne({ id_conta, tag: tag });
 
                 const dadosItem = {
                     id_conta,
                     id_categoria: cat._id,
-                    tag: id_interno,
+                    id_categoria_reg1: cat_item._id,
+                    tag: tag,
                     descricao: categoria,
                     inf_compl1: inf1,
                     inf_compl2: inf2,
@@ -1142,11 +1153,11 @@ module.exports = (app, dbConnection) => {
                 if (item) {
                     // Atualiza o existente
                     await Item.updateOne({ _id: item._id }, { $set: dadosItem });
-                    resultados.push({ tag: id_interno, acao: 'atualizado', id: item._id });
+                    resultados.push({ tag: tag, acao: 'atualizado', id: item._id });
                 } else {
                     // Cria novo
                     const novo = await Item.create(dadosItem);
-                    resultados.push({ tag: id_interno, acao: 'criado', id: novo._id });
+                    resultados.push({ tag: tag, acao: 'criado', id: novo._id });
                 }
             }
 
@@ -1176,7 +1187,7 @@ module.exports = (app, dbConnection) => {
                 { $match: filtro },
                 {
                     $group: {
-                        _id: '$id_nivel_loc3',
+                        _id: '$id_nivel_loc1',
                         total_itens: { $sum: 1 },
                         ativos: {
                             $sum: {
@@ -1185,7 +1196,7 @@ module.exports = (app, dbConnection) => {
                         },
                         perca: {
                             $sum: {
-                                $cond: [{ $eq: ['$status', 'perda'] }, 1, 0]
+                                $cond: [{ $ne: ['$status', 'ativo'] }, 1, 0]
                             }
                         }
                     }
@@ -1679,5 +1690,151 @@ module.exports = (app, dbConnection) => {
         });
     });
 
+    app.get('/_bd/posicao/relatorio-itens/:id_conta', async (req, res) => {
+        try {
+            const { id_conta } = req.params;
+
+            const relatorio = await Posicao.aggregate([
+
+                // 1️⃣ Filtra pela conta
+                {
+                    $match: { id_conta }
+                },
+
+                // 2️⃣ Explode os itens
+                {
+                    $unwind: '$itens'
+                },
+
+                // 3️⃣ Categoria
+                {
+                    $lookup: {
+                        from: 'categorias',
+                        localField: 'itens.id_categoria',
+                        foreignField: '_id',
+                        as: 'categoria'
+                    }
+                },
+                { $unwind: { path: '$categoria', preserveNullAndEmptyArrays: true } },
+
+                // 4️⃣ CategoriaItem (nível)
+                {
+                    $lookup: {
+                        from: 'categoriaitems',
+                        localField: 'itens.id_categoria_reg1',
+                        foreignField: '_id',
+                        as: 'categoria_item'
+                    }
+                },
+                { 
+                    $unwind: { 
+                        path: '$categoria_item', 
+                        preserveNullAndEmptyArrays: true 
+                    } 
+                },
+
+                // 5️⃣ Local origem
+                {
+                    $lookup: {
+                        from: 'localizacaos',
+                        localField: 'id_nivel_loc1',
+                        foreignField: '_id',
+                        as: 'origem'
+                    }
+                },
+                { $unwind: { path: '$origem', preserveNullAndEmptyArrays: true } },
+
+                // 6️⃣ Local destino
+                {
+                    $lookup: {
+                        from: 'localizacaos',
+                        localField: 'id_nivel_loc1_destino',
+                        foreignField: '_id',
+                        as: 'destino'
+                    }
+                },
+                { $unwind: { path: '$destino', preserveNullAndEmptyArrays: true } },
+
+                {
+                    $sort: { partida_data: -1 }
+                },
+
+                // 7️⃣ Monta o relatório
+                {
+                    $project: {
+                        _id: 0,
+                
+                        tag: '$itens.tag',
+                        ean: '$itens.ean',
+                
+                        categoria: '$categoria.descricao',
+                        categoria_item: '$categoria_item.descricao',
+                
+                        status_origem: '$itens.status',
+                        data_origem: '$partida_data',
+                
+                        status_destino: '$itens.status_destino',
+                        data_destino: '$previsao_chegada_data',
+                
+                        local_origem: '$origem.descricao',
+                        local_destino: '$destino.descricao',
+                
+                        // 🔹 Situação
+                        situacao: {
+                            $cond: [
+                                {
+                                    $and: [
+                                        { $ne: ['$partida_data', null] },
+                                        { $eq: ['$previsao_chegada_data', null] }
+                                    ]
+                                },
+                                'Saiu e não chegou',
+                                {
+                                    $cond: [
+                                        { $ne: ['$previsao_chegada_data', null] },
+                                        'Saiu e chegou',
+                                        'Em trânsito'
+                                    ]
+                                }
+                            ]
+                        },
+                
+                        // 🔹 Intervalo em segundos
+                        intervalo_segundos: {
+                            $cond: [
+                                { $ne: ['$partida_data', null] },
+                                {
+                                    $divide: [
+                                        {
+                                            $subtract: [
+                                                { $ifNull: ['$previsao_chegada_data', '$$NOW'] },
+                                                '$partida_data'
+                                            ]
+                                        },
+                                        1000 // ms → segundos
+                                    ]
+                                },
+                                null
+                            ]
+                        }
+                    }
+                },
+
+                // 8️⃣ Ordena por data de saída
+                
+
+            ]);
+
+            res.json({
+                success: true,
+                total: relatorio.length,
+                relatorio
+            });
+
+        } catch (err) {
+            console.error('Erro no relatório de itens:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
 
 }

@@ -40,6 +40,7 @@ app.controller('dashboardCtrl', function ($scope, $http, params, uteisService, $
 
     });
 
+
     $scope.onCarregaResumoItens = async function () {
 
         let _url = '/_bd/itens/resumo/' + $scope._regConta._id + '/' + $scope.id_nivelPosicao
@@ -48,6 +49,22 @@ app.controller('dashboardCtrl', function ($scope, $http, params, uteisService, $
             .then((res) => {
 
                 $scope._regResumoItens = res
+                $scope.$apply();
+            })
+            .catch((error) => {
+                uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
+            });
+
+    };
+
+    $scope.onCarregaCiclosPosicao = async function () {
+
+        let _url = '/_bd/posicao/relatorio-itens/' + $scope._regConta._id
+
+        await uteisService.getBase(_url)
+            .then((res) => {
+
+                $scope._regCiclosPosicao = res.relatorio;
                 $scope.$apply();
             })
             .catch((error) => {
@@ -194,15 +211,37 @@ app.controller('dashboardCtrl', function ($scope, $http, params, uteisService, $
                         item._foto = uteisService.apiUrl_() + '/image/' + item.foto
                     };
 
-                    // 🔹 Calcula intervalo (em segundos) se houver registro_atual válido
-                    if (item.registro_atual && item.registro_atual.data_registro && item.registro_atual.data_permanecia) {
-                        const inicio = new Date(item.registro_atual.data_registro);
-                        const fim = new Date(item.registro_atual.data_permanecia);
-                        const diffMs = fim - inicio; // diferença em milissegundos
-                        item._intervalo_segundos = Math.floor(diffMs / 1000); // converte pra segundos
-                    } else {
-                        item._intervalo_segundos = null;
-                    }
+                   // 🔹 Calcula intervalo (em segundos)
+let inicio = null;
+let fim = null;
+
+// prioridade: data do registro
+if (item.registro_atual && item.registro_atual.data_registro) {
+    inicio = new Date(item.registro_atual.data_registro);
+
+    // usa a data de permanência registrada
+    if (item.registro_atual.data_permanecia) {
+        fim = new Date(item.registro_atual.data_permanecia);
+    }
+}
+// fallback: não há data_registro
+else if (item.updatedAt) {
+    inicio = new Date(item.updatedAt);
+
+    // data corrente como permanência
+    fim = new Date();
+}
+
+if (inicio && fim) {
+    const diffMs = fim - inicio; // diferença em milissegundos
+    item._intervalo_segundos = diffMs > 0
+        ? Math.floor(diffMs / 1000)
+        : 0;
+} else {
+    item._intervalo_segundos = null;
+}
+
+
 
                 });
 
@@ -271,6 +310,7 @@ app.controller('dashboardCtrl', function ($scope, $http, params, uteisService, $
                 $scope.id_nivelPlanta = res[0]._id
                 $scope.id_nivelPosicao = res[0]._id
 
+                $scope.onCarregaCiclosPosicao()
                 $scope.onCarregaAgrupadoLocal1()
                 $scope.onCarregaResumoItens();
                 $scope.onCarregaItens();
@@ -295,6 +335,7 @@ app.controller('dashboardCtrl', function ($scope, $http, params, uteisService, $
         $scope.id_nivel = nivel;
         $scope.id_nivelPlanta = nivel;
 
+        $scope.onCarregaCiclosPosicao()
         $scope.onCarregaAgrupadoLocal1()
         $scope.onCarregaResumoItens();
         $scope.onCarregaItens();
@@ -316,8 +357,9 @@ app.controller('dashboardCtrl', function ($scope, $http, params, uteisService, $
     };
 
     $scope.formataDataHora = function (data) {
-        const date = moment(data, 'YYYY-MM-DD HH:mm:ss'); // Parse the complete date and time
-        return date.format('DDMMM HH[h]mm'); // Format the date and time
+        return moment(data)
+            .subtract(0, 'hours')
+            .format('DDMMM HH[h]mm');
     };
 
     $scope.formatarTempo = function (segundos) {

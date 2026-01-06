@@ -5,7 +5,7 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService) {
     $scope._listItens = []
     $scope._listItensBase = []
     $scope._pesquisa = ''
-    $scope.sortField = 'descricao';
+    $scope.sortField = 'id_categoria.descricao';
     $scope.sortReverse = false;
 
     var modalInstance = undefined;
@@ -68,6 +68,7 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService) {
 
                 // Campos da pesquisa
                 const catDesc = norm(item.id_categoria?.descricao);
+                const catItemDesc = norm(item.id_categoria_reg1?.descricao);
                 const tag = norm(item.tag);
                 const id_externo = norm(item.id_externo);
                 const nv1Desc = norm(item.id_nivel_loc1?.descricao);
@@ -82,6 +83,7 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService) {
 
                 return (
                     catDesc.includes(pesquisa) ||
+                    catItemDesc.includes(pesquisa) ||
                     id_externo.includes(pesquisa) ||
                     tag.includes(pesquisa) ||
                     inf1.includes(pesquisa) ||

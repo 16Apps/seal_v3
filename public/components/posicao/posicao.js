@@ -47,6 +47,7 @@ app.component('posicao', {
       await $ctrl.onCarregaNiveisDestino('01')
       await $ctrl.onCarregaItens();
       await $ctrl.onCarregaCategorias();
+      await $ctrl.onCarregaCategoriasTipos();
 
       const tabTrigger = document.querySelector('#categorias-a-tab');
       const tab = new bootstrap.Tab(tabTrigger);
@@ -157,6 +158,24 @@ app.component('posicao', {
 
           $timeout(() => {
             $ctrl._listCategorias = res
+          }, 10);
+
+        })
+        .catch((error) => {
+          uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
+        });
+    };
+
+    $ctrl.onCarregaCategoriasTipos = async function () {
+
+      let _url = '/_bd?c=categoria_item&id_conta=' + $ctrl._regConta._id
+      _url += '&sort=descricao'
+
+      await uteisService.getBase(_url)
+        .then((res) => {
+
+          $timeout(() => {
+            $ctrl._listCategoriasTipos = res
           }, 10);
 
         })
@@ -480,6 +499,19 @@ app.component('posicao', {
       };
 
     };
+
+    $ctrl.idItemTipoDescricao = function (_idItem) {
+
+      let iFind = $ctrl._listItens.findIndex((item) => item._id == _idItem)
+      let iFindTipo = $ctrl._listCategoriasTipos.findIndex((item) => item._id == $ctrl._listItens[iFind].id_categoria_reg1)
+      if (iFindTipo != -1) {
+        return $ctrl._listCategoriasTipos[iFindTipo].descricao
+      } else {
+        return 'Tipo de Item N/A'
+      }
+
+
+    }
 
 
 

@@ -8,7 +8,7 @@
       <ol class="breadcrumb d-none d-lg-flex">
         <li class="breadcrumb-item">
           <i class="bi bi-house lh-1"></i>
-          <a  class="text-decoration-none">Home</a>
+          <a class="text-decoration-none">Home</a>
         </li>
         <li class="breadcrumb-item" aria-current="page">Dashboard</li>
       </ol>
@@ -65,7 +65,7 @@
                 </div>
                 <div class="overflow-hidden w-100" ng-show="_regResumoItens.ultimo_item">
                   <div class="alert border-muted alert-dismissible fade show text-info mt-3 text-end" role="alert">
-                    <i class="bi bi bi-tag me-2"></i><b>{{ _regResumoItens.ultimo_item.tag }}</b><br> {{
+                    <i class="bi bi bi-tag me-2"></i><b>... {{ _regResumoItens.ultimo_item.tag.slice(-10) }}</b><br> {{
                     formataDataHora(_regResumoItens.ultimo_item.updatedAt) }}
                   </div>
                 </div>
@@ -88,7 +88,8 @@
                 </div>
                 <div class="overflow-hidden w-100" ng-show="_regResumoItens.ultimo_alocado">
                   <div class="alert border-muted alert-dismissible fade show text-success mt-3 text-end" role="alert">
-                    <i class="bi bi bi-tag me-2"></i><b>{{ _regResumoItens.ultimo_alocado.tag }}</b><br> {{
+                    <i class="bi bi bi-tag me-2"></i><b> ... {{ _regResumoItens.ultimo_alocado.tag.slice(-10) }}
+                    </b><br> {{
                     formataDataHora(_regResumoItens.ultimo_alocado.updatedAt) }}
                   </div>
                 </div>
@@ -129,7 +130,7 @@
                   </div>
                   <div class="mx-3">
                     <h3 class="m-0 display-5">{{ _regResumoItens.perca }}</h3>
-                    <p class="m-0">PerdaSinal</p>
+                    <p class="m-0">Perda</p>
                   </div>
                 </div>
                 <div class="overflow-hidden w-100">
@@ -200,8 +201,8 @@
                               {{ item._intervalo_segundos ? formatarTempo(item._intervalo_segundos) : '0' }}
                             </div>
                             <div>
-                              {{ item.registro_atual ? formataDataHora(item.registro_atual.data_permanecia) : '00mmm
-                              00h0' }}
+                              {{ item.registro_atual ? formataDataHora(item.registro_atual.data_permanecia) :
+                              formataDataHora(item.updatedAt) }}
                             </div>
                           </span>
                         </div>
@@ -244,8 +245,8 @@
                               {{ item._intervalo_segundos ? formatarTempo(item._intervalo_segundos) : '0' }}
                             </div>
                             <div>
-                              {{ item.registro_atual ? formataDataHora(item.registro_atual.data_permanecia) : '00mmm
-                              00h0' }}
+                              {{ item.registro_atual ? formataDataHora(item.registro_atual.data_permanecia) :
+                              formataDataHora(item.updatedAt) }}
                             </div>
                           </span>
                         </div>
@@ -287,8 +288,8 @@
                               {{ item._intervalo_segundos ? formatarTempo(item._intervalo_segundos) : '0' }}
                             </div>
                             <div>
-                              {{ item.registro_atual ? formataDataHora(item.registro_atual.data_permanecia) : '00mmm
-                              00h0' }}
+                              {{ item.registro_atual ? formataDataHora(item.registro_atual.data_permanecia) :
+                              formataDataHora(item.updatedAt) }}
                             </div>
                           </span>
                         </div>
@@ -327,7 +328,94 @@
 
       <!-- Row start -->
 
-      <div class="col-xxl-12 col-sm-12 col-12 mb-3">
+      <div ng-show="_regCiclosPosicao.length > 0" class="col-xxl-12 col-sm-12 col-12 mb-3">
+        <div class="card mb-0">
+          <div class="card-header">
+            <h5 class="card-title">Ciclo de Deslocamento</h5>
+          </div>
+          <div class="card-body pt-0">
+
+            <div class="row gx-3">
+              <div ng-repeat="item in _regCiclosPosicao  | limitTo: 4 track by $index  " class="col">
+                <div class="card mb-0">
+                  <div class="card-header">
+                    <h5 class="card-title">
+                      {{ item.tag }}
+                      <span class="text-warning"> {{ item.id_item.inf_compl1 }}</span>
+                      <br>
+                      <small class="text-muted">{{ item.id_item.tag }}</small>
+                    </h5>
+                  </div>
+                  <div class="card-body">
+                    <div class="scroll250">
+                      <ul class="list-unstyled d-grid gap-4">
+                        <li class="tracking d-grid gap-3 pb-0">
+                          <div class="tracking-block d-flex gap-3">
+                            <div class="tracking-icon  bg-opacity-10"
+                              ng-class="item.local_origem ? 'bg-success' : 'bg-warning'">
+                              <i class="bi"
+                                ng-class="item.local_origem ? 'bi-geo-alt text-success lh-1' : 'bi-truck text-warning lh-1'">
+                              </i>
+                            </div>
+                            <div class="tracking-details d-grid gap-2">
+                              <h6 class="m-0" ng-class="item.local_origem ? 'text-success' : 'text-warning'">
+                                {{ item.local_origem ? item.local_origem : 'Em Trânsito '}}
+                              </h6>
+                              <small class="text-muted"><i class="bi bi-clock me-1"></i>
+                                {{ formataDataHora(item.data_origem) }}
+                                <span class="badge bg-light bg-opacity-10 text-muted ms-2 small">
+                                  {{ item.id_gateway.descricao }}
+                                </span>
+                              </small>
+                            </div>
+                          </div>
+                          <div class="tracking-block d-flex gap-3">
+                            <div class="tracking-icon  bg-opacity-10"
+                              ng-class="item.local_destino ? 'bg-primary' : 'bg-warning'">
+                              <i class="bi"
+                                ng-class="item.local_destino ? 'bi-geo-alt text-primary lh-1' : 'bi-truck text-warning lh-1'">
+                              </i>
+                            </div>
+                            <div class="tracking-details d-grid gap-2">
+                              <h6 class="m-0" ng-class="item.local_destino ? 'text-primary' : 'text-warning'">
+                                {{ item.local_destino ? item.local_destino : 'Em Trânsito '}}
+                              </h6>
+                              <small class="text-muted"><i class="bi bi-clock me-1"></i>
+                                {{ formataDataHora(item.data_destino) }}
+                                <span class="badge bg-light bg-opacity-10 text-muted ms-2 small">
+                                  {{ item.id_gateway.descricao }}
+                                </span>
+                              </small>
+                            </div>
+                          </div>
+                          <div class="tracking-block d-flex gap-3">
+                            <div class="tracking-icon ng-white bg-opacity-10">
+                              <i class="bi bi-clock text-white lh-1">
+                              </i>
+                            </div>
+                            <div class="tracking-details d-grid gap-2">
+                              <h6 class="m-0 mt-2 text-white">
+                                {{ formatarTempo(item.intervalo_segundos) }}
+                              </h6>
+                            </div>
+                          </div>
+                        </li>
+
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+      <!-- Row end -->
+
+      <!-- Row start -->
+
+      <div ng-show="_listRegistros.length > 0" class="col-xxl-12 col-sm-12 col-12 mb-3">
         <div class="card mb-0">
           <div class="card-header">
             <h5 class="card-title">Ciclo de Deslocamento</h5>
@@ -418,9 +506,9 @@
           </div>
         </div>
       </div>
-
-
       <!-- Row end -->
+
+
       <div class="row gx-3" ng-show="id_nivel">
         <div class="col-xxl-12 col-sm-12 col-12">
           <div class="card mb-3">

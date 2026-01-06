@@ -324,11 +324,8 @@
                                                                 ng-repeat="item in $ctrl._editPosicao.itens track by $index">
 
                                                                 <td class="text-white fw-semibold">
-                                                                    {{
-                                                                    $ctrl.idItemDescricao(item.id_item,
-                                                                    item.id_categoria,
-                                                                    false) }}
-                                                                    {{ item.tag}}
+                                                
+                                                                    {{ item.tag ? item.tag : item.ean}}
                                                                 </td>
                                                                 <td>
                                                                     {{
@@ -338,7 +335,7 @@
                                                                     <br>
                                                                     <span ng-show="item.id_item"
                                                                         class="badge bg-info bg-opacity-10 text-info">
-                                                                        Item
+                                                                        {{ $ctrl.idItemTipoDescricao(item.id_item) }}
                                                                     </span>
                                                                     <span ng-show="item.id_categoria"
                                                                         class="badge bg-success bg-opacity-10 text-success">
@@ -350,7 +347,17 @@
                                                                     {{ item.quantidade }}
                                                                 </td>
                                                                 <td>
-                                                                    {{ item.status }}
+                                                                  
+
+                                                                    <span ng-show="item.status=='concluido'"
+                                                                        class="badge bg-success bg-opacity-10 text-success">
+                                                                        {{ item.status.toUpperCase() }}
+                                                                    </span>
+                                                                    <span ng-show="item.status!='concluido'"
+                                                                        class="badge bg-danger bg-opacity-10 text-danger">
+                                                                        {{ item.status.toUpperCase() }}
+                                                                    </span>
+
                                                                 </td>
                                                                 <td>
                                                                     <div class="d-flex gap-1">
@@ -377,10 +384,10 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="d-flex justify-content-end gap-1 mt-3">
+                                        <!-- <div class="d-flex justify-content-end gap-1 mt-3">
                                             <button ng-click="$ctrl.onSalvarAlertaItemRegistro()"
                                                 class="btn btn-warning text-dark" type="button">Registrar</button>
-                                        </div>
+                                        </div> -->
                                     </div>
 
                                 </div>
@@ -518,12 +525,7 @@
                                                                 ng-repeat="item in $ctrl._editPosicao.itens track by $index">
 
                                                                 <td class="text-white fw-semibold">                                                                 
-                                                                    {{
-                                                                    $ctrl.idItemDescricao(item.id_item,
-                                                                    item.id_categoria,
-                                                                    false) }}
-
-                                                                    {{ item.tag}}
+                                                                    {{ item.tag ? item.tag : item.ean}}
                                                                 </td>
                                                                 <td>
                                                                     {{
@@ -545,7 +547,13 @@
                                                                     {{ item.quantidade }}
                                                                 </td>
                                                                 <td>
-                                                                    {{ item.status_destino ? status_destino : 'Sem Registro' }}
+
+                                                                    <span 
+                                                                        class="badge bg-success bg-opacity-10 text-success">
+                                                                        CONCLUIDO
+                                                                    </span>
+
+                                                                    <!-- {{ item.status_destino ? status_destino : 'Sem Registro' }} -->
                                                                 </td>
                                                                 <td>
                                                                     <div class="d-flex gap-1">
@@ -572,10 +580,10 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="d-flex justify-content-end gap-1 mt-3">
+                                        <!-- <div class="d-flex justify-content-end gap-1 mt-3">
                                             <button ng-click="$ctrl.onSalvarAlertaItemRegistro()"
                                                 class="btn btn-warning text-dark" type="button">Registrar</button>
-                                        </div>
+                                        </div> -->
                                     </div>
                                 </div>
                             </div>

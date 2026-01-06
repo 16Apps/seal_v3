@@ -50,11 +50,11 @@
                   <table class="table align-middle table-hover m-0">
                     <thead>
                       <tr>
-                        <th>Descrição</th>
+                        <th>Item</th>
                         <th class="w-30"></th>
                         <th class="w-40">Tag</th>
                         <th class="w-30">Endereço</th>
-                        <th>Ações</th>
+                   
                       </tr>
                     </thead>
                     <tbody>
@@ -62,7 +62,11 @@
                         <td>
                           <img class="rounded-circle img-3x me-2" src="{{ item._foto }}" alt="Wrapmarket" />
                         </td>
-                        <td>{{ item.categoria }}</td>
+                        <td>
+                          {{ item.categoria }}
+                          <br>
+                          {{ item.categoria_item ? item.categoria_item : 'N/A' }}
+                        </td>
                         <td>{{ item.tag}}</td>
                         <td>
                           {{ item.loc_nivel1 ? item.loc_nivel1 : 'Em Transporte' }}
@@ -75,11 +79,7 @@
                           </span>
 
                         </td>
-                        <td>
-                          <a class="btn btn-info btn-sm" ng-click="onItem('edit', item)">
-                            <i class="bi bi-pencil"></i>
-                          </a>
-                        </td>
+                       
                       </tr>
                     </tbody>
                   </table>

@@ -38,12 +38,25 @@ app.controller('importarCtrl', function ($scope, $http, params, uteisService) {
             const csv = e.target.result;
             const linhas = csv.split(/\r?\n/).filter(l => l.trim() !== '');
 
+
+
             linhas.map((item, index,) => {
                 if (index > 0) {
                     let coluna = item.split(';')
+                    let _tag = coluna[1].replace('"', '').replace('"', '').trim()
+                    if (!_tag.includes(':')) {
+
+                        _tag = $scope.gerarSGTIN96({
+                            companyPrefix: '1234567',
+                            itemReference: _tag,
+                            serial: index
+                        });
+
+                    }
+
                     dados.itens.push({
                         "id_interno": coluna[0],
-                        "tag": coluna[1].replace('"', '').replace('"', '').trim(),
+                        "tag": _tag,
                         "categoria": coluna[2],
                         "label1": coluna[3],
                         "label2": coluna[4],
@@ -57,7 +70,8 @@ app.controller('importarCtrl', function ($scope, $http, params, uteisService) {
                         "loc_nivel2": coluna[12] ? coluna[12] : null,
                         "loc_nivel3": coluna[13] ? coluna[13] : null,
                         "loc_nivel4": coluna[14] ? coluna[14] : null,
-                        "_foto": '../assets/images/icon_cadastro.fw.png'
+                        "_foto": '../assets/images/icon_cadastro.fw.png',
+                        "categoria_item": coluna[15] ? coluna[15] : null,
                     });
                 }
 
@@ -111,5 +125,46 @@ app.controller('importarCtrl', function ($scope, $http, params, uteisService) {
         })
 
     };
+    $scope.gerarSGTIN96 = function ({ companyPrefix, itemReference, serial, filter = 1 }) {
+
+        // Header SGTIN-96
+        const HEADER = 0x30; // 00110000
+
+        // Partition table (prefixo 7 dígitos → partition 5)
+        const PARTITION = 5;
+
+        const PARTITION_TABLE = {
+            5: { cpBits: 24, irBits: 20 } // 7 dígitos empresa
+        };
+
+        const { cpBits, irBits } = PARTITION_TABLE[PARTITION];
+
+        function toBinary(value, bits) {
+            return value.toString(2).padStart(bits, '0');
+        }
+
+        const headerBin = toBinary(HEADER, 8);
+        const filterBin = toBinary(filter, 3);
+        const partitionBin = toBinary(PARTITION, 3);
+        const companyBin = toBinary(parseInt(companyPrefix), cpBits);
+        const itemBin = toBinary(parseInt(itemReference), irBits);
+        const serialBin = toBinary(serial, 38);
+
+        const epcBin =
+            headerBin +
+            filterBin +
+            partitionBin +
+            companyBin +
+            itemBin +
+            serialBin;
+
+        // Converter binário para HEX
+        let epcHex = '';
+        for (let i = 0; i < epcBin.length; i += 4) {
+            epcHex += parseInt(epcBin.substr(i, 4), 2).toString(16);
+        }
+
+        return epcHex.toUpperCase();
+    }
 
 });
