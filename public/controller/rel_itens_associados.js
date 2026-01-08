@@ -99,5 +99,13 @@ app.controller('itensAssociadosCtrl', function ($scope, $http, params, uteisServ
         }
     };
 
+    $scope.formataDataHora = function (data) {
+        const date = moment(data, 'YYYY-MM-DD HH:mm:ss')
+            .subtract(3, 'hours'); // Remove 3 horas
+    
+        return date.format('DDMMM HH[h]mm');
+    };
+    
+
     
 });

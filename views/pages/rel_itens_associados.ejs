@@ -91,6 +91,14 @@
         }"></i>
                         </th>
 
+                        <th class="w-10 sortable" ng-click="sortBy('id_categoria_reg1.descricao')">
+                        Registro
+                          <i class="bi" ng-class="{
+              'bi-caret-up-fill': sortField=='id_categoria_reg1.descricao' && !sortReverse,
+              'bi-caret-down-fill': sortField=='id_categoria_reg1.descricao' && sortReverse
+        }"></i>
+                        </th>
+
 
                         <th>Detalhes</th>
                       </tr>
@@ -141,6 +149,10 @@
                           }">
                           {{ item.associados[0].encontrado_categoria }}
                         </span>
+                      </td>
+
+                      <td>
+                        {{ formataDataHora(item.data_permanecia) }}</td>
                       </td>
 
 

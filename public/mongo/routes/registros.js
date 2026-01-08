@@ -48,6 +48,8 @@ module.exports = (app, dbConnection) => {
             id_nivel_loc4_final
         } = req.body;
 
+        console.log('/_bd/registro::' + tokem + '::' + tag)
+
         // Verificar Localização
         let retorno;
         let status;
