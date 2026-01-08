@@ -25,6 +25,92 @@ module.exports = (app, dbConnection) => {
 
     console.log("api")
 
+    app.post('/_bd/registro/gateway', async (req, res) => {
+        try {
+          const payload = req.body;
+
+          console.log('/_bd/registro/gateway::' + JSON.stringify(payload))
+      
+          if (!Array.isArray(payload) || payload.length === 0) {
+            return res.status(400).json({ erro: 'Payload inválido' });
+          }
+      
+          // 1️⃣ Primeiro item contém o gateway
+          const gatewayItem = payload.find(i => i.gateway);
+          if (!gatewayItem) {
+            return res.status(400).json({ erro: 'Gateway não informado' });
+          }
+      
+          const tokem = gatewayItem.gateway;
+      
+          // 2️⃣ Filtra apenas leituras com MAC
+          const leituras = payload.filter(i => i.mac);
+      
+          let enviados = 0;
+          let erros = [];
+      
+          // Função para formatar MAC como endereço MAC (XX:XX:XX:XX:XX:XX)
+          const formatarMAC = (mac) => {
+            if (!mac) return '';
+            // Remove tudo que não é alfanumérico e converte para maiúsculo
+            const limpo = mac.toString().replace(/[^0-9A-Fa-f]/g, '').toUpperCase();
+            // Adiciona : a cada 2 caracteres
+            return limpo.match(/.{1,2}/g)?.join(':') || limpo;
+          };
+
+          // 3️⃣ Envio ordeiro (um por vez)
+          for (const leitura of leituras) {
+            const registro = {
+              tokem: formatarMAC(tokem),
+              tag: formatarMAC(leitura.mac),     // MAC formatado como endereço MAC
+              data_leitura: leitura.timestamp ? moment(leitura.timestamp).format('YYYY-MM-DD HH:mm:ss') : moment().format('YYYY-MM-DD HH:mm:ss'),
+              antena: "0",
+              rssi: leitura.rssi ?? "",
+              bateria: "0",
+              temperatura: "0",
+              latitude: "",
+              longitude: "",
+              id_nivel_loc1: "",
+              id_nivel_loc2: "",
+              id_nivel_loc3: "",
+              id_nivel_loc4: "",
+              id_nivel_loc1_final: "",
+              id_nivel_loc2_final: "",
+              id_nivel_loc3_final: "",
+              id_nivel_loc4_final: ""
+            };
+      
+            //'https://sealairtracking-3d3268c3e73f.herokuapp.com/_bd/registro',\
+            //'http://localhost:5000/_bd/registro',
+            try {
+              await axios.post(
+                'https://sealairtracking-3d3268c3e73f.herokuapp.com/_bd/registro',
+                registro,
+                { timeout: 5000 }
+              );
+      
+              enviados++;
+            } catch (err) {
+              erros.push({
+                mac: leitura.mac,
+                erro: err.message
+              });
+            }
+          }
+      
+          return res.json({
+            gateway: tokem,
+            total_leituras: leituras.length,
+            enviados,
+            erros
+          });
+      
+        } catch (err) {
+          console.error(err);
+          res.status(500).json({ erro: 'Erro interno' });
+        }
+      });
+      
     app.post('/_bd/registro', async (req, res) => {
 
         let {
