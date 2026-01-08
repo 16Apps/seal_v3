@@ -208,6 +208,7 @@
                                                             class="form-select">
                                                             <option value="" disabled>Device...</option>
                                                             <option value="pdi">PDI</option>
+                                                            <option value="pdi_vinculado">PDI Vinculado</option>
                                                             <option value="tuya">Tuya</option>
                                                             <option value="endpoint">EndPoint</option>
                                                         </select>
@@ -219,7 +220,7 @@
                                                     </label>
                                                     <div class="input-group">
                                                         <input ng-model="$ctrl._editInteracaoAcao.serial" type="text"
-                                                            class="form-control">
+                                                            ng-disabled="$ctrl._editInteracaoAcao.equipamento == 'pdi_vinculado'" class="form-control">
                                                     </div>
                                                 </div>
                                                 <div class="col-sm-2">
@@ -238,21 +239,21 @@
                                                                 Desligar</option>
 
                                                             <option value="pdi_display"
-                                                                ng-show="$ctrl._editInteracaoAcao.equipamento=='pdi'">
+                                                                ng-show="$ctrl._editInteracaoAcao.equipamento.includes('pdi')">
                                                                 Display</option>
                                                             <option value="pdi_led_vr"
-                                                                ng-show="$ctrl._editInteracaoAcao.equipamento=='pdi'">
+                                                                ng-show="$ctrl._editInteracaoAcao.equipamento.includes('pdi')">
                                                                 Led
                                                                 Verde</option>
                                                             <option value="pdi_led_vm"
-                                                                ng-show="$ctrl._editInteracaoAcao.equipamento=='pdi'">
+                                                                ng-show="$ctrl._editInteracaoAcao.equipamento.includes('pdi')">
                                                                 Led
                                                                 Vermelho</option>
                                                             <option value="pdi_bt_1"
-                                                                ng-show="$ctrl._editInteracaoAcao.equipamento=='pdi'">
+                                                                ng-show="$ctrl._editInteracaoAcao.equipamento.includes('pdi')">
                                                                 Botão 1</option>
                                                             <option value="pdi_bt_2"
-                                                                ng-show="$ctrl._editInteracaoAcao.equipamento=='pdi'">
+                                                                ng-show="$ctrl._editInteracaoAcao.equipamento.includes('pdi')">
                                                                 Botão 2</option>
 
                                                             <option value="endpoint_get"
@@ -313,13 +314,13 @@
                                                                     <td class="text-white fw-semibold">
                                                                         {{ $ctrl.getTextoAcao( item.equipamento ) }}<br>
                                                                         <smal class="text-muted">N. Série: {{
-                                                                            item.serial }}</small>
+                                                                            item.serial ? item.serial : 'N/A' }}</small>
                                                                     </td>
 
                                                                     <td class="text-white fw-semibold">
                                                                         {{ $ctrl.getTextoAcao( item.acao ) }}<br>
                                                                         <small class="text-muted">Comando: {{
-                                                                            item.comando }}</small>
+                                                                            item.comando ? item.comando : 'N/A' }}</small>
                                                                     </td>
 
                                                                     <td>

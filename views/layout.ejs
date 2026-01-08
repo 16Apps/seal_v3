@@ -244,6 +244,17 @@
               </ul>
             </li>
 
+            <li class="treeview"
+            ng-class="{'active current-page': isActive('alerta') || isActive('posicao') || isActive('interacao') || isActive('associacao') }">
+            <a href="#!">
+              <i class="bi bi-printer"></i>
+              <span class="menu-text">Relatórios</span>
+            </a>
+            <ul class="treeview-menu">
+              <li><a href="/rel_itens_associados">Itens Associados</a></li>
+            </ul>
+          </li>
+
             <li
               ng-class="{'active current-page': isActive('categoria') || isActive('item') || isActive('importar') || isActive('categoria_item')}"
               class="treeview">
@@ -368,6 +379,8 @@
   <script src="/controller/posicao.js"></script>
   <script src="/controller/alerta.js"></script>
   <script src="/controller/interacao.js"></script>
+
+  <script src="/controller/rel_itens_associados.js"></script>
 
   <script src="/controller/item.js"></script>
   <script src="/controller/categoria.js"></script>

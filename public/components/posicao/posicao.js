@@ -76,7 +76,7 @@ app.component('posicao', {
           id_nivel_loc1: '',
           id_nivel_loc2: '',
           id_nivel_loc3: '',
-          id_nivel_loc4: { type: String, ref: 'Localizacao' },
+          id_nivel_loc4: '',
 
           itens: [],
 

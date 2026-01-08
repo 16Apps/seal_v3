@@ -41,12 +41,21 @@ module.exports = (app, dbConnection) => {
             id_nivel_loc1,
             id_nivel_loc2,
             id_nivel_loc3,
-            id_nivel_loc4
+            id_nivel_loc4,
+            id_nivel_loc1_final,
+            id_nivel_loc2_final,
+            id_nivel_loc3_final,
+            id_nivel_loc4_final
         } = req.body;
 
         // Verificar Localização
         let retorno;
         let status;
+
+        if(!data_leitura){
+            data_leitura = moment().format('YYYY-MM-DD HH:mm:ss');
+            console.log("::::::" + data_leitura)
+        }
 
         // Inibir leituras repetidas em menos de 5 segundos
         const agora = Date.now();
@@ -72,6 +81,15 @@ module.exports = (app, dbConnection) => {
             ignored: true,
             message: `Gateway ${tokem} não cadastrado na conta`
         });
+
+        // Se não foi informado o nível de localização, usa o nível do gateway
+  
+        if(!id_nivel_loc1 && gateway.modo =='fixo'){
+            id_nivel_loc1 = gateway.id_nivel_loc1;
+            id_nivel_loc2 = gateway.id_nivel_loc2;
+            id_nivel_loc3 = gateway.id_nivel_loc3;
+            id_nivel_loc4 = gateway.id_nivel_loc4;
+        };
 
         // Cadastro do item
         let item = await Item.findOne({ tag, id_conta: gateway.id_conta });
@@ -294,10 +312,16 @@ module.exports = (app, dbConnection) => {
         let fim = new Date(base.getTime() + (associacao.intervalo * 1000) || 5000);
         await delay((associacao.intervalo * 1000) + 3000 || 8000);
 
+        console.log("-> Associação Inicio, checagem ::::::" + tpAssociacao)
+        console.log("-> Associação Inicio, checagem ::::::" + associacao.associados)
+
         // 3️⃣ Percorre os itens associados
         for (let associado of associacao.associados) {
 
+            console.log("-> Associação Inicio, checagem ::::::" + associado.id_categoria)
+
             if (tpAssociacao == 'item') {
+
                 if (!associado.id_item || associado.id_item === "") continue;
 
                 // Verifica leitura do item associado
@@ -334,6 +358,8 @@ module.exports = (app, dbConnection) => {
                 );
 
             } else {
+
+                console.log("Modo Categoria ::::::" + associado)
 
                 if (!associado.id_categoria || associado.id_categoria === "") continue;
 
@@ -694,14 +720,14 @@ module.exports = (app, dbConnection) => {
                     if (!dataPermanecia) continue;
 
                     if (item.tag == 'C3:00:00:44:8A:D6') {
-                        console.log("1::::" + item.status)
+                        // console.log("1::::" + item.status)
                     }
 
                     let novoStatus = item.status;
                     const diffSegundos = agora.diff(moment(dataPermanecia), 'seconds');
 
                     if (item.tag == 'C3:00:00:44:8A:D6') {
-                        console.log("2::::" + item.mov_tracking + ":::" + novoStatus)
+                        // console.log("2::::" + item.mov_tracking + ":::" + novoStatus)
                     }
                     if (item.mov_tracking === 1) {
                         novoStatus = diffSegundos > tempoLimiteSegundos ? 'perda' : 'ativo';

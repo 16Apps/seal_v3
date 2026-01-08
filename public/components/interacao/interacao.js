@@ -208,6 +208,7 @@ app.component('interacao', {
     $ctrl.getTextoAcao = function (value) {
       const opcoes = {
         'pdi': 'PDI',
+        'pdi_vinculado': 'PDI Vinculado',
         'tuya': 'Tuya',
         'webhoock': 'Webhook ',
 

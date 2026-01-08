@@ -61,6 +61,11 @@ app.get('/interacao', (req, res) => {
   res.render('pages/interacao', { layout: 'layout' });
 });
 
+
+app.get('/rel_itens_associados', (req, res) => {
+  res.render('pages/rel_itens_associados', { layout: 'layout' });
+});
+
 app.get('/item', (req, res) => {
   res.render('pages/item', { layout: 'layout' });
 });
@@ -103,6 +108,7 @@ require('./public/mongo/routes/registros')(app, dbMongo);
 require('./public/mongo/routes/images')(app, dbMongo);
 require('./public/mongo/routes/messages')(app, dbMongo);
 require('./public/mongo/routes/sepioo')(app, dbMongo);
+require('./public/mongo/routes/relatorios')(app, dbMongo);
 
 
 
