@@ -49,6 +49,7 @@ module.exports = (app, dbConnection) => {
         } = req.body;
 
         console.log('/_bd/registro::' + tokem + '::' + tag)
+        console.log('/_bd/registro::' + req.body)
 
         // Verificar Localização
         let retorno;

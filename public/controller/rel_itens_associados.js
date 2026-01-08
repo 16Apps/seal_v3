@@ -4,7 +4,7 @@ app.controller('itensAssociadosCtrl', function ($scope, $http, params, uteisServ
     $scope._listItens = []
     $scope._listItensBase = []
     $scope._pesquisa = ''
-    $scope.sortField = 'id_categoria.descricao';
+    $scope.sortField = 'categoria.descricao';
     $scope.sortReverse = false;
 
     var modalInstance = undefined;
