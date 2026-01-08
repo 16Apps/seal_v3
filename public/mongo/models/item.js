@@ -26,6 +26,13 @@ const ItemSchema = new mongoose.Schema({
     id_categoria_reg3: { type: String, ref: 'CategoriaItem' },
     id_categoria_reg4: { type: String, ref: 'CategoriaItem' },
 
+    vinculos_device: [{
+        _id: { type: String, default: shortid.generate },
+        modelo: { type: String },
+        id_mac: { type: String },
+        descricao: { type: String },
+    }],
+
     observacao: { type: String },
     registro_atual: { type: Object },
     registro_anterior: { type: Object },

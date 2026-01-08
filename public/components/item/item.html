@@ -42,6 +42,11 @@
                                     data-bs-target="#itens-d" type="button" role="tab" aria-controls="itens-d"
                                     aria-selected="false">Associação</button>
                             </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link rounded-pill" id="itens-v-tab" data-bs-toggle="pill"
+                                    data-bs-target="#itens-v" type="button" role="tab" aria-controls="itens-v"
+                                    aria-selected="false">Vinculo Device</button>
+                            </li>
 
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link rounded-pill" id="itens-c-tab" data-bs-toggle="pill"
@@ -472,7 +477,7 @@
                                                 </div>
                                                 <div>
                                                     <h6 class="mb-1">
-                                                        Identificação dos itens
+                                                        Tipo Cadastro
                                                     </h6>
                                                 </div>
 
@@ -480,10 +485,10 @@
                                                     <select ng-model="$ctrl._regAddAssociacao.id_ref"
                                                         class="form-select select2">
                                                         <option value="item">
-                                                            Item
+                                                            SKU
                                                         </option>
                                                         <option value="categoria">
-                                                            Categoria
+                                                            Item
                                                         </option>
                                                     </select>
                                                 </div>
@@ -595,6 +600,144 @@
                                                                         </button>
                                                                         <button
                                                                             ng-click="$ctrl.onRemoveAssociacao(item)"
+                                                                            type="button"
+                                                                            class="btn btn-sm btn-outline-primary"
+                                                                            data-bs-toggle="tooltip"
+                                                                            title="Apagar Associação">
+                                                                            <i class="bi bi-trash"></i>
+                                                                        </button>
+
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <div class="tab-pane fade" id="itens-v" role="tabpanel" aria-labelledby="itens-v-tab"
+                                tabindex="0">
+
+                                <div class="row gx-3">
+                                    <div class="col-xxl-3 col-sm-6">
+                                        <div class="list-group">
+
+                                            <div class="list-group-item d-flex align-items-center gap-3">
+                                                <div
+                                                    class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
+                                                    <i class="bi bi-envelope text-primary fs-6"></i>
+                                                </div>
+                                                <div>
+                                                    <h6 class="mb-1">
+                                                        Modelo Device
+                                                    </h6>
+                                                </div>
+
+                                                <div class="form-check form-switch m-0 ms-auto">
+                                                    <select ng-model="$ctrl._regAddVinculoDevice.modelo"
+                                                        class="form-select select2">
+                                                        <option value="pdi">
+                                                            PDI
+                                                        </option>
+                                                        <option value="tuya">
+                                                            Tuya
+                                                        </option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div class="list-group-item d-flex align-items-center gap-3">
+                                                <div
+                                                    class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
+                                                    <i class="bi bi-envelope text-primary fs-6"></i>
+                                                </div>
+                                                <div>
+                                                    <h6 class="mb-1">
+                                                        iD Mac
+                                                    </h6>
+                                                </div>
+                                                <div class="form-check form-switch m-0 ms-auto">
+                                                    <input ng-model="$ctrl._regAddVinculoDevice.id_mac" type="text"
+                                                        class="form-control text-end">
+                                                </div>
+                                            </div>
+
+                                            
+                                            <div class="list-group-item d-flex align-items-center gap-3">
+                                                <div
+                                                    class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
+                                                    <i class="bi bi-envelope text-primary fs-6"></i>
+                                                </div>
+                                                <div>
+                                                    <h6 class="mb-1">
+                                                        Descriçao
+                                                    </h6>
+                                                </div>
+                                                <div class="form-check form-switch m-0 ms-auto">
+                                                    <input ng-model="$ctrl._regAddVinculoDevice.descricao" type="text"
+                                                        class="form-control text-end">
+                                                </div>
+                                            </div>
+
+
+                                            <div class="d-flex justify-content-end gap-1 mt-3">
+                                                <button ng-click="$ctrl.onAddVinculoDevice()" class="btn btn-info"
+                                                    type="button">Incluir</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-xxl-9 col-sm-6">
+                                        <div class="invoice-table-container">
+                                            <div class="table-outer">
+                                                <div class="table-responsive">
+                                                    <table class="table table-hover align-middle mb-1">
+                                                        <thead>
+                                                            <tr>
+                                                                <th scope="col" class="w-20">
+                                                                    Modelo Device
+                                                                </th>
+                                                                <th scope="col" class="w-40">
+                                                                    iD Mac
+                                                                </th>
+                                                                <th scope="col" class="w-40">
+                                                                    Descriçao
+                                                                </th>
+                                                                <th scope="col">Edição
+                                                                </th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr
+                                                                ng-repeat="item in $ctrl._editItem.vinculos_device track by $index">
+
+                                                                <td class="text-white fw-semibold">
+                                                                    {{ item.modelo == 'pdi' ? 'PDI' : 'Tuya' }}
+                                                                </td>
+                                                                <td>
+                                                                    {{ item.id_mac }}                                                                    
+                                                                </td>
+                                                                <td>
+                                                                    {{ item.descricao }}
+                                                                </td>
+
+                                                                <td>
+                                                                    <div class="d-flex gap-1">
+                                                                        <button ng-click=" $ctrl.onEditarVinculoDevice(item)"
+                                                                            type="button"
+                                                                            class="btn btn-sm btn-outline-primary"
+                                                                            data-bs-toggle="tooltip"
+                                                                            title="Editar Associação">
+                                                                            <i class="bi bi-pencil"></i>
+                                                                        </button>
+                                                                        <button
+                                                                            ng-click="$ctrl.onRemoveVinculoDevice(item)"
                                                                             type="button"
                                                                             class="btn btn-sm btn-outline-primary"
                                                                             data-bs-toggle="tooltip"

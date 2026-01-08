@@ -28,6 +28,13 @@ app.component('item', {
       quantidade: 1
     };
 
+    $ctrl._regAddVinculoDevice = {
+      _id: '',
+      modelo: '',
+      id_mac: '',
+      descricao: ''
+    };
+
 
     $ctrl.options = {
       headers: { 'Content-Type': 'application/json' }
@@ -80,6 +87,8 @@ app.component('item', {
           registro_atual: {},
           registro_anterior: {},
 
+          vinculos_device: [],
+
           mov_livre: 0,
           mov_tracking: 0,
           mov_acao: 'em_transporte',
@@ -98,6 +107,10 @@ app.component('item', {
           $ctrl._editItem.id_categoria = $ctrl._editItem.id_categoria;
           $ctrl._editItem.mov_livre = $ctrl._editItem.mov_livre == 1 ? true : false;
           $ctrl._editItem.mov_tracking = $ctrl._editItem.mov_tracking == 1 ? true : false;
+
+          if (!Array.isArray($ctrl._editItem.vinculos_device)) {
+            $ctrl._editItem.vinculos_device = [];
+          }
 
           $ctrl._editItem['_foto'] = '../assets/images/icon_cadastro.fw.png'
           if ($ctrl._editItem.foto) {
@@ -441,6 +454,42 @@ app.component('item', {
 
     };
 
+
+    // Vinculo Device
+    $ctrl.onAddVinculoDevice = async function () {
+
+      let iFind = $ctrl._editItem.vinculos_device.findIndex((item) => item._id == $ctrl._regAddVinculoDevice._id)
+      if (iFind == -1) {
+        $ctrl._editItem.vinculos_device.push({
+          _id: uteisService.onGetID(),
+          modelo: $ctrl._regAddVinculoDevice.modelo,
+          id_mac: $ctrl._regAddVinculoDevice.id_mac,
+          descricao: $ctrl._regAddVinculoDevice.descricao
+        })
+      } else {
+        $ctrl._editItem.vinculos_device[iFind].modelo = $ctrl._regAddVinculoDevice.modelo
+        $ctrl._editItem.vinculos_device[iFind].id_mac = $ctrl._regAddVinculoDevice.id_mac
+        $ctrl._editItem.vinculos_device[iFind].descricao = $ctrl._regAddVinculoDevice.descricao
+      }
+
+      $ctrl._regAddVinculoDevice = {
+        modelo: '',
+        id_mac: '',
+        descricao: ''
+      };
+
+    };
+
+    $ctrl.onEditarVinculoDevice = async function (item) {
+      $ctrl._regAddVinculoDevice = {
+        _id: item._id,
+        modelo: item.modelo,
+        id_mac: item.id_mac,
+        descricao: item.descricao
+      };
+    };
+
+    // Final Vinculo Device
 
     $ctrl.onSalvar = function () {
 
