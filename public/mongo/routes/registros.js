@@ -29,7 +29,7 @@ module.exports = (app, dbConnection) => {
         try {
           const payload = req.body;
 
-          //console.log('/_bd/registro/gateway::' + JSON.stringify(payload))
+          console.log('/_bd/registro/gateway::' + JSON.stringify(payload))
       
           if (!Array.isArray(payload) || payload.length === 0) {
             return res.status(400).json({ erro: 'Payload inválido' });
