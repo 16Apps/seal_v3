@@ -67,8 +67,16 @@
         }"></i>
                         </th>
 
-                        <th class="w-20 sortable" ng-click="sortBy('id_categoria_reg1.descricao')">
+                        <th class="w-5 sortable" ng-click="sortBy('id_categoria_reg1.descricao')">
                           Esperado
+                          <i class="bi" ng-class="{
+              'bi-caret-up-fill': sortField=='id_categoria_reg1.descricao' && !sortReverse,
+              'bi-caret-down-fill': sortField=='id_categoria_reg1.descricao' && sortReverse
+        }"></i>
+                        </th>
+
+                        <th class="w-10 sortable" ng-click="sortBy('id_categoria_reg1.descricao')">
+                        
                           <i class="bi" ng-class="{
               'bi-caret-up-fill': sortField=='id_categoria_reg1.descricao' && !sortReverse,
               'bi-caret-down-fill': sortField=='id_categoria_reg1.descricao' && sortReverse
@@ -111,14 +119,17 @@
                         </span>
                       </td>
 
+                      
                       <td>{{ item.tag }}</td>
  
-                      
                       <td>
                         <span 
                           class="badge bg-light bg-opacity-10 text-light text-uppercase fs-4">
                          {{ item.associados[0].quantidade }}
                         </span>
+                        
+                      <td>
+                        {{ item.associados[0].categoria.descricao }}</td>
                       </td>
 
                       <td>
