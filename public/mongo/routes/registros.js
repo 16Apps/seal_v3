@@ -65,7 +65,7 @@ module.exports = (app, dbConnection) => {
             const registro = {
               tokem: formatarMAC(tokem),
               tag: formatarMAC(leitura.mac),     // MAC formatado como endereço MAC
-              data_leitura: leitura.timestamp ? moment(leitura.timestamp).format('YYYY-MM-DD HH:mm:ss') : moment().format('YYYY-MM-DD HH:mm:ss'),
+              data_leitura: "", //leitura.timestamp ? moment(leitura.timestamp).format('YYYY-MM-DD HH:mm:ss') : moment().format('YYYY-MM-DD HH:mm:ss'),
               antena: "0",
               rssi: leitura.rssi ?? "",
               bateria: "0",
