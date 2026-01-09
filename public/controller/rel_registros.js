@@ -1,11 +1,10 @@
-app.controller('itemCtrl', function ($scope, $http, params, uteisService) {
+app.controller('relRegistrosCtrl', function ($scope, $http, params, uteisService) {
 
     $scope._regConta = {};
-    $scope._regColaborador = []
     $scope._listItens = []
     $scope._listItensBase = []
     $scope._pesquisa = ''
-    $scope.sortField = 'id_categoria.descricao';
+    $scope.sortField = 'categoria.descricao';
     $scope.sortReverse = false;
 
     var modalInstance = undefined;
@@ -25,23 +24,13 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService) {
 
     $scope.onCarregaRegistros = async function () {
 
-        let _url = '/_bd?c=item&id_conta=' + $scope._regConta._id;
-        _url += '&pop=id_categoria&pop=id_nivel_loc1&pop=id_nivel_loc2&pop=id_nivel_loc3&pop=id_nivel_loc4';
-        _url += '&pop=id_categoria_reg1'
+        let _url = '/_bd?c=registro&id_conta=' + $scope._regConta._id;
+        _url += '&pop=id_gateway&pop=id_nivel_loc1&pop=id_nivel_loc2&pop=id_nivel_loc3&pop=id_nivel_loc4';
+        _url += '&pop=id_categoria'
+        _url += '&_sort=data_permanecia'
 
         await uteisService.getBase(_url)
             .then((res) => {
-
-                res.map((item) => {
-
-                    item['_foto'] = '../assets/images/icon_cadastro.fw.png'
-
-                    if (item.foto && !item.foto.includes('assets')) {
-                        item._foto = uteisService.apiUrl_() + '/image/' + item.foto
-                    };
-
-                });
-
 
                 $scope._listItens = res
                 $scope._listItensBase = res
@@ -104,16 +93,6 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService) {
     }
 
 
-  
-
-    $scope.formataDataHora = function (data) {
-        const date = moment(data, 'YYYY-MM-DD HH:mm:ss')
-            .subtract(3, 'hours'); // Remove 3 horas
-    
-        return date.format('DDMMM HH[h]mm:ss');
-    };
-
-
     $scope.sortBy = function (field) {
         if ($scope.sortField === field) {
             $scope.sortReverse = !$scope.sortReverse;
@@ -123,38 +102,13 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService) {
         }
     };
 
-    $scope.onItem = async function (_acao, _edit) {
-
-        if (modalInstance != undefined) {
-            modalInstance.hide();
-            modalInstance = undefined
-
-            $scope.onCarregaRegistros()
-            $scope.funcaoLoc = '';
-            $scope.editLoc = undefined;
-
-            $scope.$apply();
-
-        } else {
-
-            let _tratComponente = JSON.parse(JSON.stringify(_edit || {}));
-
-            if (_acao == 'edit') {
-                _tratComponente.id_categoria = _tratComponente.id_categoria ? _tratComponente.id_categoria._id : null
-                _tratComponente.id_categoria_reg1 = _tratComponente.id_categoria_reg1 ? _tratComponente.id_categoria_reg1._id : null
-
-                _tratComponente.id_nivel_loc1 = _tratComponente.id_nivel_loc1 ? _tratComponente.id_nivel_loc1._id : null
-                _tratComponente.id_nivel_loc2 = _tratComponente.id_nivel_loc2 ? _tratComponente.id_nivel_loc2._id : null
-                _tratComponente.id_nivel_loc3 = _tratComponente.id_nivel_loc3 ? _tratComponente.id_nivel_loc3._id : null
-                _tratComponente.id_nivel_loc4 = _tratComponente.id_nivel_loc4 ? _tratComponente.id_nivel_loc4._id : null
-            };
-
-            $scope.funcaoLoc = _acao;
-            $scope.editLoc = _tratComponente;
-
-            modalInstance = new bootstrap.Modal(document.getElementById('modalItem'));
-            modalInstance.show();
-        }
-
+    $scope.formataDataHora = function (data) {
+        const date = moment(data, 'YYYY-MM-DD HH:mm:ss')
+            .subtract(3, 'hours'); // Remove 3 horas
+    
+        return date.format('DDMMM HH[h]mm');
     };
+    
+
+    
 });

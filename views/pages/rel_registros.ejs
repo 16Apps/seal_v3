@@ -1,0 +1,209 @@
+<%- contentFor('body') %>
+  <div ng-controller="relRegistrosCtrl" class="app-container">
+
+    <!-- App hero header starts -->
+    <div class="app-hero-header d-flex align-items-center">
+
+      <!-- Breadcrumb start -->
+      <ol class="breadcrumb d-none d-lg-flex">
+        <li class="breadcrumb-item">
+          <i class="bi bi-house lh-1"></i>
+          <a  class="text-decoration-none">Relatórios</a>
+        </li>
+        <li class="breadcrumb-item" aria-current="page">Registros de Leitura</li>
+        <li class="breadcrumb-item text-info" aria-current="page">Total: {{ _listItens.length }}</li>
+      </ol>
+      <!-- Breadcrumb end -->
+
+      <!-- Filter start -->
+      <div class="ms-auto d-flex flex-row gap-1 ">
+        <div class="search-container d-lg-flex d-none">
+          <input ng-model="_pesquisa" ng-change="onPesquisa()" type="text" class="form-control" id="searchData" placeholder="Pesquisar">
+          <i class="bi bi-search"></i>
+        </div>
+        <button ng-click="onItem('add', undefined)" type="button"
+          class="btn btn-warning btn-sm ms-3 text-dark">Novo</button>
+      </div>
+      <!-- Filter end -->
+
+    </div>
+    <!-- App Hero header ends -->
+
+    <!-- App body starts -->
+    <div class="app-body">
+
+      <div class="modal fade" id="modalItem" tabindex="-1" aria-labelledby="exampleModalFullscreenLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-fullscreen">
+          <item funcao="funcaoLoc" edit="editLoc" on-fechar="onItem()"></item>
+        </div>
+      </div>
+
+      <div class="row gx-3">
+        <div class="col-xxl-12">
+          <div class="card mb-3">
+            <div class="card-body">
+              <div class="table-responsive">
+                <div class="table-outer">
+                  <table class="table align-middle table-hover m-0">
+                    <thead>
+                      <tr>
+                        <th>
+
+                        </th>
+
+                        <th class="w-20" ng-click="sortBy('categoria.descricao')" class="sortable">
+                          SKU
+                          <i class="bi" ng-class="{
+              'bi-caret-up-fill': sortField=='categoria.descricao' && !sortReverse,
+              'bi-caret-down-fill': sortField=='categoria.descricao' && sortReverse
+        }"></i>
+                        </th>
+
+                        <th class="w-90 sortable" ng-click="sortBy('id_categoria_reg1.descricao')">
+                          Registro
+                          <i class="bi" ng-class="{
+              'bi-caret-up-fill': sortField=='id_categoria_reg1.descricao' && !sortReverse,
+              'bi-caret-down-fill': sortField=='id_categoria_reg1.descricao' && sortReverse
+        }"></i>
+                        </th>
+
+                        <th class="w-10 sortable" ng-click="sortBy('tag')">
+                          Status
+                          <i class="bi" ng-class="{
+              'bi-caret-up-fill': sortField=='tag' && !sortReverse,
+              'bi-caret-down-fill': sortField=='tag' && sortReverse
+        }"></i>
+                        </th>
+
+                        <th class="w-5 sortable" ng-click="sortBy('id_categoria_reg1.descricao')">
+                          Esperado
+                          <i class="bi" ng-class="{
+              'bi-caret-up-fill': sortField=='id_categoria_reg1.descricao' && !sortReverse,
+              'bi-caret-down-fill': sortField=='id_categoria_reg1.descricao' && sortReverse
+        }"></i>
+                        </th>
+
+                        <th class="w-5 sortable" ng-click="sortBy('id_categoria_reg1.descricao')">
+                        
+                          <i class="bi" ng-class="{
+              'bi-caret-up-fill': sortField=='id_categoria_reg1.descricao' && !sortReverse,
+              'bi-caret-down-fill': sortField=='id_categoria_reg1.descricao' && sortReverse
+        }"></i>
+                        </th>
+
+                        
+
+                 
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr ng-repeat="item in _listItens | orderBy:sortField:sortReverse"">
+                      <td>
+                          <div class="d-inline-flex align-items-center justify-content-center rounded-circle me-2" 
+                               style="width: 48px; height: 48px;"
+                               ng-class="{
+                                 'bg-success': item.status == 'entrada' || item.status == 'associacao_ok',
+                                 'bg-warning': item.status == 'saida',
+                                 'bg-info': item.status == 'permanencia',
+                                 'bg-danger': item.status == 'associacao_erro',
+                                 'bg-secondary': item.status != 'entrada' && item.status != 'saida' && item.status != 'permanencia' && item.status != 'associacao_erro' && item.status != 'associacao_ok'
+                               }">
+                            <i class="bi text-white fs-5" 
+                               ng-class="{
+                                 'bi-arrow-right-circle-fill': item.status == 'entrada',
+                                 'bi-arrow-left-circle-fill': item.status == 'saida',
+                                 'bi-pause-circle-fill': item.status == 'permanencia',
+                                 'bi-exclamation-triangle-fill': item.status == 'associacao_erro',
+                                 'bi-check-circle-fill': item.status == 'associacao_ok',
+                                 'bi-circle-fill': item.status != 'entrada' && item.status != 'saida' && item.status != 'permanencia' && item.status != 'associacao_erro' && item.status != 'associacao_ok'
+                               }"></i>
+                          </div>
+                      </td>
+
+                      <td>
+                        {{ item.id_categoria.descricao ? item.id_categoria.descricao : 'Item N/A' }}
+                        <br>
+                        <span 
+                          class="badge bg-light bg-opacity-10 text-light text-uppercase">
+                          <i class="bi bi-tag me-1 "></i>{{ item.tag }}
+                        </span>
+                      </td>
+
+                      <td>
+                        {{ item.data_permanecia ? formataDataHora(item.data_permanecia) : '' }}
+                        <br>
+                        <span 
+                          class="badge bg-light bg-opacity-10 text-light text-uppercase">
+                          <i class="bi bi-tag me-1 "></i>{{ item.data_registro ? formataDataHora(item.data_registro) : '' }}
+                        </span>
+                      </td>
+
+                      <td>
+                        {{ item.id_gateway.descricao }}<br>
+                        <!-- Status: entrada -->
+                        <span ng-show="item.status=='entrada'"
+                          class="badge bg-success bg-opacity-10 text-success text-uppercase">
+                          <i class="bi bi-arrow-right-circle me-1"></i>{{ item.status }}
+                        </span>
+                        <!-- Status: saida -->
+                        <span ng-show="item.status=='saida'"
+                          class="badge bg-warning bg-opacity-10 text-warning text-uppercase">
+                          <i class="bi bi-arrow-left-circle me-1"></i>{{ item.status }}
+                        </span>
+                        <!-- Status: permanencia -->
+                        <span ng-show="item.status=='permanencia'"
+                          class="badge bg-info bg-opacity-10 text-info text-uppercase">
+                          <i class="bi bi-pause-circle me-1"></i>{{ item.status }}
+                        </span>
+                        <!-- Status: associacao_erro -->
+                        <span ng-show="item.status=='associacao_erro'"
+                          class="badge bg-danger bg-opacity-10 text-danger text-uppercase">
+                          <i class="bi bi-exclamation-triangle me-1"></i>{{ item.status }}
+                        </span>
+                        <!-- Status: associacao_ok -->
+                        <span ng-show="item.status=='associacao_ok'"
+                          class="badge bg-success bg-opacity-10 text-success text-uppercase">
+                          <i class="bi bi-check-circle me-1"></i>{{ item.status }}
+                        </span>
+                        <!-- Status: outros (fallback) -->
+                        <span ng-show="item.status!='entrada' && item.status!='saida' && item.status!='permanencia' && item.status!='associacao_erro' && item.status!='associacao_ok'"
+                          class="badge bg-secondary bg-opacity-10 text-secondary text-uppercase">
+                          <i class="bi bi-circle me-1"></i>{{ item.status }}
+                        </span>
+                      </td>
+ 
+                      <td>
+                        <span ng-show="item.associados.length > 0"
+                          class="badge text-uppercase fs-4"
+                          class="bg-light bg-opacity-10 text-light text-uppercase">
+                          {{ item.associados[0].quantidade }}
+                        </span>
+                      </td>
+
+                      <td>
+                        <span ng-show="item.associados.length > 0"
+                          class="badge text-uppercase fs-4"
+                          ng-class="{
+                            'bg-success bg-opacity-10 text-success': item.associados[0].encontrado_categoria == item.associados[0].quantidade,
+                            'bg-danger bg-opacity-10 text-danger': item.associados[0].encontrado_categoria != item.associados[0].quantidade
+                          }">
+                          {{ item.associados[0].encontrado_categoria }}
+                        </span>
+                      </td>
+                      
+                     
+
+
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <!-- App body ends -->

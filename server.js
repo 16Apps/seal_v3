@@ -66,6 +66,10 @@ app.get('/rel_itens_associados', (req, res) => {
   res.render('pages/rel_itens_associados', { layout: 'layout' });
 });
 
+app.get('/rel_registros', (req, res) => {
+  res.render('pages/rel_registros', { layout: 'layout' });
+});
+
 app.get('/item', (req, res) => {
   res.render('pages/item', { layout: 'layout' });
 });

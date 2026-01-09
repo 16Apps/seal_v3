@@ -8,7 +8,7 @@
       <ol class="breadcrumb d-none d-lg-flex">
         <li class="breadcrumb-item">
           <i class="bi bi-house lh-1"></i>
-          <a  class="text-decoration-none">Gestão de Itens</a>
+          <a class="text-decoration-none">Gestão de Itens</a>
         </li>
         <li class="breadcrumb-item" aria-current="page">SKUs</li>
         <li class="breadcrumb-item text-info" aria-current="page">Total: {{ _listItens.length }}</li>
@@ -18,11 +18,16 @@
       <!-- Filter start -->
       <div class="ms-auto d-flex flex-row gap-1 ">
         <div class="search-container d-lg-flex d-none">
-          <input ng-model="_pesquisa" ng-change="onPesquisa()" type="text" class="form-control" id="searchData" placeholder="Pesquisar">
+          <input ng-model="_pesquisa" ng-change="onPesquisa()" type="text" class="form-control" id="searchData"
+            placeholder="Pesquisar">
           <i class="bi bi-search"></i>
         </div>
         <button ng-click="onItem('add', undefined)" type="button"
           class="btn btn-warning btn-sm ms-3 text-dark">Novo</button>
+        <button ng-click="onCarregaRegistros()" type="button"
+          class="btn btn-secondary btn-sm ms-2" title="Atualizar lista">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
       </div>
       <!-- Filter end -->
 
@@ -83,11 +88,19 @@
         }"></i>
                         </th>
 
-                        <th class="w-50 sortable" ng-click="sortBy('localizacao')">
+                        <th class="w-20 sortable" ng-click="sortBy('localizacao')">
                           Localização
                           <i class="bi" ng-class="{
               'bi-caret-up-fill': sortField=='localizacao' && !sortReverse,
               'bi-caret-down-fill': sortField=='localizacao' && sortReverse
+        }"></i>
+                        </th>
+
+                        <th class="w-50 sortable" ng-click="sortBy('registro_atual.data_permanecia')">
+                          Registro
+                          <i class="bi" ng-class="{
+              'bi-caret-up-fill': sortField=='registro_atual.data_permanecia' && !sortReverse,
+              'bi-caret-down-fill': sortField=='registro_atual.data_permanecia' && sortReverse
         }"></i>
                         </th>
 
@@ -115,11 +128,11 @@
                       <td>{{ item.id_categoria_reg1.descricao }}</td>
                       <td>{{ item.id_externo }}</td>
 
-                     
+
 
                       <td>{{ item.tag}}</td>
 
-                      
+
                       <td>
                         {{ item.id_nivel_loc1 ? item.id_nivel_loc1.descricao : 'Em Transporte' }}
                         {{ item.id_nivel_loc2 ? ' - ' + item.id_nivel_loc2.descricao : '' }}
@@ -128,6 +141,15 @@
                           <br>
                           {{ item.id_nivel_loc3 ? item.id_nivel_loc3.descricao : '' }}
                           {{ item.id_nivel_loc4 ? ' - ' + item.id_nivel_loc4.descricao : '' }}
+                        </span>
+                      </td>
+
+                      <td>
+                        {{ item.registro_atual.data_permanecia ? formataDataHora(item.registro_atual.data_permanecia) :'' }}
+                        <br><span 
+                          class="badge bg-light bg-opacity-10 text-light text-uppercase">
+                          <i class="bi bi-play-circle-fill me-1 "></i>
+                          {{ item.registro_atual.data_registro ? formataDataHora(item.registro_atual.data_registro) :'' }}
                         </span>
                       </td>
 

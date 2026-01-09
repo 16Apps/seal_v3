@@ -245,13 +245,14 @@
             </li>
 
             <li class="treeview"
-            ng-class="{'active current-page': isActive('alerta') || isActive('posicao') || isActive('interacao') || isActive('associacao') }">
+            ng-class="{'active current-page': isActive('rel_itens_associados') || isActive('rel_registros') }">
             <a href="#!">
               <i class="bi bi-printer"></i>
               <span class="menu-text">Relatórios</span>
             </a>
             <ul class="treeview-menu">
               <li><a href="/rel_itens_associados">Itens Associados</a></li>
+              <li><a href="/rel_registros">Registros de Leitura</a></li>
             </ul>
           </li>
 
@@ -381,6 +382,7 @@
   <script src="/controller/interacao.js"></script>
 
   <script src="/controller/rel_itens_associados.js"></script>
+  <script src="/controller/rel_registros.js"></script>
 
   <script src="/controller/item.js"></script>
   <script src="/controller/categoria.js"></script>

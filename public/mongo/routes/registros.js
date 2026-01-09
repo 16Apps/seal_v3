@@ -611,7 +611,7 @@ module.exports = (app, dbConnection) => {
             movimento == movimento + '_i'
         }
 
-        console.log('_regPosicao:' + posicao)
+        console.log('_regPosicao:' + posicao + ' >> id_nivel_loc1:' + _reg.id_nivel_loc1 + " >> filtro:" + JSON.stringify(filtro))
 
         // 🔹 URL correta para OBJECTS
         const urlSepioo = 'https://sealairtracking-3d3268c3e73f.herokuapp.com/sepioo';
