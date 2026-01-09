@@ -615,7 +615,7 @@ module.exports = (app, dbConnection) => {
 
         // 🔹 URL correta para OBJECTS
         const urlSepioo = 'https://sealairtracking-3d3268c3e73f.herokuapp.com/sepioo';
-
+        //const urlSepioo = 'http://localhost:5000/sepioo';
         if (interacao && Array.isArray(interacao.acoes)) {
 
             for (let i = 0; i < interacao.acoes.length; i++) {

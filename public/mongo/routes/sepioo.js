@@ -63,15 +63,15 @@ module.exports = (app, dbConnection) => {
 
       // 🔹 payload padrão da Sepioo
 
-      if(durationInMinutes==0){
-        durationInMinutes = null;
-      };
-      
+      // if(durationInMinutes==0){
+      //   durationInMinutes = null;
+      // };
+
       const payload = {
         color: color || 'GREEN',
         pattern: pattern || 'FLASH_1_SECOND',
         duration: duration ?? 5,
-        durationInMinutes: durationInMinutes ?? null,
+        durationInMinutes:  null,
         objectIds
       };
 
