@@ -189,6 +189,30 @@ module.exports = (app, dbConnection) => {
             message: `Gateway ${tokem} não cadastrado na conta`
         });
 
+        const io = req.app.get('io');
+        const dadosRegistro = {
+            tokem,
+            id_colaborador,
+            tag,
+            data_leitura,
+            antena,
+            rssi,
+            bateria,
+            temperatura,
+            latitude,
+            longitude,
+            id_nivel_loc1,
+            id_nivel_loc2,
+            id_nivel_loc3,
+            id_nivel_loc4,
+            id_nivel_loc1_final,
+            id_nivel_loc2_final,
+            id_nivel_loc3_final,
+            id_nivel_loc4_final
+        };
+        io.emit(gateway._id, dadosRegistro);
+        console.log("::::::::::::" + JSON.stringify(dadosRegistro))
+
         // Se não foi informado o nível de localização, usa o nível do gateway
 
         if (!id_nivel_loc1 && gateway.modo == 'fixo') {

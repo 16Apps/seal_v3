@@ -41,6 +41,15 @@
                                     data-bs-target="#gateways-c" type="button" role="tab" aria-controls="gateways-c"
                                     aria-selected="false">Movimentação</button>
                             </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link rounded-pill" id="gateways-d-tab" data-bs-toggle="pill"
+                                    data-bs-target="#gateways-d" type="button" role="tab" aria-controls="gateways-d"
+                                    aria-selected="false">
+                                    Log
+                                    <span ng-show="$ctrl._regLeituras.length > 0" class="badge bg-danger ms-1">{{
+                                        $ctrl._regLeituras.length }}</span>
+                                </button>
+                            </li>
 
                         </ul>
                         <div class="tab-content" id="gateways-tabContent">
@@ -450,28 +459,28 @@
                                         </div>
 
                                         <div class="row gx-3 mb-3">
-                                                <div class="col-sm-2" ng-show="$ctrl._editGateway.codif_epc=='manual'">
-                                                    <label for="displayName" class="form-label">
-                                                        Intervalo (segundos)
-                                                    </label>
-                                                    <input ng-model="$ctrl._editGateway.intervalo_ausencia" type="text"                                                       
-                                                        class="form-control">
-                                                </div>
-                                                <div class="col-sm-2" ng-show="$ctrl._editGateway.codif_epc=='manual'">
-                                                    <label for="displayName" class="form-label">
-                                                        Range GPS (metros)
-                                                    </label>
-                                                    <input ng-model="$ctrl._editGateway.intervalo_reg_gps" type="text"
-                                                        class="form-control">
-                                                </div>
-                                                <div class="col-sm-2" ng-show="$ctrl._editGateway.codif_epc=='manual'">
-                                                    <label for="displayName" class="form-label">
-                                                        Range RSSI (dBm)
-                                                    </label>
-                                                    <input ng-model="$ctrl._editGateway.intervalo_reg_rssi" type="text"
-                                                        class="form-control">
-                                                </div>
+                                            <div class="col-sm-2" ng-show="$ctrl._editGateway.codif_epc=='manual'">
+                                                <label for="displayName" class="form-label">
+                                                    Intervalo (segundos)
+                                                </label>
+                                                <input ng-model="$ctrl._editGateway.intervalo_ausencia" type="text"
+                                                    class="form-control">
                                             </div>
+                                            <div class="col-sm-2" ng-show="$ctrl._editGateway.codif_epc=='manual'">
+                                                <label for="displayName" class="form-label">
+                                                    Range GPS (metros)
+                                                </label>
+                                                <input ng-model="$ctrl._editGateway.intervalo_reg_gps" type="text"
+                                                    class="form-control">
+                                            </div>
+                                            <div class="col-sm-2" ng-show="$ctrl._editGateway.codif_epc=='manual'">
+                                                <label for="displayName" class="form-label">
+                                                    Range RSSI (dBm)
+                                                </label>
+                                                <input ng-model="$ctrl._editGateway.intervalo_reg_rssi" type="text"
+                                                    class="form-control">
+                                            </div>
+                                        </div>
 
                                     </div>
                                 </div>
@@ -482,6 +491,87 @@
 
                                 <div class="border rounded-2 p-3 mb-3">
 
+                                </div>
+
+                            </div>
+                            <div class="tab-pane fade" id="gateways-d" role="tabpanel" aria-labelledby="gateways-d-tab"
+                                tabindex="0">
+
+                                <div class="card mb-3" style="margin-top: -20px;">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0"></h6>
+                                        <button ng-click="$ctrl._regLeituras = []" class="btn btn-sm btn-secondary">
+                                            <i class="bi bi-trash"></i> Limpar
+                                        </button>
+                                    </div>
+
+           
+                                    <div class="card-body">
+                                        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                                            <table class="table table-sm table-hover mb-0">
+                                                <thead class=" sticky-top">
+                                                    <tr>
+                                                        <th style="width: 150px;">Data/Hora</th>
+                                                        <th style="width: 120px;">Tag</th>
+                                                        <th style="width: 80px;">RSSI</th>
+                                                        <th style="width: 80px;">Antena</th>
+                                                        <th style="width: 80px;">Bateria</th>
+                                                        <th style="width: 100px;">Temperatura</th>
+                                                        <th>Localização</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr ng-repeat="leitura in $ctrl._regLeituras">
+                                                        <td style="height: 40px; vertical-align: middle;">
+                                                            <small>{{ $ctrl.formataDataHora(leitura.data_leitura)
+                                                                }}</small>
+                                                        </td>
+                                                        <td style="height: 40px; vertical-align: middle;">
+                                                            <span class="badge bg-primary">{{ leitura.tag }}</span>
+                                                        </td>
+                                                        <td style="height: 40px; vertical-align: middle;">
+                                                            <span class="badge" ng-class="{
+                                                                    'bg-success': leitura.rssi > -60,
+                                                                    'bg-warning': leitura.rssi >= -80 && leitura.rssi <= -60,
+                                                                    'bg-danger': leitura.rssi < -80
+                                                                  }">
+                                                                {{ leitura.rssi }} dBm
+                                                            </span>
+                                                        </td>
+                                                        <td style="height: 40px; vertical-align: middle;">{{ leitura.antena }}</td>
+                                                        <td style="height: 40px; vertical-align: middle;">{{ leitura.bateria }}</td>
+                                                        <td style="height: 40px; vertical-align: middle;">{{ leitura.temperatura }}</td>
+                                                        <td style="height: 40px; vertical-align: middle;">
+                                                            <small class="text-muted">
+                                                                <span ng-show="leitura.latitude && leitura.longitude">
+                                                                    Lat: {{ leitura.latitude }}, Lng: {{
+                                                                    leitura.longitude }}
+                                                                </span>
+                                                                <span ng-show="!leitura.latitude && !leitura.longitude">
+                                                                    <span ng-show="leitura.id_nivel_loc1">Loc1: {{
+                                                                        leitura.id_nivel_loc1 }}</span>
+                                                                    <span ng-show="leitura.id_nivel_loc2"> / Loc2: {{
+                                                                        leitura.id_nivel_loc2 }}</span>
+                                                                    <span ng-show="leitura.id_nivel_loc3"> / Loc3: {{
+                                                                        leitura.id_nivel_loc3 }}</span>
+                                                                    <span ng-show="leitura.id_nivel_loc4"> / Loc4: {{
+                                                                        leitura.id_nivel_loc4 }}</span>
+                                                                    <span
+                                                                        ng-show="!leitura.id_nivel_loc1 && !leitura.id_nivel_loc2 && !leitura.id_nivel_loc3 && !leitura.id_nivel_loc4 && !leitura.latitude && !leitura.longitude">-</span>
+                                                                </span>
+                                                            </small>
+                                                        </td>
+                                                    </tr>
+                                                    <tr ng-show="$ctrl._regLeituras.length === 0">
+                                                        <td colspan="7" class="text-center text-muted py-4">
+                                                            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                                            Nenhuma leitura recebida ainda
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </div>
 
                             </div>
@@ -498,7 +588,7 @@
 
     </div>
     <div class="modal-footer">
-        <button ng-click="$ctrl.onExcluir()"  class="btn btn-danger me-3" type="button">Excluir</button>
+        <button ng-click="$ctrl.onExcluir()" class="btn btn-danger me-3" type="button">Excluir</button>
         <button ng-click="$ctrl.fechar()" class="btn btn-light" type="button">Fechar</button>
 
         <button ng-click="$ctrl.onSalvar()" class="btn btn-primary" type="button">

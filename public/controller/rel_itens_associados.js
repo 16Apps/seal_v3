@@ -103,7 +103,7 @@ app.controller('itensAssociadosCtrl', function ($scope, $http, params, uteisServ
         const date = moment(data, 'YYYY-MM-DD HH:mm:ss')
             .subtract(3, 'hours'); // Remove 3 horas
     
-        return date.format('DDMMM HH[h]mm');
+        return date.format('DDMMM HH[h]mm:ss');
     };
     
 

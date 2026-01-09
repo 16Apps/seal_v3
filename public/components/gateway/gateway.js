@@ -17,6 +17,8 @@ app.component('gateway', {
     $ctrl._listNivel2 = [];
     $ctrl._listNivel3 = [];
     $ctrl._listNivel4 = [];
+    $ctrl._regLeituras = [];
+    $ctrl.socket = null;
 
     $ctrl.options = {
       headers: { 'Content-Type': 'application/json' }
@@ -112,6 +114,8 @@ app.component('gateway', {
           }
         }
       };
+
+      $ctrl.onLogs()
 
     };
 
@@ -252,6 +256,66 @@ app.component('gateway', {
           }
         })
     }
+
+    $ctrl.onLogs = async function () {
+
+      // Desconecta socket anterior se existir
+      if ($ctrl.socket) {
+        $ctrl.socket.disconnect();
+        $ctrl.socket = null;
+      }
+
+      // Limpa leituras anteriores
+      $ctrl._regLeituras = [];
+
+      // Cria nova conexão socket
+      $ctrl.socket = io(); // conexão padrão
+
+      $ctrl.socket.on($ctrl._editGateway._id, function (data) {
+          try {
+              // Se os dados vierem como string JSON, converte para objeto
+              let leitura = typeof data === 'string' ? JSON.parse(data) : data;
+              
+              // Adiciona timestamp de recebimento
+              leitura._timestamp_recebido = new Date().toISOString();
+              
+              $timeout(() => {
+                  // Adiciona no início da lista (mais recente primeiro)
+                  $ctrl._regLeituras.unshift(leitura);
+                  
+                  // Mantém apenas os 50 últimos registros
+                  if ($ctrl._regLeituras.length > 50) {
+                      $ctrl._regLeituras = $ctrl._regLeituras.slice(0, 50);
+                  }
+              }, 0);
+          } catch (error) {
+              console.error('Erro ao processar leitura:', error, data);
+          }
+      });
+
+    };
+
+    // Função para formatar data/hora
+    $ctrl.formataDataHora = function (data) {
+      if (!data) return '-';
+      const date = new Date(data);
+      return date.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+    };
+
+    // Limpa socket ao fechar o componente
+    $ctrl.$onDestroy = function () {
+      if ($ctrl.socket) {
+        $ctrl.socket.disconnect();
+        $ctrl.socket = null;
+      }
+    };
 
 
     $ctrl.fechar = function () {

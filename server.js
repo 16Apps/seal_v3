@@ -3,6 +3,7 @@ var expressLayouts = require('express-ejs-layouts');
 var cors = require('cors');
 var bodyParser = require('body-parser');
 var http = require('http');
+const socketio = require('socket.io');
 
 var app = express();
 const port = process.env.PORT || 5000;
@@ -24,6 +25,14 @@ app.use(bodyParser.urlencoded({
 
 app.use(express.static(__dirname + '/public'));
 server = http.createServer(app);
+
+const io = socketio(server);
+// Ao conectar
+io.on('connection', (socket) => {
+  console.log('Cliente conectado:', socket.id);
+});
+
+app.set('io', io); // opcional, para acessar no controller
 
 var dbMongo = require('./config/mongo');
 

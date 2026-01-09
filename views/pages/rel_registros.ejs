@@ -21,8 +21,9 @@
           <input ng-model="_pesquisa" ng-change="onPesquisa()" type="text" class="form-control" id="searchData" placeholder="Pesquisar">
           <i class="bi bi-search"></i>
         </div>
-        <button ng-click="onItem('add', undefined)" type="button"
-          class="btn btn-warning btn-sm ms-3 text-dark">Novo</button>
+        <button ng-click="onCarregaRegistros()" type="button"
+        class="btn btn-secondary btn-sm ms-2" title="Atualizar lista">
+        <i class="bi bi-arrow-clockwise"></i>
       </div>
       <!-- Filter end -->
 
