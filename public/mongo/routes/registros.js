@@ -30,7 +30,7 @@ module.exports = (app, dbConnection) => {
         try {
           const payload = req.body;
 
-          console.log('/_bd/registro/gateway::' + JSON.stringify(payload))
+        
       
           if (!Array.isArray(payload) || payload.length === 0) {
             return res.status(400).json({ erro: 'Payload inválido' });
@@ -83,6 +83,8 @@ module.exports = (app, dbConnection) => {
               id_nivel_loc4_final: ""
             };
       
+            console.log('/_bd/registro/gateway::' + JSON.stringify(registro))
+
             //'https://sealairtracking-3d3268c3e73f.herokuapp.com/_bd/registro',\
             //'http://localhost:5000/_bd/registro',
             try {
@@ -138,7 +140,7 @@ module.exports = (app, dbConnection) => {
         } = req.body;
 
         console.log('/_bd/registro::' + tokem + '::' + tag)
-        console.log('/_bd/registro::' + JSON.stringify(req.body))
+        // console.log('/_bd/registro::' + JSON.stringify(req.body))
 
         // Verificar Localização
         let retorno;
@@ -547,22 +549,22 @@ module.exports = (app, dbConnection) => {
 
             if (_reg.id_nivel_loc4) {
                 filtro.id_nivel_loc3_destino = _reg.id_nivel_loc3;
-                filtro.id_nivel_loc4_destino = null;
+                filtro.id_nivel_loc4_destino = "";
             }
             // Nível 3 → 2
             else if (_reg.id_nivel_loc3) {
                 filtro.id_nivel_loc3_destino = _reg.id_nivel_loc3;
-                filtro.id_nivel_loc4_destino = null;
+                filtro.id_nivel_loc4_destino = "";
             }
             // Nível 2 → 1
             else if (_reg.id_nivel_loc2) {
                 filtro.id_nivel_loc2_destino = _reg.id_nivel_loc2;
-                filtro.id_nivel_loc3_destino = null;
+                filtro.id_nivel_loc3_destino =  "";
             }
             // Nível 1 → 0
             else if (_reg.id_nivel_loc1) {
                 filtro.id_nivel_loc1_destino = _reg.id_nivel_loc1;
-                filtro.id_nivel_loc2_destino = null;
+                filtro.id_nivel_loc2_destino =  "";
             }
 
         } else if (movimento == 'saida') {
@@ -571,22 +573,22 @@ module.exports = (app, dbConnection) => {
 
             if (_reg.id_nivel_loc4) {
                 filtro.id_nivel_loc3 = _reg.id_nivel_loc3;
-                filtro.id_nivel_loc4 = null;
+                filtro.id_nivel_loc4 =  "";
             }
             // Nível 3 → 2
             else if (_reg.id_nivel_loc3) {
                 filtro.id_nivel_loc3 = _reg.id_nivel_loc3;
-                filtro.id_nivel_loc4 = null;
+                filtro.id_nivel_loc4 =  "";
             }
             // Nível 2 → 1
             else if (_reg.id_nivel_loc2) {
                 filtro.id_nivel_loc2 = _reg.id_nivel_loc2;
-                filtro.id_nivel_loc3 = null;
+                filtro.id_nivel_loc3 =  "";
             }
             // Nível 1 → 0
             else if (_reg.id_nivel_loc1) {
                 filtro.id_nivel_loc1 = _reg.id_nivel_loc1;
-                filtro.id_nivel_loc2 = null;
+                filtro.id_nivel_loc2 =  "";
             }
 
         }
