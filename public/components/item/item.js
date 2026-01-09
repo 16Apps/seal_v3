@@ -502,11 +502,14 @@ app.component('item', {
         uteisService.onToast('O campo Tag é obrigatório.', 'warning', 3000, 'top-end');
         return;
       };
-
+      
       uteisService.patchBase('/item', $ctrl._editItem)
         .then((res) => {
 
-          uteisService.patchBase('/associacao', $ctrl._editAssocicao)
+          if($ctrl._editAssocicao.associados.length > 0){
+            uteisService.patchBase('/associacao', $ctrl._editAssocicao)
+          }
+
 
           uteisService.onToast('Registrado!', 'success', 3000, 'top-end');
           $ctrl.fechar();

@@ -28,92 +28,107 @@ module.exports = (app, dbConnection) => {
 
     app.post('/_bd/registro/gateway', async (req, res) => {
         try {
-          const payload = req.body;
+            const payload = req.body;
 
-          if (!Array.isArray(payload) || payload.length === 0) {
-            return res.status(400).json({ erro: 'Payload inválido' });
-          }
-      
-          // 1️⃣ Primeiro item contém o gateway
-          const gatewayItem = payload.find(i => i.gateway);
-          if (!gatewayItem) {
-            return res.status(400).json({ erro: 'Gateway não informado' });
-          }
-      
-          const tokem = gatewayItem.gateway;
-      
-          // 2️⃣ Filtra apenas leituras com MAC
-          const leituras = payload.filter(i => i.mac);
-      
-          let enviados = 0;
-          let erros = [];
-      
-          // Função para formatar MAC como endereço MAC (XX:XX:XX:XX:XX:XX)
-          const formatarMAC = (mac) => {
-            if (!mac) return '';
-            // Remove tudo que não é alfanumérico e converte para maiúsculo
-            const limpo = mac.toString().replace(/[^0-9A-Fa-f]/g, '').toUpperCase();
-            // Adiciona : a cada 2 caracteres
-            return limpo.match(/.{1,2}/g)?.join(':') || limpo;
-          };
-
-          console.log('/_bd/registro/gateway::' + leituras.length)
-
-          // 3️⃣ Envio ordeiro (um por vez)
-          for (const leitura of leituras) {
-            const registro = {
-              tokem: formatarMAC(tokem),
-              tag: formatarMAC(leitura.mac),     // MAC formatado como endereço MAC
-              data_leitura: "", //leitura.timestamp ? moment(leitura.timestamp).format('YYYY-MM-DD HH:mm:ss') : moment().format('YYYY-MM-DD HH:mm:ss'),
-              antena: "0",
-              rssi: leitura.rssi ?? "",
-              bateria: "0",
-              temperatura: "0",
-              latitude: "",
-              longitude: "",
-              id_nivel_loc1: "",
-              id_nivel_loc2: "",
-              id_nivel_loc3: "",
-              id_nivel_loc4: "",
-              id_nivel_loc1_final: "",
-              id_nivel_loc2_final: "",
-              id_nivel_loc3_final: "",
-              id_nivel_loc4_final: ""
-            };
-      
-            console.log('/_bd/registro/gateway::' + JSON.stringify(registro))
-
-            //'https://sealairtracking-3d3268c3e73f.herokuapp.com/_bd/registro',\
-            //'http://localhost:5000/_bd/registro',
-            try {
-              await axios.post(
-                'https://sealairtracking-3d3268c3e73f.herokuapp.com/_bd/registro',
-                registro,
-                { timeout: 5000 }
-              );
-      
-              enviados++;
-            } catch (err) {
-              erros.push({
-                mac: leitura.mac,
-                erro: err.message
-              });
+            if (!Array.isArray(payload) || payload.length === 0) {
+                return res.status(400).json({ erro: 'Payload inválido' });
             }
-          }
-      
-          return res.json({
-            gateway: tokem,
-            total_leituras: leituras.length,
-            enviados,
-            erros
-          });
-      
+
+            // 1️⃣ Primeiro item contém o gateway
+            const gatewayItem = payload.find(i => i.gateway);
+            if (!gatewayItem) {
+                return res.status(400).json({ erro: 'Gateway não informado' });
+            }
+
+            const tokem = gatewayItem.gateway;
+
+            // Função para formatar MAC como endereço MAC (XX:XX:XX:XX:XX:XX)
+            const formatarMAC = (mac) => {
+                if (!mac) return '';
+                // Remove tudo que não é alfanumérico e converte para maiúsculo
+                const limpo = mac.toString().replace(/[^0-9A-Fa-f]/g, '').toUpperCase();
+                // Adiciona : a cada 2 caracteres
+                return limpo.match(/.{1,2}/g)?.join(':') || limpo;
+            };
+
+            // 1.5️⃣ Busca o gateway no banco para obter intervalo_reg_rssi
+            const gateway = await Gateway.findOne({ tokem: formatarMAC(tokem), ativo: 1 });
+            if (!gateway) {
+                return res.status(400).json({ erro: 'Gateway não encontrado no banco de dados' });
+            }
+
+            // 2️⃣ Filtra apenas leituras com MAC
+            const leituras = payload.filter(i => i.mac);
+
+            let enviados = 0;
+            let erros = [];
+
+            console.log('/_bd/registro/gateway::' + leituras.length)
+
+            // 3️⃣ Envio ordeiro (um por vez)
+            for (const leitura of leituras) {
+                const registro = {
+                    tokem: formatarMAC(tokem),
+                    tag: formatarMAC(leitura.mac),     // MAC formatado como endereço MAC
+                    data_leitura: "", //leitura.timestamp ? moment(leitura.timestamp).format('YYYY-MM-DD HH:mm:ss') : moment().format('YYYY-MM-DD HH:mm:ss'),
+                    antena: "0",
+                    rssi: leitura.rssi ?? "",
+                    bateria: "0",
+                    temperatura: "0",
+                    latitude: "",
+                    longitude: "",
+                    id_nivel_loc1: "",
+                    id_nivel_loc2: "",
+                    id_nivel_loc3: "",
+                    id_nivel_loc4: "",
+                    id_nivel_loc1_final: "",
+                    id_nivel_loc2_final: "",
+                    id_nivel_loc3_final: "",
+                    id_nivel_loc4_final: ""
+                };
+
+                console.log('/_bd/registro/gateway::' + JSON.stringify(registro))
+
+                //'https://sealairtracking-3d3268c3e73f.herokuapp.com/_bd/registro',\
+                //'http://localhost:5000/_bd/registro',
+
+                // Verifica se deve filtrar por RSSI (aceita apenas sinais fortes o suficiente)
+                const rssiValor = parseFloat(leitura.rssi) * -1 || 0;
+                // const rssiAbsoluto = Math.abs(rssiValor);
+                const thresholdRSSI = gateway.intervalo_reg_rssi || 0;
+                
+                // Se não há threshold configurado ou o sinal está dentro do threshold, envia
+                if (thresholdRSSI === 0 || rssiValor < thresholdRSSI) {
+                    try {
+                        await axios.post(
+                            'https://sealairtracking-3d3268c3e73f.herokuapp.com/_bd/registro',
+                            registro,
+                            { timeout: 5000 }
+                        );
+
+                        enviados++;
+                    } catch (err) {
+                        erros.push({
+                            mac: leitura.mac,
+                            erro: err.message
+                        });
+                    }
+                }
+            }
+
+            return res.json({
+                gateway: tokem,
+                total_leituras: leituras.length,
+                enviados,
+                erros
+            });
+
         } catch (err) {
-          console.error(err);
-          res.status(500).json({ erro: 'Erro interno' });
+            console.error(err);
+            res.status(500).json({ erro: 'Erro interno' });
         }
-      });
-      
+    });
+
     app.post('/_bd/registro', async (req, res) => {
 
         let {
@@ -144,7 +159,7 @@ module.exports = (app, dbConnection) => {
         let retorno;
         let status;
 
-        if(!data_leitura){
+        if (!data_leitura) {
             data_leitura = moment().format('YYYY-MM-DD HH:mm:ss');
             console.log("::::::" + data_leitura)
         }
@@ -175,8 +190,8 @@ module.exports = (app, dbConnection) => {
         });
 
         // Se não foi informado o nível de localização, usa o nível do gateway
-  
-        if(!id_nivel_loc1 && gateway.modo =='fixo'){
+
+        if (!id_nivel_loc1 && gateway.modo == 'fixo') {
             id_nivel_loc1 = gateway.id_nivel_loc1;
             id_nivel_loc2 = gateway.id_nivel_loc2;
             id_nivel_loc3 = gateway.id_nivel_loc3;
@@ -557,12 +572,12 @@ module.exports = (app, dbConnection) => {
             // Nível 2 → 1
             else if (_reg.id_nivel_loc2) {
                 filtro.id_nivel_loc2_destino = _reg.id_nivel_loc2;
-                filtro.id_nivel_loc3_destino =  "";
+                filtro.id_nivel_loc3_destino = "";
             }
             // Nível 1 → 0
             else if (_reg.id_nivel_loc1) {
                 filtro.id_nivel_loc1_destino = _reg.id_nivel_loc1;
-                filtro.id_nivel_loc2_destino =  "";
+                filtro.id_nivel_loc2_destino = "";
             }
 
         } else if (movimento == 'saida') {
@@ -571,22 +586,22 @@ module.exports = (app, dbConnection) => {
 
             if (_reg.id_nivel_loc4) {
                 filtro.id_nivel_loc3 = _reg.id_nivel_loc3;
-                filtro.id_nivel_loc4 =  "";
+                filtro.id_nivel_loc4 = "";
             }
             // Nível 3 → 2
             else if (_reg.id_nivel_loc3) {
                 filtro.id_nivel_loc3 = _reg.id_nivel_loc3;
-                filtro.id_nivel_loc4 =  "";
+                filtro.id_nivel_loc4 = "";
             }
             // Nível 2 → 1
             else if (_reg.id_nivel_loc2) {
                 filtro.id_nivel_loc2 = _reg.id_nivel_loc2;
-                filtro.id_nivel_loc3 =  "";
+                filtro.id_nivel_loc3 = "";
             }
             // Nível 1 → 0
             else if (_reg.id_nivel_loc1) {
                 filtro.id_nivel_loc1 = _reg.id_nivel_loc1;
-                filtro.id_nivel_loc2 =  "";
+                filtro.id_nivel_loc2 = "";
             }
 
         }
@@ -613,7 +628,7 @@ module.exports = (app, dbConnection) => {
                         concluirItemPosicao(posicao, posicao.itens[0].id_item)
                     }
                     let _serialPDI = interacao.acoes[i].serial;
-                    if(interacao.acoes[i].equipamento=='pdi_vinculado'){
+                    if (interacao.acoes[i].equipamento == 'pdi_vinculado') {
                         let _item = await Item.findOne({ _id: _reg.id_item });
                         _serialPDI = _item.vinculos_device[0].id_mac
                         console.log('Serial PDI:' + _serialPDI)
@@ -1852,11 +1867,11 @@ module.exports = (app, dbConnection) => {
                         as: 'categoria_item'
                     }
                 },
-                { 
-                    $unwind: { 
-                        path: '$categoria_item', 
-                        preserveNullAndEmptyArrays: true 
-                    } 
+                {
+                    $unwind: {
+                        path: '$categoria_item',
+                        preserveNullAndEmptyArrays: true
+                    }
                 },
 
                 // 5️⃣ Local origem
@@ -1889,22 +1904,22 @@ module.exports = (app, dbConnection) => {
                 {
                     $project: {
                         _id: 0,
-                
+
                         tag: '$itens.tag',
                         ean: '$itens.ean',
-                
+
                         categoria: '$categoria.descricao',
                         categoria_item: '$categoria_item.descricao',
-                
+
                         status_origem: '$itens.status',
                         data_origem: '$partida_data',
-                
+
                         status_destino: '$itens.status_destino',
                         data_destino: '$previsao_chegada_data',
-                
+
                         local_origem: '$origem.descricao',
                         local_destino: '$destino.descricao',
-                
+
                         // 🔹 Situação
                         situacao: {
                             $cond: [
@@ -1924,7 +1939,7 @@ module.exports = (app, dbConnection) => {
                                 }
                             ]
                         },
-                
+
                         // 🔹 Intervalo em segundos
                         intervalo_segundos: {
                             $cond: [
@@ -1947,7 +1962,7 @@ module.exports = (app, dbConnection) => {
                 },
 
                 // 8️⃣ Ordena por data de saída
-                
+
 
             ]);
 
