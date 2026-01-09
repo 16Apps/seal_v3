@@ -30,8 +30,6 @@ module.exports = (app, dbConnection) => {
         try {
           const payload = req.body;
 
-        
-      
           if (!Array.isArray(payload) || payload.length === 0) {
             return res.status(400).json({ erro: 'Payload inválido' });
           }
@@ -89,7 +87,7 @@ module.exports = (app, dbConnection) => {
             //'http://localhost:5000/_bd/registro',
             try {
               await axios.post(
-                'http://localhost:5000/_bd/registro',
+                'https://sealairtracking-3d3268c3e73f.herokuapp.com/_bd/registro',
                 registro,
                 { timeout: 5000 }
               );
