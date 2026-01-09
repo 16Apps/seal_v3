@@ -12,6 +12,7 @@ const Alerta = require("../models/alerta");
 const Posicao = require("../models/posicao");
 const Associacao = require("../models/associacao");
 
+
 const Interacao = require("../models/interacao");
 const Colaborador = require("../models/colaborador");
 const RegistroColaborador = require("../models/registro_colaborador");
@@ -86,7 +87,7 @@ module.exports = (app, dbConnection) => {
             //'http://localhost:5000/_bd/registro',
             try {
               await axios.post(
-                'https://sealairtracking-3d3268c3e73f.herokuapp.com/_bd/registro',
+                'http://localhost:5000/_bd/registro',
                 registro,
                 { timeout: 5000 }
               );
@@ -521,7 +522,7 @@ module.exports = (app, dbConnection) => {
             interacao = await Interacao.findOne({ id_nivel_loc1: _reg.id_nivel_loc1, id_nivel_loc2: null });
         };
 
-        console.log("_checkInteracao: " + interacao)
+        console.log("_checkInteracao_result: " + interacao)
 
         //checa se trata-se de entrada ou saida indevida ou nao 
         let posicao
@@ -608,7 +609,15 @@ module.exports = (app, dbConnection) => {
 
                 if (interacao.acoes[i].movimento == movimento && (interacao.acoes[i].acao == 'pdi_led_vr' || interacao.acoes[i].acao == 'pdi_led_vm')) {
 
-                    concluirItemPosicao(posicao, posicao.itens[0].id_item)
+                    if (posicao && posicao.itens && Array.isArray(posicao.itens) && posicao.itens.length > 0 && posicao.itens[0].id_item) {
+                        concluirItemPosicao(posicao, posicao.itens[0].id_item)
+                    }
+                    let _serialPDI = interacao.acoes[i].serial;
+                    if(interacao.acoes[i].equipamento=='pdi_vinculado'){
+                        let _item = await Item.findOne({ _id: _reg.id_item });
+                        _serialPDI = _item.vinculos_device[0].id_mac
+                        console.log('Serial PDI:' + _serialPDI)
+                    }
 
                     // 🔹 payload padrão da Sepioo
                     const payload = {
@@ -616,7 +625,7 @@ module.exports = (app, dbConnection) => {
                         pattern: 'FLASH_1_SECOND',
                         duration: interacao.acoes[i].comando ?? 5,
                         durationInMinutes: 0,
-                        objectIds: [interacao.acoes[i].serial]
+                        objectIds: [_serialPDI]
                     };
 
                     console.log(payload)

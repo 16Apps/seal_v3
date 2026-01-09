@@ -62,11 +62,16 @@ module.exports = (app, dbConnection) => {
       const url = 'https://api.sepioo.com/v2.0/industry_seal_eu/sealbrengenharia/objects/action/flash';
 
       // 🔹 payload padrão da Sepioo
+
+      if(durationInMinutes==0){
+        durationInMinutes = null;
+      };
+      
       const payload = {
         color: color || 'GREEN',
         pattern: pattern || 'FLASH_1_SECOND',
         duration: duration ?? 5,
-        durationInMinutes: durationInMinutes ?? 0,
+        durationInMinutes: durationInMinutes ?? null,
         objectIds
       };
 
