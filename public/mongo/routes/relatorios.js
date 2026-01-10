@@ -52,6 +52,16 @@ module.exports = (app, dbConnection) => {
               as: 'categoria'
             }
           },
+
+          // 2.5️⃣ Lookup do gateway
+          {
+            $lookup: {
+              from: 'gateways',
+              localField: 'id_gateway',
+              foreignField: '_id',
+              as: 'id_gateway'
+            }
+          },
     
           // 3️⃣ Explode associados
           {
@@ -71,10 +81,11 @@ module.exports = (app, dbConnection) => {
             }
           },
     
-          // 5️⃣ Normaliza arrays (categoria e categoria associada)
+          // 5️⃣ Normaliza arrays (categoria, gateway e categoria associada)
           {
             $addFields: {
               categoria: { $arrayElemAt: ['$categoria', 0] },
+              id_gateway: { $arrayElemAt: ['$id_gateway', 0] },
               'associados.categoria': { $arrayElemAt: ['$associados.categoria', 0] }
             }
           },

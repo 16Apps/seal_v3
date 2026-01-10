@@ -53,20 +53,22 @@
 
                         </th>
 
-                        <th class="w-10" ng-click="sortBy('categoria.descricao')" class="sortable">Item
+                        <th class="w-20 sortable" ng-click="sortBy('tag')">
+                          Coletor
+                          <i class="bi" ng-class="{
+              'bi-caret-up-fill': sortField=='tag' && !sortReverse,
+              'bi-caret-down-fill': sortField=='tag' && sortReverse
+        }"></i>
+                        </th>
+
+                        <th class="w-20" ng-click="sortBy('categoria.descricao')" class="sortable">Item
                           <i class="bi" ng-class="{
               'bi-caret-up-fill': sortField=='categoria.descricao' && !sortReverse,
               'bi-caret-down-fill': sortField=='categoria.descricao' && sortReverse
         }"></i>
                         </th>
 
-                        <th class="w-20 sortable" ng-click="sortBy('tag')">
-                          Tag
-                          <i class="bi" ng-class="{
-              'bi-caret-up-fill': sortField=='tag' && !sortReverse,
-              'bi-caret-down-fill': sortField=='tag' && sortReverse
-        }"></i>
-                        </th>
+                        
 
                         <th class="w-5 sortable" ng-click="sortBy('id_categoria_reg1.descricao')">
                           Esperado
@@ -116,6 +118,15 @@
                       </td>
 
                       <td>
+                        {{ item.gateway.descricao ? item.gateway.descricao : 'Gateway N/A' }}
+                        <br>
+                        <span 
+                          class="badge bg-light bg-opacity-10 text-light text-uppercase">
+                          <i class="bi bi-tag me-1 "></i>{{ item.tag }}
+                        </span>             
+                      </td>
+
+                      <td>
                         {{ item.categoria.descricao ? item.categoria.descricao : 'Item N/A' }}
                         <br>
                         <span ng-show="item.status=='associacao_erro'"
@@ -129,7 +140,7 @@
                       </td>
 
                       
-                      <td>{{ item.tag }}</td>
+                      
  
                       <td>
                         <span 

@@ -211,7 +211,7 @@ module.exports = (app, dbConnection) => {
             id_nivel_loc4_final
         };
         io.emit(gateway._id, dadosRegistro);
-        console.log("::::::::::::" + JSON.stringify(dadosRegistro))
+
 
         // Se não foi informado o nível de localização, usa o nível do gateway
 
@@ -495,11 +495,33 @@ module.exports = (app, dbConnection) => {
                 if (!associado.id_categoria || associado.id_categoria === "") continue;
 
                 // Verifica leitura do item associado
-                let regAssociado = await Registro.find({
-                    id_categoria: associado.id_categoria,
-                    id_gateway: _reg.id_gateway,
-                    data_permanecia: { $gte: inicio, $lte: fim }
-                });
+                    // let regAssociado = await Registro.find({
+                    //     id_categoria: associado.id_categoria,
+                    //     id_gateway: _reg.id_gateway,
+                    //     data_permanecia: { $gte: inicio, $lte: fim }
+                    // });
+
+                let regAssociado = await Registro.aggregate([
+                    {
+                        $match: {
+                            id_categoria: associado.id_categoria,
+                            id_gateway: _reg.id_gateway,
+                            data_permanecia: { $gte: inicio, $lte: fim }
+                        }
+                    },
+                    {
+                        $sort: { data_permanecia: -1 } // opcional: pega o mais recente
+                    },
+                    {
+                        $group: {
+                            _id: "$id_item",
+                            registro: { $first: "$$ROOT" }
+                        }
+                    },
+                    {
+                        $replaceRoot: { newRoot: "$registro" }
+                    }
+                ]);
 
                 let statusAssociacao = _reg.status
 
@@ -546,7 +568,7 @@ module.exports = (app, dbConnection) => {
 
         if (!_reg) {
             return
-        }
+        };
 
         console.log("_checkInteracao: " + movimento + ' ' + _reg.id_nivel_loc1)
 
@@ -654,8 +676,13 @@ module.exports = (app, dbConnection) => {
                     let _serialPDI = interacao.acoes[i].serial;
                     if (interacao.acoes[i].equipamento == 'pdi_vinculado') {
                         let _item = await Item.findOne({ _id: _reg.id_item });
-                        _serialPDI = _item.vinculos_device[0].id_mac
-                        console.log('Serial PDI:' + _serialPDI)
+                        if (_item && _item.vinculos_device && Array.isArray(_item.vinculos_device) && _item.vinculos_device.length > 0 && _item.vinculos_device[0].id_mac) {
+                            _serialPDI = _item.vinculos_device[0].id_mac;
+                            console.log('Serial PDI:' + _serialPDI);
+                        } else {                            
+                            console.log('Item sem vinculos_device válido ou id_mac não encontrado');
+                            return;
+                        }
                     }
 
                     // 🔹 payload padrão da Sepioo
@@ -676,7 +703,7 @@ module.exports = (app, dbConnection) => {
                         }
                     });
 
-                    console.log(response.data)
+                    //console.log(response.data)
 
                 }
 

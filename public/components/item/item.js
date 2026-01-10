@@ -508,6 +508,8 @@ app.component('item', {
 
           if($ctrl._editAssocicao.associados.length > 0){
             uteisService.patchBase('/associacao', $ctrl._editAssocicao)
+          } else {
+            uteisService.delBase('associacao/id_item/' + $ctrl._editItem._id)
           }
 
 

@@ -90,7 +90,7 @@ module.exports = (app, dbConnection) => {
       });
 
     } catch (error) {
-      console.error('Erro ao acionar flash Sepioo:', error.response?.status, error.response?.data);
+      //console.error('Erro ao acionar flash Sepioo:', error.response?.status, error.response?.data);
       res.status(error.response?.status || 500).json({
         ok: false,
         msg: 'Erro ao acionar flash na API Sepioo',
