@@ -118,25 +118,27 @@
                       </td>
 
                       <td>
-                        {{ item.gateway.descricao ? item.gateway.descricao : 'Gateway N/A' }}
+                        {{ item.id_gateway.descricao ? item.id_gateway.descricao : 'Gateway N/A' }}
                         <br>
-                        <span 
-                          class="badge bg-light bg-opacity-10 text-light text-uppercase">
-                          <i class="bi bi-tag me-1 "></i>{{ item.tag }}
-                        </span>             
+                        <span ng-show="item.status=='associacao_erro'"
+                        class="badge bg-danger bg-opacity-10 text-danger text-uppercase">
+                        <i class="bi bi-exclamation-triangle me-1 "></i>{{ item.status }}
+                      </span>
+                      <span ng-show="item.status!='associacao_erro'"
+                        class="badge bg-success bg-opacity-10 text-success text-uppercase">
+                        <i class="bi bi-check me-1 "></i>{{ item.status }}
+                      </span>   
                       </td>
 
                       <td>
                         {{ item.categoria.descricao ? item.categoria.descricao : 'Item N/A' }}
                         <br>
-                        <span ng-show="item.status=='associacao_erro'"
-                          class="badge bg-danger bg-opacity-10 text-danger text-uppercase">
-                          <i class="bi bi-exclamation-triangle me-1 "></i>{{ item.status }}
-                        </span>
-                        <span ng-show="item.status!='associacao_erro'"
-                          class="badge bg-success bg-opacity-10 text-success text-uppercase">
-                          <i class="bi bi-check me-1 "></i>{{ item.status }}
-                        </span>
+                        <span 
+                          class="badge bg-light bg-opacity-10 text-light text-uppercase">
+                          <i class="bi bi-tag me-1 "></i>{{ item.tag }}
+                        </span>   
+
+                        
                       </td>
 
                       
