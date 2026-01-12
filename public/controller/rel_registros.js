@@ -106,7 +106,7 @@ app.controller('relRegistrosCtrl', function ($scope, $http, params, uteisService
         const date = moment(data, 'YYYY-MM-DD HH:mm:ss')
             .subtract(3, 'hours'); // Remove 3 horas
     
-        return date.format('DDMMM HH[h]mm');
+        return date.format('DDMMM HH[h]mm:ss');
     };
     
 

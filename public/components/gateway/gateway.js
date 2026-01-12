@@ -299,6 +299,8 @@ app.component('gateway', {
     $ctrl.formataDataHora = function (data) {
       if (!data) return '-';
       const date = new Date(data);
+      // Subtrai 3 horas
+      date.setHours(date.getHours() - 3);
       return date.toLocaleString('pt-BR', {
         day: '2-digit',
         month: '2-digit',
