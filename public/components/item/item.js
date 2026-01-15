@@ -74,7 +74,7 @@ app.component('item', {
           id_externo: '',
           status: 'ativo',
           descricao: '',
-          id_categoria: '',
+          id_categoria: '0',
           foto: '',
           _foto: '../assets/images/icon_cadastro.fw.png',
           tag: '',

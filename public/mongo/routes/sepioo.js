@@ -1,7 +1,10 @@
+const Item = require("../models/item");
+
 const axios = require('axios'); // se for enviar via HTTP
 
 // 🔑 Chave de assinatura fornecida pela Sepioo
 const subscriptionKey = 'af737391526e49e8adb171ba54f57b06';
+
 
 module.exports = (app, dbConnection) => {
 
@@ -281,24 +284,42 @@ app.get('/sepioo/object/:id', async (req, res) => {
 
   app.post('/sepioo/button', async (req, res) => {
 
-    console.log(req.body)
+    let id_conta = null;
     try {
-
-
       const io = req.app.get('io');
+      
+      // Busca o item pelo PDI no campo vinculos_device.id_mac
+      let itemEncontrado = null;
+      if (req.body.PDI) {
+        itemEncontrado = await Item.findOne({
+          'vinculos_device.id_mac': req.body.PDI
+        }).lean();
+        
+        if (itemEncontrado) {
+          console.log('Item encontrado pelo PDI:', itemEncontrado._id, itemEncontrado.tag, itemEncontrado.id_conta);
+          id_conta = itemEncontrado.id_conta;
+        } else {
+          id_conta = req.body.TOKEM;
+          console.log('Nenhum item encontrado com PDI:', req.body.PDI);
+        };
+      };
+
       const dadosRegistro = {
         seppio: req.body,
         origem: 'SepiooButton',
-        token: req.body.token,
-        pdi: req.body.pdi
+        token: req.body.TOKEM,
+        pdi: req.body.PDI,
+        item: itemEncontrado || null
       };
-      io.emit(req.body.token, dadosRegistro);
+      io.emit(id_conta, dadosRegistro);
 
       res.json({
         seppio: req.body,
         origem: 'Sepioo',
-        token: req.body.token,
-        pdi: req.body.pdi
+        token: req.body.TOKEM,
+        pdi: req.body.PDI,
+        item: itemEncontrado || null,
+        item_encontrado: !!itemEncontrado
       });
 
     } catch (error) {

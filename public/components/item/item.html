@@ -95,7 +95,7 @@
                                                                     ng-class="{'is-invalid': !$ctrl._editItem.id_categoria || $ctrl._editItem.id_categoria.trim() === ''}"
                                                                     class="form-select flex-grow-1" id="basicSelect"
                                                                     aria-label="Basic select example">
-                                                                    <option value="" disabled>Selecione um item...
+                                                                    <option value="0">Sem Associação
                                                                     </option>
                                                                     <option ng-repeat="item in $ctrl._listCategorias"
                                                                         value="{{ item._id }}">

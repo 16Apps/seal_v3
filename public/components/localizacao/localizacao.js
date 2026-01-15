@@ -293,7 +293,7 @@ app.component('localizacao', {
       uteisService.onQuestion("Atenção!", "Deseja realmente excluir esse Registro?")
         .then(async (res) => {
           if (res) {
-            uteisService.delBase('localizacao/_id/' + $ctrl._regNivel._id)
+            uteisService.delBase('localizacao/_id/' + $ctrl._editNivel._id)
             uteisService.onToast('Registrado excuido!', 'success', 3000, 'top-end');
             $ctrl.fechar();
           }
