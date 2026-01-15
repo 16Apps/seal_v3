@@ -81,7 +81,7 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
 
             $scope._regConta.ativo = "" + $scope._regConta.ativo;
             $scope.onCarregaColaboradores();
-
+            $scope.onLogs();
 
             $scope._regConta.alerta_email_criterio_leve = $scope._regConta.alerta_email_criterio.substring(0, 1) == '1' ? true : false;
             $scope._regConta.alerta_email_criterio_importante = $scope._regConta.alerta_email_criterio.substring(1, 2) == '1' ? true : false;
@@ -767,6 +767,45 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
         };
     };
 
+    $scope.onLogs = async function () {
+
+        // Desconecta socket anterior se existir
+        if ($scope.socket) {
+            $scope.socket.disconnect();
+            $scope.socket = null;
+        };
+
+        // Limpa leituras anteriores
+        $scope._regLeituras = [];
+
+        // Cria nova conexão socket
+        $scope.socket = io(); // conexão padrão
+
+        $scope.socket.on($scope._regConta._id, function (data) {
+
+           
+            try {
+                // Se os dados vierem como string JSON, converte para objeto
+                let leitura = {}
+                leitura._timestamp_recebido = new Date().toISOString();
+                leitura._dados = JSON.stringify(data)
+
+                // Adiciona no início da lista (mais recente primeiro)
+                $scope._regLeituras.unshift(leitura);
+
+                // Mantém apenas os 50 últimos registros
+                if ($scope._regLeituras.length > 50) {
+                    $scope._regLeituras = $scope._regLeituras.slice(0, 50);
+                }
+                $scope.$apply();
+
+            } catch (error) {
+                console.error('Erro ao processar leitura:', error, data);
+            }
+        });
+
+    };
+
     $scope.onProcessoRegistros = async function () {
 
         await uteisService.getBase('/_bd?c=processos&id_conta=' + $scope._regConta._id + '&sort=descricao')
@@ -795,10 +834,22 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
 
     };
 
+
+
     $scope.formataDataHora = function (data) {
-        const date = moment(data, 'YYYY-MM-DD HH:mm:ss'); // Parse the complete date and time
-        return date.format('DDMMM HH[h]mm'); // Format the date and time
-    };
+        if (!data) return '-';
+        const date = new Date(data);
+        // Subtrai 3 horas
+        date.setHours(date.getHours() - 3);
+        return date.toLocaleString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        });
+      };
 
 
     $scope._onMessage = async function () {

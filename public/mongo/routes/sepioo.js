@@ -284,9 +284,21 @@ app.get('/sepioo/object/:id', async (req, res) => {
     console.log(req.body)
     try {
 
+
+      const io = req.app.get('io');
+      const dadosRegistro = {
+        seppio: req.body,
+        origem: 'SepiooButton',
+        token: req.body.token,
+        pdi: req.body.pdi
+      };
+      io.emit(req.body.token, dadosRegistro);
+
       res.json({
         seppio: req.body,
-        origem: 'Sepioo'
+        origem: 'Sepioo',
+        token: req.body.token,
+        pdi: req.body.pdi
       });
 
     } catch (error) {

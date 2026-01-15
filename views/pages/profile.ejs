@@ -8,7 +8,7 @@
       <ol class="breadcrumb d-none d-lg-flex">
         <li class="breadcrumb-item">
           <i class="bi bi-house lh-1"></i>
-          <a  class="text-decoration-none">Home</a>
+          <a class="text-decoration-none">Home</a>
         </li>
         <li class="breadcrumb-item" aria-current="page">Profile</li>
       </ol>
@@ -44,6 +44,10 @@
                 <li class="nav-item" role="presentation">
                   <button class="nav-link rounded-pill" id="pills-e-tab" data-bs-toggle="pill" data-bs-target="#pills-e"
                     type="button" role="tab" aria-controls="pills-e" aria-selected="false">Colaboradores</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link rounded-pill" id="pills-l-tab" data-bs-toggle="pill" data-bs-target="#pills-l"
+                    type="button" role="tab" aria-controls="pills-l" aria-selected="false">Logs / Server</button>
                 </li>
                 <li class="nav-item" role="presentation">
                   <button class="nav-link rounded-pill" id="pills-c-tab" data-bs-toggle="pill" data-bs-target="#pills-c"
@@ -262,6 +266,55 @@
                   <!-- Row end -->
 
                 </div>
+
+                <div class="tab-pane fade" id="pills-l" role="tabpanel" aria-labelledby="pills-l-tab"
+                  tabindex="0">
+
+                  <div class="card mb-3" style="margin-top: -20px;">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                      <h6 class="mb-0 fs-3">
+                        Token: <span class="badge bg-warning text-dark">{{ _regConta._id }}</span>
+                      </h6>
+                      <button ng-click="_regLeituras = []" class="btn btn-sm btn-secondary">
+                        <i class="bi bi-trash"></i> Limpar
+                      </button>
+                    </div>
+
+
+                    <div class="card-body">
+                      <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                        <table class="table table-sm table-hover mb-0">
+                          <thead class=" sticky-top">
+                            <tr>
+                              <th style="width: 20%;">Data/Hora</th>
+                              <th style="width: 80%;">Dados</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr ng-repeat="leitura in _regLeituras">
+                              <td style="height: 70px; vertical-align: middle;">
+                                <small>{{ formataDataHora(leitura._timestamp_recebido)
+                                  }}</small>
+                              </td>
+                              <td style="height: 70px; vertical-align: middle;">
+                                {{ leitura._dados }}
+                              </td>
+                              
+                            </tr>
+                            <tr ng-show="_regLeituras.length === 0">
+                              <td colspan="7" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                Nenhuma leitura recebida ainda
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
                 <div class="tab-pane fade" id="pills-c" role="tabpanel" aria-labelledby="pills-c-tab" tabindex="0">
 
                   <!-- Row start -->
@@ -627,12 +680,13 @@
                 <div class="tab-pane fade" id="pills-e" role="tabpanel" aria-labelledby="pills-e-tab" tabindex="0">
 
                   <div class="col-12">
-                        <div class="d-flex justify-content-start gap-1 mb-3">
-                          <button  ng-disabled="_regColaborador" ng-click="onEditarColaborador(undefined)" type="button" class="btn btn-outline-warning">
-                            Novo Colaborador
-                          </button>
-                        </div>
-                      </div>
+                    <div class="d-flex justify-content-start gap-1 mb-3">
+                      <button ng-disabled="_regColaborador" ng-click="onEditarColaborador(undefined)" type="button"
+                        class="btn btn-outline-warning">
+                        Novo Colaborador
+                      </button>
+                    </div>
+                  </div>
 
                   <div class="row gx-3 mb-6">
                     <div class="col-sm-7">
@@ -658,9 +712,9 @@
                                       <img src="{{ item._foto }}" class="rounded-circle me-2" width="32" alt="Client">
                                       <span class="text-white">
                                         {{ item.nome }}
-                                        <br> <span class="text-light">{{ formatarCargo(item.funcao) }} </span> 
+                                        <br> <span class="text-light">{{ formatarCargo(item.funcao) }} </span>
                                       </span>
-                                      
+
                                     </div>
                                   </td>
                                   <td>
@@ -713,7 +767,8 @@
                         <div class="row gx-3 mb-3">
                           <div class="col-sm-7">
                             <label for="cardNo" class="form-label">Nome</label>
-                            <input ng-model="_regColaborador.nome" type="text" class="form-control form-control-sm" ng-class="{'is-invalid': !_regColaborador.nome || _regColaborador.nome.trim() === ''}">
+                            <input ng-model="_regColaborador.nome" type="text" class="form-control form-control-sm"
+                              ng-class="{'is-invalid': !_regColaborador.nome || _regColaborador.nome.trim() === ''}">
                           </div>
                           <div class="col-sm-3">
                             <label for="cardNo" class="form-label">Apelido</label>
@@ -753,7 +808,8 @@
                           </div>
                           <div class="col-sm-3">
                             <label for="cardNo" class="form-label">Função</label>
-                            <select ng-model="_regColaborador.id_funcao" class="form-select form-select-sm" ng-class="{'is-invalid': !_regColaborador.funcao || _regColaborador.funcao.trim() === ''}">
+                            <select ng-model="_regColaborador.id_funcao" class="form-select form-select-sm"
+                              ng-class="{'is-invalid': !_regColaborador.funcao || _regColaborador.funcao.trim() === ''}">
                               <option value="auxiliar_logistica">Auxiliar de Logística</option>
                               <option value="assistente_logistica">Assistente de Logística</option>
                               <option value="analista_logistica">Analista de Logística</option>
