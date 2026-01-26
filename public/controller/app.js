@@ -31,7 +31,7 @@ app.controller('appCtrl', function ($scope, $http, $location, params, uteisServi
 
 
         $scope._regConta = uteisService.getCookie('_conta');
-       // $scope._regConta['_logo'] = '../assets/images/logo_default.fw.png'
+        $scope._regConta['_logo'] = '../assets/images/logo_default.fw.png'
         if ($scope._regConta.logo && $scope._regConta.logo.includes('logo_conta') == false) {
             let _url = uteisService.apiUrl_();
             $scope._regConta._logo = _url + '/image/' + $scope._regConta.logo;
