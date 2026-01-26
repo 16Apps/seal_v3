@@ -43,37 +43,42 @@ app.controller('importarCtrl', function ($scope, $http, params, uteisService) {
             linhas.map((item, index,) => {
                 if (index > 0) {
                     let coluna = item.split(';')
-                    let _tag = coluna[1].replace('"', '').replace('"', '').trim()
-                    if (!_tag.includes(':')) {
 
-                        _tag = $scope.gerarSGTIN96({
-                            companyPrefix: '1234567',
-                            itemReference: _tag,
-                            serial: index
+                    if( coluna[1]){
+                        let _tag = coluna[1].replace('"', '').replace('"', '').trim()
+                        if (!_tag.includes(':')) {
+    
+                            _tag = $scope.gerarSGTIN96({
+                                companyPrefix: '7891260',
+                                itemReference: String(_tag).slice(-6),
+                                serial: index,
+                                filter: coluna[16]
+                            });
+    
+                        }
+    
+                        dados.itens.push({
+                            "id_interno": coluna[0],
+                            "tag": _tag,
+                            "categoria": coluna[2],
+                            "label1": coluna[3],
+                            "label2": coluna[4],
+                            "label3": coluna[5],
+                            "label4": coluna[6],
+                            "inf1": coluna[7],
+                            "inf2": coluna[8],
+                            "inf3": coluna[9],
+                            "inf4": coluna[10],
+                            "loc_nivel1": coluna[11] ? coluna[11] : null,
+                            "loc_nivel2": coluna[12] ? coluna[12] : null,
+                            "loc_nivel3": coluna[13] ? coluna[13] : null,
+                            "loc_nivel4": coluna[14] ? coluna[14] : null,
+                            "_foto": '../assets/images/icon_cadastro.fw.png',
+                            "categoria_item": coluna[15] ? coluna[15] : null,
+                            "categoria_item_id": coluna[16] ? coluna[16] : null,
                         });
-
                     }
-
-                    dados.itens.push({
-                        "id_interno": coluna[0],
-                        "tag": _tag,
-                        "categoria": coluna[2],
-                        "label1": coluna[3],
-                        "label2": coluna[4],
-                        "label3": coluna[5],
-                        "label4": coluna[6],
-                        "inf1": coluna[7],
-                        "inf2": coluna[8],
-                        "inf3": coluna[9],
-                        "inf4": coluna[10],
-                        "loc_nivel1": coluna[11] ? coluna[11] : null,
-                        "loc_nivel2": coluna[12] ? coluna[12] : null,
-                        "loc_nivel3": coluna[13] ? coluna[13] : null,
-                        "loc_nivel4": coluna[14] ? coluna[14] : null,
-                        "_foto": '../assets/images/icon_cadastro.fw.png',
-                        "categoria_item": coluna[15] ? coluna[15] : null,
-                        "categoria_item_id": coluna[16] ? coluna[16] : null,
-                    });
+                    
                 }
 
             })
@@ -91,8 +96,6 @@ app.controller('importarCtrl', function ($scope, $http, params, uteisService) {
                 });
                 return obj;
             });
-
-
 
             // Atualiza o escopo
             $scope.$apply(() => {
@@ -126,7 +129,7 @@ app.controller('importarCtrl', function ($scope, $http, params, uteisService) {
         })
 
     };
-    $scope.gerarSGTIN96 = function ({ companyPrefix, itemReference, serial, filter = 1 }) {
+    $scope.gerarSGTIN96 = function ({ companyPrefix, itemReference, serial, filter }) {
 
         // Header SGTIN-96
         const HEADER = 0x30; // 00110000
