@@ -72,6 +72,7 @@ app.controller('importarCtrl', function ($scope, $http, params, uteisService) {
                         "loc_nivel4": coluna[14] ? coluna[14] : null,
                         "_foto": '../assets/images/icon_cadastro.fw.png',
                         "categoria_item": coluna[15] ? coluna[15] : null,
+                        "categoria_item_id": coluna[16] ? coluna[16] : null,
                     });
                 }
 

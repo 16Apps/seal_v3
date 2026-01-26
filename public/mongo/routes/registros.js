@@ -1240,6 +1240,7 @@ module.exports = (app, dbConnection) => {
                     id_interno,
                     categoria,
                     categoria_item,
+                    categoria_item_epc,
                     label1,
                     label2,
                     label3,
@@ -1251,7 +1252,7 @@ module.exports = (app, dbConnection) => {
                     loc_nivel1,
                     loc_nivel2,
                     loc_nivel3,
-                    loc_nivel4
+                    loc_nivel4,
                 } = linha;
 
                 // =====================================================
@@ -1285,7 +1286,8 @@ module.exports = (app, dbConnection) => {
                 if (!cat_item) {
                     cat_item = await CategoriaItem.create({
                         id_conta,
-                        descricao: categoria_item
+                        descricao: categoria_item,
+                        tag: categoria_item_epc,
                     });
                 }
 
