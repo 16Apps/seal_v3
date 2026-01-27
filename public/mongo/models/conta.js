@@ -31,6 +31,24 @@ const ContaSchema = new mongoose.Schema({
     alerta_celular: { type: String },
     alerta_celular_criterio: { type: String },
 
+    params_nomenclatura_itens: {
+        sku: { type: String },
+        itens: { type: String },
+        categorias: { type: String },
+    },
+
+    plano_monitoramento: {
+        posicao_esperada: { type: Number, enum: [0, 1], default: 1 },
+        painel_alertas: { type: Number, enum: [0, 1], default: 1 },
+        interacao: { type: Number, enum: [0, 1], default: 1 }
+    },
+
+    plano_conta: {
+        valor: { type: Number, default: 0 },
+        representante: { type: String },
+        suporte_celular: { type: String },
+    }
+
 
 }, {
     versionKey: false,
