@@ -39,19 +39,23 @@
                 </li>
                 <li class="nav-item" role="presentation">
                   <button class="nav-link rounded-pill" id="pills-d-tab" data-bs-toggle="pill" data-bs-target="#pills-d"
-                    type="button" role="tab" aria-controls="pills-d" aria-selected="false">Regras Alertas</button>
+                    type="button" role="tab" aria-controls="pills-d" aria-selected="false">Regras</button>
                 </li>
                 <li class="nav-item" role="presentation">
                   <button class="nav-link rounded-pill" id="pills-e-tab" data-bs-toggle="pill" data-bs-target="#pills-e"
                     type="button" role="tab" aria-controls="pills-e" aria-selected="false">Colaboradores</button>
                 </li>
+                <!-- <li class="nav-item" role="presentation">
+                  <button class="nav-link rounded-pill" id="pills-c-tab" data-bs-toggle="pill" data-bs-target="#pills-c"
+                    type="button" role="tab" aria-controls="pills-c" aria-selected="false">Cobrança</button>
+                </li> -->
                 <li class="nav-item" role="presentation">
                   <button class="nav-link rounded-pill" id="pills-l-tab" data-bs-toggle="pill" data-bs-target="#pills-l"
                     type="button" role="tab" aria-controls="pills-l" aria-selected="false">Logs / Server</button>
                 </li>
-                <li class="nav-item" role="presentation">
-                  <button class="nav-link rounded-pill" id="pills-c-tab" data-bs-toggle="pill" data-bs-target="#pills-c"
-                    type="button" role="tab" aria-controls="pills-c" aria-selected="false">Cobrança</button>
+                <li class="nav-item" role="presentation" ng-show="isAdmin">
+                  <button class="nav-link rounded-pill" id="pills-ad-tab" data-bs-toggle="pill" data-bs-target="#pills-ad"
+                    type="button" role="tab" aria-controls="pills-ad" aria-selected="false">Admin</button>
                 </li>
 
               </ul>
@@ -119,6 +123,8 @@
                               <h6 class="m-0">Contato Responsável</h6>
                             </div>
 
+               
+
                             <div class="row gx-3">
                               <div class="col-sm-4">
                                 <div class="mb-3">
@@ -178,19 +184,22 @@
                             <i class="bi bi-cash-stack me-1 fs-4  text-success"></i>
                             <span>Estimativa Cobrança</span>
                             <button type="button" class="btn btn-outline-success btn-sm rounded-pill ms-auto">R$
-                              0,00</button>
+                              {{ _regConta.plano_conta.valor ? _regConta.plano_conta.valor : '0,00' }}
+                            </button>
                           </div>
                           <div class="d-flex align-items-center gap-2">
                             <i class="bi bi-person-badge me-1 fs-4 text-danger "></i>
                             <span>Rep. Seal</span>
-                            <button type="button" class="btn btn-outline-danger btn-sm rounded-pill ms-auto">Higor
-                              Correia</button>
+                            <button type="button" class="btn btn-outline-danger btn-sm rounded-pill ms-auto">
+                              {{ _regConta.plano_conta.representante ? _regConta.plano_conta.representante : 'Não definido' }}
+                            </button>
                           </div>
                           <div class="d-flex align-items-center gap-2">
                             <i class="bi bi-headset me-1 fs-4  "></i>
                             <span>Suporte</span>
-                            <button type="button" class="btn btn-outline-light btn-sm rounded-pill ms-auto">(11)
-                              8282-9929</button>
+                            <button type="button" class="btn btn-outline-light btn-sm rounded-pill ms-auto">
+                              {{ _regConta.plano_conta.suporte_celular ? _regConta.plano_conta.suporte_celular : 'Não definido' }}
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -611,6 +620,58 @@
 
                 <div class="tab-pane fade" id="pills-d" role="tabpanel" aria-labelledby="pills-d-tab" tabindex="0">
 
+                  <div class="card mb-4">
+             
+                    <div class="mb-2 bg-info bg-opacity-10 text-info p-2 rounded-2">
+                      Nomenclatura de Itens
+                    </div>
+                    <p class="text-muted small mb-3">Configure os nomes exibidos para SKUs, Itens e Categorias no sistema.</p>
+                    <div class="card-body">
+                      
+                      <div class="row gx-3">
+                        <div class="col-sm-4">
+                          <div class="mb-3">
+                            <label for="nomenclaturaSku" class="form-label">
+                              <i class="bi bi-upc-scan me-1"></i>SKUs
+                            </label>
+                            <input 
+                              id="nomenclaturaSku"
+                              ng-model="_regConta.params_nomenclatura_itens.sku" 
+                              type="text" 
+                              class="form-control form-control-sm"
+                              placeholder="Ex: SKUs">
+                          </div>
+                        </div>
+                        <div class="col-sm-4">
+                          <div class="mb-3">
+                            <label for="nomenclaturaItens" class="form-label">
+                              <i class="bi bi-box-seam me-1"></i>Itens
+                            </label>
+                            <input 
+                              id="nomenclaturaItens"
+                              ng-model="_regConta.params_nomenclatura_itens.itens" 
+                              type="text" 
+                              class="form-control form-control-sm"
+                              placeholder="Ex: Itens">
+                          </div>
+                        </div>
+                        <div class="col-sm-4">
+                          <div class="mb-3">
+                            <label for="nomenclaturaCategorias" class="form-label">
+                              <i class="bi bi-folder me-1"></i>Categorias
+                            </label>
+                            <input 
+                              id="nomenclaturaCategorias"
+                              ng-model="_regConta.params_nomenclatura_itens.categorias" 
+                              type="text" 
+                              class="form-control form-control-sm"
+                              placeholder="Ex: Categorias">
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   <div class="mb-2 bg-warning bg-opacity-10 text-warning p-2 rounded-2">
                     Envio de e-Mail
                   </div>
@@ -783,14 +844,25 @@
                           </div>
                         </div>
 
+                        <div class="row gx-3">
+                          <div class="col-sm-5">
+                            <div class="mb-3">
+                              <label for="displayName" class="form-label">e-Mail</label>
+                              <input ng-model="_regConta.email" type="text" class="form-control">
+                            </div>
+                          </div>
+                          <div class="col-sm-3">
+                            <div class="mb-3">
+                              <label for="displayName" class="form-label">Senha</label>
+                              <input ng-model="_regConta.contato_celular" type="password" class="form-control">
+                            </div>
+                          </div>
+                        </div>
+
                         <div class="row gx-3 mb-3">
                           <div class="col-sm-3">
                             <label for="cardNo" class="form-label">iD Tag</label>
                             <input ng-model="_regColaborador.tag" type="text" class="form-control form-control-sm">
-                          </div>
-                          <div class="col-sm-6">
-                            <label for="cardNo" class="form-label">e-Mail</label>
-                            <input ng-model="_regColaborador.email" type="text" class="form-control form-control-sm">
                           </div>
                           <div class="col-sm-3">
                             <label for="cardNo" class="form-label">Celular</label>
@@ -847,6 +919,144 @@
                   </div>
 
 
+                </div>
+
+                <div class="tab-pane fade" id="pills-ad" role="tabpanel" aria-labelledby="pills-ad-tab"
+                  tabindex="0">
+                  
+                  <!-- Nomenclatura de Itens -->
+                  
+
+                  <!-- Plano de Monitoramento -->
+                  <div class="card mb-4">
+                    <div class="card-header bg-info bg-opacity-10">
+                      <h5 class="mb-0 text-info">
+                        <i class="bi bi-graph-up-arrow me-2"></i>Plano de Monitoramento
+                      </h5>
+                    </div>
+                    <div class="card-body">
+                      <p class="text-muted small mb-3">Configure as funcionalidades disponíveis no seu plano de monitoramento.</p>
+                      
+                      <div class="row gx-3">
+                        <div class="col-sm-4">
+                          <div class="mb-3">
+                            <label for="posicaoEsperada" class="form-label">
+                              <i class="bi bi-geo-alt me-1"></i>Posição Esperada
+                            </label>
+                            <select 
+                              id="posicaoEsperada"
+                              ng-model="_regConta.plano_monitoramento.posicao_esperada.toString()" 
+                              class="form-select form-select-sm">
+                              <option value="0">Desabilitado</option>
+                              <option value="1">Habilitado</option>
+                            </select>
+                            <small class="text-muted">Rastreamento de posição esperada dos itens</small>
+                          </div>
+                        </div>
+                        <div class="col-sm-4">
+                          <div class="mb-3">
+                            <label for="painelAlertas" class="form-label">
+                              <i class="bi bi-bell me-1"></i>Painel de Alertas
+                            </label>
+                            <select 
+                              id="painelAlertas"
+                              ng-model="_regConta.plano_monitoramento.painel_alertas.toString()" 
+                              class="form-select form-select-sm">
+                              <option value="0">Desabilitado</option>
+                              <option value="1">Habilitado</option>
+                            </select>
+                            <small class="text-muted">Sistema de alertas e notificações</small>
+                          </div>
+                        </div>
+                        <div class="col-sm-4">
+                          <div class="mb-3">
+                            <label for="interacao" class="form-label">
+                              <i class="bi bi-chat-dots me-1"></i>Interação
+                            </label>
+                            <select 
+                              id="interacao"
+                              ng-model="_regConta.plano_monitoramento.interacao.toString()" 
+                              class="form-select form-select-sm">
+                              <option value="0">Desabilitado</option>
+                              <option value="1">Habilitado</option>
+                            </select>
+                            <small class="text-muted">Sistema de interações e comunicação</small>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Plano da Conta -->
+                  <div class="card mb-4">
+                    <div class="card-header bg-success bg-opacity-10">
+                      <h5 class="mb-0 text-success">
+                        <i class="bi bi-credit-card me-2"></i>Plano da Conta
+                      </h5>
+                    </div>
+                    <div class="card-body">
+                      <p class="text-muted small mb-3">Informações sobre o plano contratado e contatos comerciais.</p>
+                      
+                      <div class="row gx-3">
+                        <div class="col-sm-4">
+                          <div class="mb-3">
+                            <label for="valorPlano" class="form-label">
+                              <i class="bi bi-currency-dollar me-1"></i>Valor do Plano
+                            </label>
+                            <div class="input-group input-group-sm">
+                              <span class="input-group-text">R$</span>
+                              <input 
+                                id="valorPlano"
+                                ng-model="_regConta.plano_conta.valor" 
+                                type="number" 
+                                class="form-control"
+                                step="0.01"
+                                min="0"
+                                placeholder="0.00">
+                            </div>
+                            <small class="text-muted">Valor mensal do plano contratado</small>
+                          </div>
+                        </div>
+                        <div class="col-sm-4">
+                          <div class="mb-3">
+                            <label for="representante" class="form-label">
+                              <i class="bi bi-person-badge me-1"></i>Representante
+                            </label>
+                            <input 
+                              id="representante"
+                              ng-model="_regConta.plano_conta.representante" 
+                              type="text" 
+                              class="form-control form-control-sm"
+                              placeholder="Nome do representante">
+                            <small class="text-muted">Nome do representante comercial</small>
+                          </div>
+                        </div>
+                        <div class="col-sm-4">
+                          <div class="mb-3">
+                            <label for="suporteCelular" class="form-label">
+                              <i class="bi bi-telephone me-1"></i>Suporte Celular
+                            </label>
+                            <input 
+                              id="suporteCelular"
+                              ng-model="_regConta.plano_conta.suporte_celular" 
+                              type="text" 
+                              class="form-control form-control-sm"
+                              placeholder="(00) 00000-0000">
+                            <small class="text-muted">Telefone de suporte técnico</small>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Botão de Salvar -->
+                  <div class="d-flex justify-content-end gap-2">
+                    <button ng-click="onAtualizar()" class="btn btn-primary" type="button">
+                      <i class="bi bi-save me-1"></i>
+                      Salvar Alterações
+                    </button>
+                  </div>
+                
                 </div>
               </div>
               <!-- Tabs ends -->

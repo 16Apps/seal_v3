@@ -27,21 +27,17 @@ app.controller('appCtrl', function ($scope, $http, $location, params, uteisServi
             return viewLocation === url[3];
         };
 
-
-
-
         $scope._regConta = uteisService.getCookie('_conta');
+        $scope._regConta = uteisService.normalizarConta($scope._regConta);
+        
         $scope._regConta['_logo'] = '../assets/images/logo_default.fw.png'
         if ($scope._regConta.logo && $scope._regConta.logo.includes('logo_conta') == false) {
             let _url = uteisService.apiUrl_();
             $scope._regConta._logo = _url + '/image/' + $scope._regConta.logo;
         };
 
-      
-
         $scope._regColaborador = uteisService.getCookie('_colaborador')
 
-    
         const nome = $scope._regColaborador?.nome || '';
 
         let primeira = ''

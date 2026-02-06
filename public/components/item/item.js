@@ -42,6 +42,8 @@ app.component('item', {
 
     $ctrl.$onInit = function () {
       $ctrl._regConta = uteisService.getCookie('_conta');
+      $ctrl._regConta = uteisService.normalizarConta($ctrl._regConta);
+
       //$ctrl.onCarregaNiveisPlanta('01');
     };
 
@@ -55,6 +57,7 @@ app.component('item', {
 
     };
 
+    
     $ctrl.onEditar = async function (reg) {
 
       await $ctrl.onCarregaCategorias();
@@ -180,6 +183,7 @@ app.component('item', {
                 ativo: 1,
                 intervalo: 10,
                 range_rssi: 30,
+                cond_presenca: 'todos',
                 descricao: '',
                 associados: []
               }
@@ -428,7 +432,9 @@ app.component('item', {
     };
 
     $ctrl.onRemoveAssociacao = async function (item) {
+      $timeout(async () => {
       $ctrl._editAssocicao.associados = $ctrl._editAssocicao.associados.filter((assoc) => assoc._id != item._id);
+      }, 10)	
     }
 
 

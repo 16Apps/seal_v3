@@ -9,6 +9,7 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
     $scope._await = false;
     $scope._recSenha = false
 
+    $scope.isAdmin = false;
     $scope._regConta = {
         _id: uteisService.onGetID(),
         ativo: 1,
@@ -31,6 +32,23 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
         cidade: '',
         estado: '',
         tokem_api: '',
+        params_nomenclatura_itens: {
+            sku: 'SKUs',
+            itens: 'Itens',
+            categorias: 'Categorias',
+        },
+    
+        plano_monitoramento: {
+            posicao_esperada: 0,
+            painel_alertas: 0,
+            interacao: 0
+        },
+    
+        plano_conta: {
+            valor: 0,
+            representante: '',
+            suporte_celular: '',
+        }
     }
 
     $scope._regColaborador = {
@@ -69,9 +87,10 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
         const currentUrl = $location.absUrl();
         let url = currentUrl.split('/')
 
-        if (url[3] == 'profile') {
+        if (url[3].includes('profile')) {
 
             $scope._regConta = uteisService.getCookie('_conta');
+            $scope._regConta = uteisService.normalizarConta($scope._regConta);
 
             $scope._regConta['_logo'] = '../assets/images/logo_default.fw.png'
             if ($scope._regConta.logo && $scope._regConta.logo.includes('logo_conta') == false) {
@@ -80,19 +99,57 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
             };
 
             $scope._regConta.ativo = "" + $scope._regConta.ativo;
+
+            // Inicializa campos aninhados se não existirem
+            if (!$scope._regConta.params_nomenclatura_itens) {
+                $scope._regConta.params_nomenclatura_itens = {
+                    sku: 'SKUs',
+                    itens: 'Itens',
+                    categorias: 'Categorias',
+                };
+            }
+            if (!$scope._regConta.plano_monitoramento) {
+                $scope._regConta.plano_monitoramento = {
+                    posicao_esperada: 0,
+                    painel_alertas: 0,
+                    interacao: 0
+                };
+            } else {
+                // Garante que os valores sejam números
+                $scope._regConta.plano_monitoramento.posicao_esperada = parseInt($scope._regConta.plano_monitoramento.posicao_esperada) || 0;
+                $scope._regConta.plano_monitoramento.painel_alertas = parseInt($scope._regConta.plano_monitoramento.painel_alertas) || 0;
+                $scope._regConta.plano_monitoramento.interacao = parseInt($scope._regConta.plano_monitoramento.interacao) || 0;
+            }
+            if (!$scope._regConta.plano_conta) {
+                $scope._regConta.plano_conta = {
+                    valor: 0,
+                    representante: '',
+                    suporte_celular: '',
+                };
+            } else {
+                // Garante que o valor seja número
+                $scope._regConta.plano_conta.valor = parseFloat($scope._regConta.plano_conta.valor) || 0;
+            }
             $scope.onCarregaColaboradores();
             $scope.onLogs();
+
 
             $scope._regConta.alerta_email_criterio_leve = $scope._regConta.alerta_email_criterio.substring(0, 1) == '1' ? true : false;
             $scope._regConta.alerta_email_criterio_importante = $scope._regConta.alerta_email_criterio.substring(1, 2) == '1' ? true : false;
             $scope._regConta.alerta_email_criterio_critico = $scope._regConta.alerta_email_criterio.substring(2, 3) == '1' ? true : false;
 
-
             $scope._regConta.alerta_celular_criterio_leve = $scope._regConta.alerta_celular_criterio.substring(0, 1) == '1' ? true : false;
-            $scope._regConta.alerta_celular_criterio_importante = $scope._regConta.alerta_celular_criterio_importante.substring(1, 2) == '1' ? true : false;
-            $scope._regConta.alerta_celular_criterio_critico = $scope._regConta.alerta_celular_criterio_critico.substring(2, 3) == '1' ? true : false;
+            $scope._regConta.alerta_celular_criterio_importante = $scope._regConta.alerta_celular_criterio.substring(1, 2) == '1' ? true : false;
+            $scope._regConta.alerta_celular_criterio_critico = $scope._regConta.alerta_celular_criterio.substring(2, 3) == '1' ? true : false;
 
+            $scope._regColaborador = undefined; 
 
+            if (url[3].includes('admin')) {
+                $scope.isAdmin = true
+            }
+
+     
+            $scope.$apply();
 
             // $scope.onFusoEditar(undefined);
             // $scope.onProcessoEditar(undefined);

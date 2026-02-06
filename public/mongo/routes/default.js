@@ -21,6 +21,7 @@ const shortid = require('shortid');
 const fs = require('fs');
 const readline = require('readline');
 const axios = require('axios'); // se for enviar via HTTP
+const moment = require('moment');
 
 module.exports = (app, dbConnection) => {
 
@@ -471,10 +472,6 @@ module.exports = (app, dbConnection) => {
             res.status(500).json({ error: 'Erro ao buscar localizações com áreas' });
         }
     });
-
-
-    
-
 
 
 }

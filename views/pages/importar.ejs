@@ -16,21 +16,337 @@
 
       <!-- Filter start -->
       <div class="ms-auto d-flex flex-row gap-1">
+        <div class="d-flex align-items-center gap-3">
+          <div class="btn-group me-3" role="group" aria-label="Tipo de importação">
+            <input type="radio" class="btn-check" name="tipoImportacao" id="skuCompleto" ng-model="tipoImportacao"
+              value="completo" ng-init="tipoImportacao='completo'" checked>
+            <label class="btn btn-outline-primary" for="skuCompleto">
+              <i class="bi bi-box-seam me-1"></i>SKU Completo
+            </label>
+
+            <input type="radio" class="btn-check" name="tipoImportacao" id="skuSecundario" ng-model="tipoImportacao"
+              value="secundario">
+            <label class="btn btn-outline-secondary" for="skuSecundario">
+              <i class="bi bi-box-arrow-in-down me-1"></i>Secundários
+            </label>
+          </div>
+        </div>
         <div class="search-container d-lg-flex d-none">
           <input type="file" id="fileImport" accept=".csv" class="form-control"
             onchange="angular.element(this).scope().onLerArquivoImportacao(event)">
           <i class="bi bi-file-earmark-arrow-up ms-2 fs-5 text-primary"></i>
         </div>
 
+
         <button ng-click="onExecutarImportacao()" type="button" class="btn btn-warning btn-sm ms-3 text-dark">
           <i class="bi bi-box-arrow-in-down me-1"></i> Importar
         </button>
+        <button data-bs-toggle="offcanvas" data-bs-target="#offcanvasSuporte" aria-controls="offcanvasSuporte"
+          type="button" class="btn btn-success btn-sm ms-2" title="Instruções de Importação">
+          <i class="bi bi-question-circle"></i>
+        </button>
+
+
       </div>
       <!-- Filter end -->
+
 
     </div>
     <!-- App Hero header ends -->
 
+    <div class="offcanvas offcanvas-bottom" tabindex="-1" id="offcanvasSuporte" aria-labelledby="offcanvasBottomLabel"
+      style="height: 80vh !important;">
+      <div class="offcanvas-header border-bottom">
+        <h5 class="offcanvas-title" id="offcanvasBottomLabel">
+          <i class="bi bi-info-circle me-2 text-primary"></i>Instruções de Importação - Mapeamento de Colunas
+          <span ng-if="tipoImportacao === 'completo'" class="badge bg-primary ms-2">SKU Completo</span>
+          <span ng-if="tipoImportacao === 'secundario'" class="badge bg-secondary ms-2">Secundários</span>
+        </h5>
+        <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+      </div>
+      <div class="offcanvas-body">
+
+        <div class="alert alert-secondary d-flex align-items-center mb-4 text-dark" role="alert">
+          <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+          <div>
+            <strong>Importante:</strong> O arquivo CSV deve seguir o formato abaixo. Colunas marcadas como <span
+              class="badge bg-danger">Obrigatório</span> são essenciais para a importação.
+          </div>
+        </div>
+
+        <!-- Tabela SKU Completo -->
+        <div ng-if="tipoImportacao === 'completo'">
+          <div class="table-responsive">
+            <table class="table table-hover table-bordered align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th class="text-center" style="width: 8%;">
+                    <small>Coluna</small>
+                  </th>
+                  <th style="width: 35%;">
+                    <small>Descrição</small>
+                  </th>
+                  <th class="text-center" style="width: 12%;">
+                    <small>Obrigatório</small>
+                  </th>
+                  <th style="width: 35%;">
+                    <small>Observações</small>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- ID Externo -->
+                <tr>
+                  <td class="text-center">
+                    <span class="badge bg-secondary fs-6">A</span>
+                  </td>
+                  <td>
+                    <strong>ID Externo</strong><br>
+                    <small class="text-muted">Chave primária do SKU no sistema de origem</small>
+                  </td>
+                  <td class="text-center">
+                    <span class="badge bg-secondary">Não</span>
+                  </td>
+                  <td>
+                    <small class="text-muted">Vinculo com a chave primária de cadastro do SKU do sistema de
+                      origem</small>
+                  </td>
+                </tr>
+
+                <!-- Tag/EPC -->
+                <tr class="table-warning">
+                  <td class="text-center">
+                    <span class="badge bg-warning text-dark fs-6">B</span>
+                  </td>
+                  <td>
+                    <strong>Tag/EPC</strong><br>
+                    <small class="text-dark">Código RFID da etiqueta</small>
+                  </td>
+                  <td class="text-center">
+                    <span class="badge bg-danger">Sim</span>
+                  </td>
+                  <td>
+                    <small class="text-dark">Código que será gravado na etiqueta RFID. Definir origem do valor e o
+                      padrão que será gravado</small>
+                  </td>
+                </tr>
+
+                <!-- Item -->
+                <tr class="table-warning">
+                  <td class="text-center">
+                    <span class="badge bg-warning text-dark fs-6">C</span>
+                  </td>
+                  <td>
+                    <strong>Item</strong><br>
+                    <small class="text-dark">Nome/Descrição do item</small>
+                  </td>
+                  <td class="text-center">
+                    <span class="badge bg-danger">Sim</span>
+                  </td>
+                  <td>
+                    <small class="text-dark">Será gravado no módulo Itens, e vinculado ao SKU</small>
+                  </td>
+                </tr>
+
+                <!-- Labels -->
+                <tr>
+                  <td class="text-center">
+                    <span class="badge bg-secondary fs-6">D</span><br>
+                    <span class="badge bg-secondary fs-6">E</span><br>
+                    <span class="badge bg-secondary fs-6">F</span><br>
+                    <span class="badge bg-secondary fs-6">G</span>
+                  </td>
+                  <td>
+                    <strong>Labels (D, E, F, G)</strong><br>
+                    <small class="text-muted">Campos de identificação extras</small>
+                  </td>
+                  <td class="text-center">
+                    <span class="badge bg-secondary">Não</span>
+                  </td>
+                  <td>
+                    <small class="text-muted">Labels para campos de identificações extras ao Item</small>
+                  </td>
+                </tr>
+
+                <!-- Informações -->
+                <tr>
+                  <td class="text-center">
+                    <span class="badge bg-secondary fs-6">H</span><br>
+                    <span class="badge bg-secondary fs-6">I</span><br>
+                    <span class="badge bg-secondary fs-6">J</span><br>
+                    <span class="badge bg-secondary fs-6">K</span>
+                  </td>
+                  <td>
+                    <strong>Informações (H, I, J, K)</strong><br>
+                    <small class="text-muted">Valores dos campos labels</small>
+                  </td>
+                  <td class="text-center">
+                    <span class="badge bg-secondary">Não</span>
+                  </td>
+                  <td>
+                    <small class="text-muted">Valores aos campos labels, do SKU</small>
+                  </td>
+                </tr>
+
+                <!-- Localizações -->
+                <tr>
+                  <td class="text-center">
+                    <span class="badge bg-secondary fs-6">L</span><br>
+                    <span class="badge bg-secondary fs-6">M</span><br>
+                    <span class="badge bg-secondary fs-6">N</span><br>
+                    <span class="badge bg-secondary fs-6">O</span>
+                  </td>
+                  <td>
+                    <strong>Localizações (L, M, N, O)</strong><br>
+                    <small class="text-muted">Referência de localização do SKU</small>
+                  </td>
+                  <td class="text-center">
+                    <span class="badge bg-secondary">Não</span>
+                  </td>
+                  <td>
+                    <small class="text-muted">Referente a localização dos SKU</small>
+                  </td>
+                </tr>
+
+                <!-- Categoria -->
+                <tr>
+                  <td class="text-center">
+                    <span class="badge bg-secondary fs-6">P</span>
+                  </td>
+                  <td>
+                    <strong>Categoria</strong><br>
+                    <small class="text-muted">Categoria do item</small>
+                  </td>
+                  <td class="text-center">
+                    <span class="badge bg-secondary">Não</span>
+                  </td>
+                  <td>
+                    <small class="text-muted">Será gravado no módulo Categorias, e será vinculado ao SKU</small>
+                  </td>
+                </tr>
+
+                <!-- Categoria EPC -->
+                <tr>
+                  <td class="text-center">
+                    <span class="badge bg-secondary fs-6">Q</span>
+                  </td>
+                  <td>
+                    <strong>Categoria EPC</strong><br>
+                    <small class="text-muted">Código de identificação do tipo IBC</small>
+                  </td>
+                  <td class="text-center">
+                    <span class="badge bg-secondary">Não</span>
+                  </td>
+                  <td>
+                    <small class="text-muted">Código que será gravado na Tag, afim de identificar o Tipo do IBC</small>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+
+        <!-- Tabela Secundários -->
+        <div ng-if="tipoImportacao === 'secundario'">
+
+
+          <div class="table-responsive">
+            <table class="table table-hover table-bordered align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th class="text-center" style="width: 10%;">
+                    <small>Coluna</small>
+                  </th>
+                  <th style="width: 30%;">
+                    <small>Descrição</small>
+                  </th>
+                  <th class="text-center" style="width: 15%;">
+                    <small>Obrigatório</small>
+                  </th>
+                  <th style="width: 25%;">
+                    <small>Observações</small>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Item (A) -->
+                <tr class="table-warning">
+                  <td class="text-center">
+                    <span class="badge bg-warning text-dark fs-6">A</span>
+                  </td>
+                  <td>
+                    <strong>Item</strong><br>
+                    <small class="text-dark">Nome/Descrição do item</small>
+                  </td>
+                  <td class="text-center">
+                    <span class="badge bg-danger">Sim</span>
+                  </td>
+                  <td>
+                    <small class="text-dark">Será gravado no módulo Itens, e vinculado ao SKU</small>
+                  </td>
+                </tr>
+
+                <!-- Categoria EPC (B) -->
+                <tr>
+                  <td class="text-center">
+                    <span class="badge bg-muted text-dark fs-6">B</span>
+                  </td>
+                  <td>
+                    <strong>EAN</strong><br>
+                    <small class="text-muted">Código de identificação do Item</small>
+                  </td>
+                  <td class="text-center">
+                    <span class="badge bg-secondary">Não</span>
+                  </td>
+                  <td>
+                    <small class="text-muted">Código poderá ser utilizado para consulta ao Item diretamente pela Tag</small>
+                  </td>
+                </tr>
+
+                <!-- Categoria (B) -->
+                <tr class="table-warning">
+                  <td class="text-center">
+                    <span class="badge bg-warning text-dark fs-6">B</span>
+                  </td>
+                  <td>
+                    <strong>Categoria</strong><br>
+                    <small class="text-dark">Categoria do item</small>
+                  </td>
+                  <td class="text-center">
+                    <span class="badge bg-danger">Sim</span>
+                  </td>
+                  <td>
+                    <small class="text-dark">Será gravado no módulo Categorias, e será vinculado ao SKU</small>
+                  </td>
+                </tr>
+
+
+                <!-- Categoria EPC (C) -->
+                <tr>
+                  <td class="text-center">
+                    <span class="badge bg-warning text-dark fs-6">B</span>
+                  </td>
+                  <td>
+                    <strong>Categoria EPC</strong><br>
+                    <small class="text-muted">Código de identificação do tipo IBC</small>
+                  </td>
+                  <td class="text-center">
+                    <span class="badge bg-secondary">Não</span>
+                  </td>
+                  <td>
+                    <small class="text-muted">Código que será gravado na Tag, afim de identificar o Tipo do IBC</small>
+                  </td>
+                </tr>
+
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
     <!-- App body starts -->
     <div class="app-body">
 
@@ -43,18 +359,23 @@
 
       <div class="row gx-3">
         <div class="col-xxl-12">
+          <!-- Seletor de Tipo de Importação -->
+
+
+          <!-- Tabela de Dados -->
           <div class="card mb-3">
             <div class="card-body">
               <div class="table-responsive">
                 <div class="table-outer">
-                  <table class="table align-middle table-hover m-0">
+                  <!-- Tabela SKU Completo -->
+                  <table ng-if="tipoImportacao === 'completo'" class="table align-middle table-hover m-0">
                     <thead>
                       <tr>
-                        <th>Item</th>
-                        <th class="w-30"></th>
-                        <th class="w-40">Tag</th>
-                        <th class="w-30">Endereço</th>
-                   
+                        <th class="w-5"></th>
+                        <th class="w-10">{{ _regConta.params_nomenclatura_itens.itens }}</th>
+                        <th class="w-10">{{ _regConta.params_nomenclatura_itens.categorias }}</th>
+                        <th class="w-50">Tag / EPC</th>
+                        <th class="w-25">Endereço</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -64,23 +385,65 @@
                         </td>
                         <td>
                           {{ item.categoria }}
-                          <br>
+                        </td>
+                        <td>
                           {{ item.categoria_item ? item.categoria_item : 'N/A' }}
-                          {{ item.categoria_item_id ? item.categoria_item_id : 'N/A' }}
+                          <br>
+                          <small>iDTag: {{ item.categoria_item_id ? item.categoria_item_id : 'N/A' }}</small>
                         </td>
                         <td>{{ item.tag}}</td>
                         <td>
                           {{ item.loc_nivel1 ? item.loc_nivel1 : 'Em Transporte' }}
                           {{ item.loc_nivel2 ? ' - ' + item.loc_nivel2 : '' }}
-
                           <span ng-show="item.loc_nivel3" class="text-muted">
                             <br>
                             {{ item.loc_nivel3 ? item.loc_nivel3 : '' }}
                             {{ item.loc_nivel4 ? ' - ' + item.loc_nivel4 : '' }}
                           </span>
-
                         </td>
-                       
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <!-- Tabela Secundários -->
+                  <table ng-if="tipoImportacao === 'secundario'" class="table align-middle table-hover m-0">
+                    <thead>
+                      <tr>
+                        <th class="w-5"></th>
+                        <th class="w-10">
+                          Item
+                        </th>
+                        <th class="w-40">
+                          EAN 
+                        </th>
+                        <th class="w-10">
+                          Categoria
+                        </th>
+                        <th class="w-40">
+                          Categoria EPC
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr ng-repeat="item in _dadosImportacao.itens">
+                        <td>
+                          <img class="rounded-circle img-3x me-2" src="{{ item._foto }}" alt="Wrapmarket" />
+                        </td>
+                        <td>
+                          <strong>{{ item.categoria || 'N/A' }}</strong>
+                        </td>
+                        <td>
+                          <strong>{{ item.ean || 'N/A' }}</strong>
+                        </td>
+                        <td>
+                          {{ item.categoria_item ? item.categoria_item : 'N/A' }}
+                          <br>
+                          <small class="text-muted">iDTag: {{ item.categoria_item_id ? item.categoria_item_id : 'N/A'
+                            }}</small>
+                        </td>
+                        <td>
+                          <code class="text-info">{{ item.categoria_epc || 'N/A' }}</code>
+                        </td>
                       </tr>
                     </tbody>
                   </table>

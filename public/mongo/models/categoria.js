@@ -23,6 +23,11 @@ const CategoriaSchema = new mongoose.Schema({
     id_nivel_cat2: { type: String, ref: 'CategoriaItem' },
     id_nivel_cat3: { type: String, ref: 'CategoriaItem' },
     id_nivel_cat41: { type: String, ref: 'CategoriaItem' },
+    
+    id_nivel_loc1: { type: String, ref: 'Localizacao' },
+    id_nivel_loc2: { type: String, ref: 'Localizacao' },
+    id_nivel_loc3: { type: String, ref: 'Localizacao' },
+    id_nivel_loc4: { type: String, ref: 'Localizacao' },
 
 }, {
     versionKey: false

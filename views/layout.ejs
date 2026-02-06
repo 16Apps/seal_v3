@@ -232,16 +232,16 @@
               </a>
             </li>
 
-            <li class="treeview"
+            <li ng-show="_regConta.plano_monitoramento.posicao_esperada > 0 || _regConta.plano_monitoramento.painel_alertas > 0 || _regConta.plano_monitoramento.interacao > 0" class="treeview"
               ng-class="{'active current-page': isActive('alerta') || isActive('posicao') || isActive('interacao') || isActive('associacao') }">
               <a href="#!">
                 <i class="bi bi-eye"></i>
                 <span class="menu-text">Monitoramento</span>
               </a>
               <ul class="treeview-menu">
-                <li><a href="/posicao">Posições Esperadas</a></li>
-                <li><a href="/alerta">Painel de Alertas</a></li>
-                <li><a href="/interacao">Interação nos Locais</a></li>
+                <li ng-show="_regConta.plano_monitoramento.posicao_esperada > 0"><a href="/posicao">Posições Esperadas</a></li>
+                <li ng-show="_regConta.plano_monitoramento.painel_alertas > 0"><a href="/alerta">Painel de Alertas</a></li>
+                <li ng-show="_regConta.plano_monitoramento.interacao > 0"><a href="/interacao">Interação nos Locais</a></li>
                 <!-- <li><a href="/associacao">Associação</a></li> -->
               </ul>
             </li>
@@ -267,13 +267,19 @@
               </a>
               <ul class="treeview-menu">
                 <li>
-                  <a href="/item">SKUs</a>
+                  <a href="/item">
+                    {{ _regConta.params_nomenclatura_itens.sku }}s
+                  </a>
                 </li>
                 <li>
-                  <a href="/categoria">Itens</a>
+                  <a href="/categoria">
+                    {{ _regConta.params_nomenclatura_itens.itens }}s
+                  </a>
                 </li>
                 <li>
-                  <a href="/categoria_item">Categorias</a>
+                  <a href="/categoria_item">
+                    {{ _regConta.params_nomenclatura_itens.categorias }}s
+                  </a>
                 </li>
                 <li>
                   <a href="/importar">Importar</a>

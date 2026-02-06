@@ -7,9 +7,12 @@ const GatewaySchema = new mongoose.Schema({
     ativo: { type: Number, enum: [0, 1], default: 1 },
     descricao: { type: String },
     tokem: { type: String },
+    tokem_associado: { type: String },
 
     latitude: { type: String },
     longitude: { type: String },
+
+    posicao_esperada_auto: { type: Number, enum: [0, 1], default: 0 },
 
     modo: { type: String, enum: ['fixo', 'movel', 'fluxo'], default: 'fixo' },
     id_colaborador: { type: String, ref: 'Colaborador' },

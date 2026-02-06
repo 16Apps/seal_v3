@@ -11,13 +11,75 @@
           <a class="text-decoration-none">Home</a>
         </li>
         <li class="breadcrumb-item" aria-current="page">Dashboard</li>
+
+        <li class="breadcrumb-item" aria-current="page">
+          <select ng-model="_filtroNivel1" ng-change="onCarregaNiveis('02')" class="form-select bg-info text-white"
+            aria-label="Month">
+            <option value="">Todos Endereços</option>
+            <option ng-repeat="item in _listNivel1 track by $index" value="{{ item._id}}">{{ item.descricao }}</option>
+          </select>
+        </li>
+
+        <li ng-show="_filtroNivel1" class="breadcrumb-item" aria-current="page">
+          <select ng-model="_filtroNivel2" ng-change="onCarregaNiveis('03')"
+            class="form-select  bg-info text-white opacity-75" aria-label="Month">
+            <option value="">Todos</option>
+            <option ng-repeat="item in _listNivel2 track by $index" value="{{ item._id}}">{{ item.descricao }}</option>
+          </select>
+        </li>
+
+        <li ng-show="_filtroNivel2" class="breadcrumb-item" aria-current="page">
+          <select ng-model="_filtroNivel3" ng-change="onCarregaNiveis('04')"
+            class="form-select  bg-info text-white opacity-50" aria-label="Month">
+            <option value="">Todos</option>
+            <option ng-repeat="item in _listNivel3 track by $index" value="{{ item._id}}">{{ item.descricao }}</option>
+          </select>
+        </li>
+
+        <li ng-show="_filtroNivel3" class="breadcrumb-item" aria-current="page">
+          <select ng-model="_filtroNivel4" class="form-select bg-info text-white opacity-25" aria-label="Month">
+            <option value="">Todos</option>
+            <option ng-repeat="item in _listNivel4 track by $index" value="{{ item._id}}">{{ item.descricao }}</option>
+          </select>
+        </li>
+
       </ol>
       <!-- Breadcrumb end -->
 
       <!-- Filter start -->
-      <div class="ms-auto d-flex flex-row gap-1 day-filters">
+      <!-- <div class="ms-auto d-flex flex-row gap-1 day-filters">
 
         <div class="btn-group" role="group">
+
+          <div class="row g-2">
+            <div class="col text-end">
+              <i class="bi bi-geo-alt me-1 fs-3 text-warning"></i>
+            </div>
+            <div class="col">
+              <select ng-model="_filtroNivel1" ng-change="onCarregaNiveis('02')" class="form-select"  aria-label="Month">
+                <option value="">Todos</option>
+                <option ng-repeat="item in _listNivel1 track by $index"  value="{{ item._id}}">{{ item.descricao }}</option>
+              </select>
+            </div>
+            <div class="col">
+              <select ng-model="_filtroNivel2" ng-change="onCarregaNiveis('03')" class="form-select"  aria-label="Month">
+                <option value="">Todos</option>
+                <option ng-repeat="item in _listNivel2 track by $index"  value="{{ item._id}}">{{ item.descricao }}</option>
+              </select>
+            </div>
+            <div class="col">
+              <select ng-model="_filtroNivel3" ng-change="onCarregaNiveis('04')" class="form-select"  aria-label="Month">
+                <option value="">Todos</option>
+                <option ng-repeat="item in _listNivel3 track by $index"  value="{{ item._id}}">{{ item.descricao }}</option>
+              </select>
+            </div>
+            <div class="col">
+              <select  ng-model="_filtroNivel3" class="form-select" aria-label="Month">
+                <option value="">Todos</option>
+                <option ng-repeat="item in _listNivel4 track by $index"  value="{{ item._id}}">{{ item.descricao }}</option>
+              </select>
+            </div>
+          </div>
 
           <span class="me-3">
             <input ng-checked="!id_nivelPosicao" ng-click="onMudaNivel1Posicao('')" type="radio" class="btn-check"
@@ -32,14 +94,14 @@
           </span>
         </div>
 
-        <!-- <button type="button" class="btn btn-sm">Hoje</button>
+        <button type="button" class="btn btn-sm">Hoje</button>
         <button type="button" class="btn btn-sm">7D</button>
         <button type="button" class="btn btn-sm">2S</button>
         <button type="button" class="btn btn-sm">1M</button>
         <button type="button" class="btn btn-sm">3M</button>
         <button type="button" class="btn btn-sm">6M</button>
-        <button type="button" class="btn btn-sm btn-info">1Y</button> -->
-      </div>
+        <button type="button" class="btn btn-sm btn-info">1Y</button>
+      </div> -->
       <!-- Filter end -->
 
     </div>
@@ -48,8 +110,187 @@
     <!-- App body starts -->
     <div class="app-body">
 
-      <!-- Row start -->
+
+
       <div class="row gx-3">
+        <!-- Total Revenue -->
+        <div class="col-xxl-3 col-sm-6 col-12">
+          <div class="card mb-3">
+            <div class="card-body">
+              <div class="d-flex align-items-center justify-content-between">
+                <div class="icon-box md border border-primary bg-primary bg-opacity-10 rounded-5">
+                  <i class="bi bi-box-seam fs-4 text-primary"></i>
+                </div>
+                <div class="text-end">
+                  <h3 class="text-primary display-5">{{ _regResumoItens.total }}</h3>
+                  <span class="badge bg-success bg-opacity-10 text-success px-2 py-1 small">
+                    <!-- <i class="bi bi-arrow-up"></i> +5.4% -->
+                  </span>
+                </div>
+              </div>
+              <h6 class="m-0 text-light">{{ _regConta.params_nomenclatura_itens.sku }}s Cadastrados</h6>
+            </div>
+          </div>
+        </div>
+
+        <!-- New Signups -->
+        <div class="col-xxl-3 col-sm-6 col-12">
+          <div class="card mb-3">
+            <div class="card-body">
+              <div class="d-flex align-items-center justify-content-between">
+                <div class="icon-box md border border-success bg-success bg-opacity-10 rounded-5">
+                  <i class="bi bi-shop-window fs-4 text-success"></i>
+                </div>
+                <div class="text-end">
+                  <h3 class="text-success display-5">{{ _regResumoItens.alocados }}</h3>
+                  <span class="badge bg-success bg-opacity-10 text-success px-2 py-1 small">
+                    <i class="bi bi-arrow-up"></i> 
+                    {{ (_regResumoItens.alocados / _regResumoItens.total * 100).toFixed(0) }}%
+                  </span>
+                </div>
+              </div>
+              <h6 class="m-0 text-light">Alocados</h6>
+            </div>
+          </div>
+        </div>
+
+        <!-- New Products -->
+        <div class="col-xxl-3 col-sm-6 col-12">
+          <div class="card mb-3">
+            <div class="card-body">
+              <div class="d-flex align-items-center justify-content-between">
+                <div class="icon-box md border border-warning bg-warning bg-opacity-10 rounded-5">
+                  <i class="bi bi-car-front fs-4 text-warning"></i>
+                </div>
+                <div class="text-end">
+                  <h3 class="text-warning display-5">{{ _regResumoItens.em_transporte }}</h3>
+                  <span class="badge bg-warning bg-opacity-10 text-warning px-2 py-1 small">
+                    <i class="bi bi-arrow-up"></i>
+                    {{ (_regResumoItens.em_transporte / _regResumoItens.total * 100).toFixed(0) }}%
+                  </span>
+                </div>
+              </div>
+              <h6 class="m-0 text-light">Em Trânsito</h6>
+            </div>
+          </div>
+        </div>
+
+        <!-- Total Orders -->
+        <div class="col-xxl-3 col-sm-6 col-12">
+          <div class="card mb-3">
+            <div class="card-body">
+              <div class="d-flex align-items-center justify-content-between">
+                <div class="icon-box md border border-danger bg-danger bg-opacity-10 rounded-5">
+                  <i class="bi bi bi bi-tag fs-4 text-danger"></i>
+                </div>
+                <div class="text-end">
+                  <h3 class="text-danger display-5">{{ _regResumoItens.perca }}</h3>
+                  <span class="badge bg-danger bg-opacity-10 text-danger px-2 py-1 small">
+                    <i class="bi bi-arrow-up"></i>
+                    {{ (_regResumoItens.perca / _regResumoItens.total * 100).toFixed(0) }}%
+                  </span>
+                </div>
+              </div>
+              <h6 class="m-0 text-light">Total de Perdas</h6>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row gx-3">
+        <div class="col-xl-8 col-md-6 col-sm-12 col-12">
+          <div class="card mb-3">
+            <div class="card-header">
+              <h5 class="card-title">Alocação dos {{ _regConta.params_nomenclatura_itens.sku }}s</h5>
+            </div>
+            <div class="card-body">
+
+              <!-- Graph start -->
+              <div class="overflow-hidden">
+                <!-- Mensagem quando não há dados -->
+                <div ng-if="!_totalItensFiltrado || !_totalItensFiltrado.localizacoes || _totalItensFiltrado.localizacoes.length === 0" 
+                     class="d-flex flex-column align-items-center justify-content-center py-5">
+                  <i class="bi bi-inbox fs-1 text-muted mb-3"></i>
+                  <h6 class="text-muted mb-2">Nenhum dado disponível</h6>
+                  <p class="text-muted small text-center mb-0">
+                    Não há itens alocados nos endereços selecionadas.
+                  </p>
+                </div>
+                <!-- Gráfico quando há dados -->
+                <div ng-if="_totalItensFiltrado && _totalItensFiltrado.localizacoes && _totalItensFiltrado.localizacoes.length > 0">
+                  <div id="grafico-alocacao"></div>
+                </div>
+              </div>
+              <!-- Graph end -->
+
+              <!-- Details start -->
+              <div class="d-flex justify-content-between align-items-center pt-4">
+                <div>
+                  <h6 class="mb-1">📈 Alocação por Endereço</h6>
+                  <span class="text-muted small">
+                    {{ (_totalItensFiltrado.localizacoes[0].total_itens / _regResumoItens.total * 100).toFixed(0) }}%                    
+                    {{ _filtroNivel1 != "" ? ' presente no endereço ' + _totalItensFiltrado.localizacoes[0].descricao : "estão presentes no endereço selecionado." }}
+                  </span>
+                </div>
+                <!-- <a href="/item" class="btn btn-sm btn-primary d-flex align-items-center">
+                  Ver {{ _regConta.params_nomenclatura_itens.sku }}s
+                  <i class="bi bi-arrow-right ms-1"></i>
+                </a> -->
+              </div>
+              <!-- Details end -->
+
+            </div>
+          </div>
+        </div>
+
+        <div class="col-xl-4 col-md-6 col-sm-12 col-12">
+          <div class="card mb-3">
+            <div class="card-header">
+              <h5 class="card-title">{{ _regConta.params_nomenclatura_itens.categorias }}s dos {{ _regConta.params_nomenclatura_itens.sku }}s</h5>
+            </div>
+            <div class="card-body">
+
+              <!-- Graph start -->
+              <div class="overflow-hidden">
+                <!-- Mensagem quando não há dados -->
+                <div ng-show="!_totalItensCategoriasFiltrado || _totalItensCategoriasFiltrado.length === 0" 
+                     class="d-flex flex-column align-items-center justify-content-center py-5">
+                  <i class="bi bi-inbox fs-1 text-muted mb-3"></i>
+                  <h6 class="text-muted mb-2">Nenhum dado disponível</h6>
+                  <p class="text-muted small text-center mb-0">
+                    Não há {{ _regConta.params_nomenclatura_itens.categorias }}s alocados nos endereços selecionadas.
+                  </p>
+                </div>
+                <!-- Gráfico quando há dados -->
+                <div ng-show="_totalItensCategoriasFiltrado.length > 0">
+                  <div id="grafico-alocacao-categorias"></div>
+                </div>
+              </div>
+              <!-- Graph end -->
+
+              <!-- Details start -->
+              <div class="d-flex justify-content-between align-items-center pt-4">
+                <div>
+                  <h6 class="mb-1">📈 {{ _regConta.params_nomenclatura_itens.categorias }}s Agrupados</h6>
+                  <span class="text-muted small">
+                    &nbsp;
+                  </span>
+                </div>
+                <a href="/item" class="btn btn-sm btn-primary d-flex align-items-center">
+                  Ver {{ _regConta.params_nomenclatura_itens.sku }}s
+                  <i class="bi bi-arrow-right ms-1"></i>
+                </a>
+              </div>
+              <!-- Details end -->
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Row start -->
+      <!-- <div class="row gx-3">
         <div class="col-xl-3 col-sm-6 col-12">
           <div class="card mb-3">
             <div class="card-body">
@@ -143,8 +384,163 @@
             </div>
           </div>
         </div>
-      </div>
+      </div> -->
       <!-- Row end -->
+
+      <div class="row gx-3">
+
+        <div class="col-xxl-12 col-sm-12 col-12">
+          <div class="card mb-3">
+            <div class="card-header">
+              <h5 class="card-title mb-3">Registros Diários</h5>
+            </div>
+            <div class="card-body pt-0">
+              <div class="card-h-100">
+                <div class="overflow-hidden">
+                  <div id="visitors"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row gx-3">
+        <div class="col-xxl-8 col-sm-6 col-12">
+          <div class="card mb-3">
+            <div class="card-header">
+              <h5 class="card-title">Registros Recentes</h5>
+            </div>
+            <div class="card-body">
+              <div class="scroll300">
+
+                <!-- List start -->
+                <ul class="list-unstyled d-grid gap-3">
+                  <li  ng-repeat="item in _registrosRecentes track by $index"  class="d-flex align-items-center justify-content-between border-bottom pb-3">
+                    <div class="d-flex align-items-center gap-3">
+                      <span class="icon-box md bg-primary rounded-circle">
+                        <i class="bi bi-tag fs-4"></i>
+                      </span>
+                      <div>
+                        <h6 class="mb-0">{{ item.categoria_descricao }}</h6>
+                        <small class="text-muted d-block">{{ item.tag }}</small>
+                        <small class="text-warning">
+                          <i class="bi bi-arrow-return-right"></i>
+                          {{ item.nivel_loc1_descricao }} 
+                          {{ item.nivel_loc2_descricao }} 
+                          {{ item.nivel_loc3_descricao }} 
+                          {{ item.nivel_loc4_descricao }}
+                        </small>
+                      </div>
+                    </div>
+                    <div class="d-flex flex-column align-items-end gap-1">
+                      <span class="badge bg-primary bg-opacity-10 text-primary fs-6">
+                        {{ formataDataHoraSeg(item.data_permanecia) }}
+                      </span>
+                      <span class="badge bg-success bg-opacity-10 text-success fs-6">
+                        {{ formataDataHoraSeg(item.data_registro) }}
+                      </span>
+                     
+                    </div>
+                  </li>
+
+                </ul>
+                <!-- List end -->
+
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-xxl-4 col-sm-6 col-12">
+          <div class="card mb-3">
+            <div class="card-header">
+              <h5 class="card-title">Permanência por Endereço</h5>
+            </div>
+            <div class="card-body">
+              <div class="scroll300">
+
+                <!-- List start -->
+                <ul class="list-unstyled d-grid gap-3">
+                  <li  ng-repeat="item in _registrosRecentesLocalizacao track by $index"  class="d-flex align-items-center justify-content-between border-bottom pb-3">
+                    <div class="d-flex align-items-center gap-3">
+                      <span class="icon-box md bg-warning text-dark rounded-circle fs-4 fw-bold">
+       
+                        {{ item.total_itens }} 
+                      </span>
+                      <div>
+                        <h6 class="mb-0">{{ item.categoria_descricao }}</h6>
+                        <small class="text-danger">
+                          <i class="bi bi-arrow-return-right"></i>
+                          {{ item.nivel_loc1_descricao }} 
+                          {{ item.nivel_loc2_descricao }} 
+                          {{ item.nivel_loc3_descricao }} 
+                          {{ item.nivel_loc4_descricao }}
+                        </small>
+                      </div>
+                    </div>
+                    <div class="d-flex flex-column align-items-end gap-1">
+                      <span class="badge bg-warning bg-opacity-10 text-warning fs-6">
+                        {{ item.tempo_medio_seg }} seg
+                      </span>
+                    </div>
+                  </li>
+
+                </ul>
+                <!-- List end -->
+
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- <div class="col-xxl-4 col-sm-6 col-12">
+          <div class="card mb-3">
+            <div class="card-header">
+              <h5 class="card-title">Registros Diários</h5>
+            </div>
+            <div class="card-body pt-0">
+
+              <div class="auto-align-graph overflow-hidden">
+                <div id="tasks"></div>
+              </div>
+ 
+              <div class="row text-center g-3">
+                <div class="col-4">
+                  <div class="p-2 rounded-2 bg-danger bg-opacity-10 d-flex flex-column align-items-center">
+                    <div class="icon-box sm bg-danger bg-opacity-25 mb-2 rounded-2">
+                      <i class="bi bi-plus-circle-fill text-danger fs-5"></i>
+                    </div>
+                    <h3 class="fw-bold text-danger mb-0">{{ _registrosDiaResumo.totalOntem  || 0 }}</h3>
+                    <span class="small">Ontem</span>
+                  </div>
+                </div>
+                <div class="col-4">
+                  <div class="p-2 rounded-2 bg-primary bg-opacity-10 d-flex flex-column align-items-center">
+                    <div class="icon-box sm bg-primary bg-opacity-25 mb-2 rounded-2">
+                      <i class="bi bi-hourglass-split text-primary fs-5"></i>
+                    </div>
+                    <h3 class="fw-bold text-primary mb-0">{{ _registrosDiaResumo.topDias[0].total || 0 }}</h3>
+                    <span class="small">{{ formataData(_registrosDiaResumo.topDias[0].data) }}</span>
+                  </div>
+                </div>
+                <div class="col-4">
+                  <div class="p-2 rounded-2 bg-success bg-opacity-10 d-flex flex-column align-items-center">
+                    <div class="icon-box sm bg-success bg-opacity-25 mb-2 rounded-2">
+                      <i class="bi bi-check-circle-fill text-success fs-5"></i>
+                    </div>
+                    <h3 class="fw-bold text-success mb-0">{{ _registrosDiaResumo.topDias[1].total  || 0  }}</h3>
+                    <span class="small">{{ formataData(_registrosDiaResumo.topDias[1].data) }}</span>
+                  </div>
+                </div>
+              </div>
+    
+            </div>
+          </div>
+        </div> -->
+   
+      </div>
+
 
       <!-- Row start -->
       <div class="row gx-3">

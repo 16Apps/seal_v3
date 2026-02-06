@@ -81,7 +81,7 @@
 
                                                     <!-- Row start -->
                                                     <div class="row gx-3 mb-3">
-                                                        <div class="col-sm-6">
+                                                        <div class="col-sm-4">
                                                             <label for="displayName" class="form-label">
                                                                 Descrição
                                                             </label>
@@ -99,6 +99,13 @@
                                                         </div>
                                                         <div class="col-sm-3">
                                                             <label for="displayName" class="form-label">
+                                                                Tokem Associado
+                                                            </label>
+                                                            <input ng-model="$ctrl._editGateway.tokem_associado" type="text"                                                                
+                                                                class="form-control">
+                                                        </div>
+                                                        <div class="col-sm-2">
+                                                            <label for="displayName" class="form-label">
                                                                 Ativo
                                                             </label>
                                                             <select ng-model="$ctrl._editGateway.ativo"
@@ -106,6 +113,19 @@
                                                                 aria-label="Basic select example">
                                                                 <option value="0">Não</option>
                                                                 <option value="1">Sim</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="row gx-3 mb-4">
+                                                        <div class="col-sm-3">
+                                                            <label for="displayName" class="form-label">
+                                                                Auto Ordem Posição Esperada
+                                                            </label>
+                                                            <select ng-model="$ctrl._editGateway.posicao_esperada_auto"
+                                                                class="form-select flex-grow-1" id="basicSelect"
+                                                                aria-label="Basic select example">
+                                                                <option value="1">Sim</option>
+                                                                <option value="0">Não</option>
                                                             </select>
                                                         </div>
                                                     </div>

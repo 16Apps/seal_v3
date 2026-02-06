@@ -1,7 +1,7 @@
 <div class="modal-content">
     <div class="modal-header">
         <h5 class="modal-title h4" id="exampleModalFullscreenLabel">
-            Item
+            {{ $ctrl._regConta.params_nomenclatura_itens.categorias }}
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
     </div>
@@ -10,7 +10,7 @@
         <ol class="breadcrumb d-none d-lg-flex mb-4">
             <li class="breadcrumb-item">
                 <i class="bi bi-geo-alt lh-1"></i>
-                <a class="text-decoration-none">Item</a>
+                <a class="text-decoration-none">{{ $ctrl._regConta.params_nomenclatura_itens.categorias }}</a>
             </li>
             <li class="breadcrumb-item" aria-current="page">
                 <a class="text-decoration-none text-info">
@@ -35,7 +35,7 @@
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link rounded-pill" id="categorias-c-tab" data-bs-toggle="pill"
                                     data-bs-target="#categorias-c" type="button" role="tab" aria-controls="categorias-c"
-                                    aria-selected="false">Itens</button>
+                                    aria-selected="false">{{ $ctrl._regConta.params_nomenclatura_itens.sku }}s</button>
                             </li>
 
                         </ul>

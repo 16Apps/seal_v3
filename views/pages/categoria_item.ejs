@@ -10,7 +10,7 @@
           <i class="bi bi-house lh-1"></i>
           <a class="text-decoration-none">Gestão de Itens</a>
         </li>
-        <li class="breadcrumb-item" aria-current="page">Categorias</li>
+        <li class="breadcrumb-item" aria-current="page">{{ _regConta.params_nomenclatura_itens.categorias }}s</li>
       </ol>
       <!-- Breadcrumb end -->
 
@@ -53,11 +53,18 @@
                         <th>
                         </th>
 
-                        <th class="w-90" class="sortable" ng-click="sortBy('descricao')">
+                        <th class="w-20" class="sortable" ng-click="sortBy('descricao')">
                           Descrição
                           <i class="bi" ng-class="{
             'bi-caret-up-fill': sortField=='descricao' && !sortReverse,
             'bi-caret-down-fill': sortField=='descricao' && sortReverse
+         }"></i>
+                        </th>
+                        <th class="w-90" class="sortable" ng-click="sortBy('tag')">
+                          valor idTag
+                          <i class="bi" ng-class="{
+            'bi-caret-up-fill': sortField=='tag' && !sortReverse,
+            'bi-caret-down-fill': sortField=='tag' && sortReverse
          }"></i>
                         </th>
                         <th>Ações</th>
@@ -69,7 +76,7 @@
                           <img class="rounded-circle img-3x me-2" src="{{ item._foto }}" alt="Wrapmarket" />
                         </td>
                         <td>{{ item.descricao }}</td>
-  
+                        <td>{{ item.tag }}</td>
                         <td>
                           <a class="btn btn-info btn-sm" ng-click="onCategoriaItem('edit', item)">
                             <i class="bi bi-pencil"></i>

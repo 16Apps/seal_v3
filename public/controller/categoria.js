@@ -16,6 +16,8 @@ app.controller('categoriaCtrl', function ($scope, $http, params, uteisService) {
             $scope._regConta._logo = _url + '/image/' + $scope._regConta.logo;
         };
 
+        $scope._regConta = uteisService.normalizarConta($scope._regConta);
+
         $scope._regColaborador = uteisService.getCookie('_colaborador');
 
         $scope.onCarregaRegistros()

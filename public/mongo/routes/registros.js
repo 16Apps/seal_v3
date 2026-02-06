@@ -96,7 +96,7 @@ module.exports = (app, dbConnection) => {
                 const rssiValor = parseFloat(leitura.rssi) * -1 || 0;
                 // const rssiAbsoluto = Math.abs(rssiValor);
                 const thresholdRSSI = gateway.intervalo_reg_rssi || 0;
-                
+
                 // Se não há threshold configurado ou o sinal está dentro do threshold, envia
                 if (thresholdRSSI === 0 || rssiValor < thresholdRSSI) {
                     try {
@@ -182,12 +182,47 @@ module.exports = (app, dbConnection) => {
         // final validação
 
         // Cadastro do gateway
-        const gateway = await Gateway.findOne({ tokem, ativo: 1 });
-        if (!gateway) return res.status(200).json({
-            success: true,
-            ignored: true,
-            message: `Gateway ${tokem} não cadastrado na conta`
-        });
+        let gateway = await Gateway.findOne({ tokem, ativo: 1 });
+        if (!gateway) {
+            return res.status(200).json({
+                success: true,
+                ignored: true,
+                message: `Gateway ${tokem} não cadastrado na conta`
+            });
+        }
+
+        // Se existir associação, resolve para o gateway primário
+        if (gateway.tokem_associado) {
+            const visited = new Set();
+            let current = gateway;
+
+            while (current?.tokem_associado) {
+                // evita loop (ex.: A -> B -> A)
+                if (visited.has(current.tokem)) break;
+                visited.add(current.tokem);
+
+                const tokemPrimario = String(current.tokem_associado).trim();
+
+                const primary = await Gateway.findOne({
+                    tokem: tokemPrimario,
+                    ativo: 1,
+                    // se quiser garantir mesma conta, descomente:
+                    // id_conta: current.id_conta
+                });
+
+                if (!primary) {
+                    return res.status(200).json({
+                        success: true,
+                        ignored: true,
+                        message: `Gateway ${current.tokem} possui tokem_associado (${tokemPrimario}), mas o primário não está cadastrado/ativo`
+                    });
+                }
+
+                current = primary;
+            }
+
+            gateway = current; // <- a partir daqui, "gateway" é o primário
+        }
 
         const io = req.app.get('io');
         const dadosRegistro = {
@@ -407,7 +442,7 @@ module.exports = (app, dbConnection) => {
             return new Promise(resolve => setTimeout(resolve, ms));
         }
 
-        // 1️⃣ Verifica se o ITEM LIDO possui associação
+        // 1️⃣ Verifica se o SKU LIDO possui associação
         let associacao = await Associacao.findOne({
             id_item: _reg.id_item,
             ativo: '1'
@@ -419,7 +454,7 @@ module.exports = (app, dbConnection) => {
 
             console.log('✔ Associado Qnt ' + _reg.id_categoria)
 
-            // 1️⃣ 1️⃣ Verifica se a CATEGORIA LIDA possui associação
+            // 1️⃣ 1️⃣ Verifica se a ITEM LIDA possui associação
             associacao = await Associacao.findOne({
                 id_categoria: _reg.id_categoria,
                 ativo: '1'
@@ -495,11 +530,11 @@ module.exports = (app, dbConnection) => {
                 if (!associado.id_categoria || associado.id_categoria === "") continue;
 
                 // Verifica leitura do item associado
-                    // let regAssociado = await Registro.find({
-                    //     id_categoria: associado.id_categoria,
-                    //     id_gateway: _reg.id_gateway,
-                    //     data_permanecia: { $gte: inicio, $lte: fim }
-                    // });
+                // let regAssociado = await Registro.find({
+                //     id_categoria: associado.id_categoria,
+                //     id_gateway: _reg.id_gateway,
+                //     data_permanecia: { $gte: inicio, $lte: fim }
+                // });
 
                 let regAssociado = await Registro.aggregate([
                     {
@@ -543,12 +578,15 @@ module.exports = (app, dbConnection) => {
                         console.log(`   ❌ Associado ${associado.id_item} QNT encontrado no intervalo`);
                     }
 
+                    // Atençao !! Está filtrando apenas um Item associados, onde poderá ter mais
+                    _reg.associados.push(obj)
+
                 } else {
                     statusAssociacao = 'associacao_erro'
                     console.log(`   ❌ Associado ${associado.id_item} NÃO encontrado no intervalo`);
                 }
 
-                _reg.associados.push(obj)
+                
 
                 // 4️⃣ Atualiza o Registro no banco incluindo os associados
                 await Registro.updateOne(
@@ -679,7 +717,7 @@ module.exports = (app, dbConnection) => {
                         if (_item && _item.vinculos_device && Array.isArray(_item.vinculos_device) && _item.vinculos_device.length > 0 && _item.vinculos_device[0].id_mac) {
                             _serialPDI = _item.vinculos_device[0].id_mac;
                             console.log('Serial PDI:' + _serialPDI);
-                        } else {                            
+                        } else {
                             console.log('Item sem vinculos_device válido ou id_mac não encontrado');
                             return;
                         }
@@ -1353,6 +1391,66 @@ module.exports = (app, dbConnection) => {
                     const novo = await Item.create(dadosItem);
                     resultados.push({ tag: tag, acao: 'criado', id: novo._id });
                 }
+            }
+
+            res.json({ success: true, total: resultados.length, resultados });
+        } catch (err) {
+            console.error('Erro ao importar itens:', err);
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+
+    app.post('/_bd/importar-csv-secundarios', async (req, res) => {
+        try {
+            const { id_conta, itens } = req.body; // o front envia { id_conta, itens: [...] }
+
+            const resultados = [];
+
+            for (const linha of itens) {
+                const {
+                    categoria,
+                    ean,
+                    categoria_item,
+                    categoria_epc
+                } = linha;
+
+                // =====================================================
+                // 1️⃣ Verificar / criar / atualizar Categoria
+                // =====================================================
+                let cat = await Categoria.findOne({ id_conta, descricao: categoria });
+                if (!cat) {
+                    cat = await Categoria.create({
+                        id_conta,
+                        descricao: categoria,
+                        ean: ean,
+                        // labelInf1: label1,
+                        // labelInf2: label2,
+                        // labelInf3: label3,
+                        // labelInf4: label4
+                    });
+                } else {
+                    // Atualiza labels se mudou
+                    const atualiza = {
+                        // labelInf1: label1,
+                        // labelInf2: label2,
+                        // labelInf3: label3,
+                        // labelInf4: label4
+                    };
+                    await Categoria.updateOne({ _id: cat._id }, { $set: atualiza });
+                }
+
+                // =====================================================
+                // 1️⃣ Verificar / criar / atualizar Categoria Item
+                // =====================================================
+                let cat_item = await CategoriaItem.findOne({ id_conta, descricao: categoria_item });
+                if (!cat_item) {
+                    cat_item = await CategoriaItem.create({
+                        id_conta,
+                        descricao: categoria_item,
+                        tag: categoria_epc,
+                    });
+                }
+
             }
 
             res.json({ success: true, total: resultados.length, resultados });

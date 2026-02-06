@@ -28,6 +28,7 @@ app.component('posicao', {
 
     $ctrl.$onInit = function () {
       $ctrl._regConta = uteisService.getCookie('_conta');
+      $ctrl._regConta = uteisService.normalizarConta($ctrl._regConta);
     };
 
     $ctrl.$onChanges = function (changes) {

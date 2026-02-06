@@ -24,6 +24,7 @@ app.component('alerta', {
 
     $ctrl.$onInit = function () {
       $ctrl._regConta = uteisService.getCookie('_conta');
+      $ctrl._regConta = uteisService.normalizarConta($ctrl._regConta);
     };
 
     $ctrl.$onChanges = function (changes) {
@@ -251,7 +252,7 @@ app.component('alerta', {
         'sair': 'Sair do Raio de Leitura',
         'tol_max': 'Tolerância Máxima',
         'tol_min': 'Tolerância Mínima',
-        'itens_fixo': 'Itens Fixo'
+        'itens_fixo': $ctrl._regConta.params_nomenclatura_itens.sku + ' Fixo'
       };
       return opcoes[value] || '';
     };

@@ -44,6 +44,7 @@ const ContaSchema = new mongoose.Schema({
     },
 
     plano_conta: {
+        plano: { type: String },
         valor: { type: Number, default: 0 },
         representante: { type: String },
         suporte_celular: { type: String },

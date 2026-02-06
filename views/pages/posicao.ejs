@@ -72,7 +72,7 @@
 
                         <!-- Itens -->
                         <th class="w-10 sortable" ng-click="sortBy('itens')">
-                          Itens
+                          {{ _regConta.params_nomenclatura_itens.sku }}s
                           <i class="bi" ng-class="{
             'bi-caret-up-fill': sortField=='itens' && !sortReverse,
             'bi-caret-down-fill': sortField=='itens' && sortReverse

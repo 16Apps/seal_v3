@@ -10,13 +10,13 @@ app.controller('categoriaItemCtrl', function ($scope, $http, params, uteisServic
 
     $scope.$watch('$viewContentLoaded', async function () {
 
-
         $scope._regConta = uteisService.getCookie('_conta');
         $scope._regConta['_logo'] = '../assets/images/logo_default.fw.png'
         if ($scope._regConta.logo && $scope._regConta.logo.includes('logo_conta') == false) {
             let _url = uteisService.apiUrl_();
             $scope._regConta._logo = _url + '/image/' + $scope._regConta.logo;
         };
+        $scope._regConta = uteisService.normalizarConta($scope._regConta);
 
         $scope._regColaborador = uteisService.getCookie('_colaborador');
 

@@ -13,7 +13,7 @@ const AssociacaoSchema = new mongoose.Schema({
 
     intervalo: { type: Number },
     range_rssi: { type: Number },
-
+    cond_presenca: { type: String, enum: ['todos', 'qualquer'], default: 'todos' },
 
     associados: [{
         _id: { type: String, default: shortid.generate },

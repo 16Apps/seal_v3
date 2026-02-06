@@ -122,6 +122,7 @@ require('./public/mongo/routes/images')(app, dbMongo);
 require('./public/mongo/routes/messages')(app, dbMongo);
 require('./public/mongo/routes/sepioo')(app, dbMongo);
 require('./public/mongo/routes/relatorios')(app, dbMongo);
+require('./public/mongo/routes/dashboard')(app, dbMongo);
 
 
 

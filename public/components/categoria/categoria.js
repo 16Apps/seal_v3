@@ -26,6 +26,7 @@ app.component('categoria', {
 
     $ctrl.$onInit = function () {
       $ctrl._regConta = uteisService.getCookie('_conta');
+      $ctrl._regConta = uteisService.normalizarConta($ctrl._regConta);
     };
 
     $ctrl.$onChanges = function (changes) {
@@ -43,6 +44,7 @@ app.component('categoria', {
 
       await $ctrl.onCarregaCategorias();
       await $ctrl.onCarregaItens();
+      await $ctrl.onCarregaNiveis('01');
 
       if (reg == undefined) {
 
@@ -68,6 +70,11 @@ app.component('categoria', {
           id_nivel_cat2: '',
           id_nivel_cat3: '',
           id_nivel_cat4: '',
+          
+          id_nivel_loc1: '',
+          id_nivel_loc2: '',
+          id_nivel_loc3: '',
+          id_nivel_loc4: '',
         };
 
       } else {
@@ -80,10 +87,68 @@ app.component('categoria', {
           $ctrl._editCategoria._foto = uteisService.apiUrl_() + '/image/' + $ctrl._editCategoria.foto
         };
 
+        if ($ctrl._editItem.id_nivel_loc1) {
+
+          await $ctrl.onCarregaNiveis('02')
+
+          $timeout(async () => {
+            if ($ctrl._editItem.id_nivel_loc2) {
+              await $ctrl.onCarregaNiveis('03')
+
+              $timeout(async () => {
+                if ($ctrl._editItem.id_nivel_loc3) {
+                  await $ctrl.onCarregaNiveis('04')
+                };
+              }, 200)
+            }
+          }, 200)
+        }
+
         $ctrl.onBaseAssocicao();
 
       };
 
+    };
+
+    $ctrl.onCarregaNiveis = async function (nivel) {
+
+      let id_nivel = null;
+      if (nivel == '02') {
+        id_nivel = $ctrl._editItem.id_nivel_loc1
+      } else if (nivel == '03') {
+        id_nivel = $ctrl._editItem.id_nivel_loc2
+      } else if (nivel == '04') {
+        id_nivel = $ctrl._editItem.id_nivel_loc3
+      }
+
+      let _url = '/_bd?c=localizacao&id_conta=' + $ctrl._regConta._id + '&id_nivel=' + id_nivel
+      _url += '&sort=descricao'
+
+      await uteisService.getBase(_url)
+        .then((res) => {
+
+          $timeout(() => {
+            if (nivel == '01') {
+              $ctrl._listNivel1 = res
+              $ctrl._listNivel2 = []
+              $ctrl._listNivel3 = [];
+              $ctrl._listNivel4 = [];
+            } else if (nivel == '02') {
+              $ctrl._listNivel2 = res
+              $ctrl._listNivel3 = [];
+              $ctrl._listNivel4 = [];
+            } else if (nivel == '03') {
+              $ctrl._listNivel3 = res
+              $ctrl._listNivel4 = [];
+
+            } else if (nivel == '04') {
+              $ctrl._listNivel4 = res
+            };
+          }, 900)
+        })
+        .catch((error) => {
+          uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
+        });
     };
 
     $ctrl.onCarregaItens = async function () {
@@ -172,6 +237,7 @@ app.component('categoria', {
                 ativo: 1,
                 intervalo: 10,
                 range_rssi: 30,
+                cond_presenca: 'todos',
                 descricao: '',
                 associados: []
               }

@@ -52,8 +52,10 @@ app.component('gateway', {
           ativo: '1',
           descricao: '',
           tokem: gerarChaveAleatoria(),
+          tokem_associado: '',
           modo: 'fixo',
 
+          posicao_esperada_auto: '0',
           id_colaborador_gateway: 'sem_id',
           id_colaborador: '',
           id_maquina: '',
@@ -95,6 +97,7 @@ app.component('gateway', {
 
         $ctrl._editGateway = reg;
         $ctrl._editGateway.ativo = "" + $ctrl._editGateway.ativo;
+        $ctrl._editGateway.posicao_esperada_auto = "" + $ctrl._editGateway.posicao_esperada_auto;
         $ctrl._editGateway.id_categoria = $ctrl._editGateway.id_categoria;
 
         $ctrl._editGateway['_foto'] = '../assets/images/icon_cadastro.fw.png'

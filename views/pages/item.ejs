@@ -10,7 +10,7 @@
           <i class="bi bi-house lh-1"></i>
           <a class="text-decoration-none">Gestão de Itens</a>
         </li>
-        <li class="breadcrumb-item" aria-current="page">SKUs</li>
+        <li class="breadcrumb-item" aria-current="page">{{ _regConta.params_nomenclatura_itens.sku }}s</li>
         <li class="breadcrumb-item text-info" aria-current="page">Total: {{ _listItens.length }}</li>
       </ol>
       <!-- Breadcrumb end -->
@@ -57,7 +57,8 @@
 
                         </th>
 
-                        <th class="w-20" ng-click="sortBy('id_categoria.descricao')" class="sortable">Item
+                        <th class="w-20" ng-click="sortBy('id_categoria.descricao')" class="sortable">
+                          {{ _regConta.params_nomenclatura_itens.itens }}
                           <i class="bi" ng-class="{
               'bi-caret-up-fill': sortField=='id_categoria.descricao' && !sortReverse,
               'bi-caret-down-fill': sortField=='id_categoria.descricao' && sortReverse
@@ -65,7 +66,7 @@
                         </th>
 
                         <th class="w-10 sortable" ng-click="sortBy('id_categoria_reg1.descricao')">
-                          Categoria
+                          {{ _regConta.params_nomenclatura_itens.categorias }}
                           <i class="bi" ng-class="{
               'bi-caret-up-fill': sortField=='id_categoria_reg1.descricao' && !sortReverse,
               'bi-caret-down-fill': sortField=='id_categoria_reg1.descricao' && sortReverse
@@ -149,7 +150,7 @@
                         <br><span 
                           class="badge bg-light bg-opacity-10 text-light text-uppercase">
                           <i class="bi bi-play-circle-fill me-1 "></i>
-                          {{ item.registro_atual.data_registro ? formataDataHora(item.registro_atual.data_registro) :'' }}
+                          {{ item.registro_atual.data_registro ? formataDataHora(item.registro_atual.data_registro) : 'Sem Movimentação' }}
                         </span>
                       </td>
 

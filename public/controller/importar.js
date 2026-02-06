@@ -3,6 +3,7 @@ app.controller('importarCtrl', function ($scope, $http, params, uteisService) {
     $scope._regConta = {};
     $scope._regColaborador = []
     $scope._dadosImportacao = null;
+    $scope.tipoImportacao = 'completo'; // 'completo' ou 'secundario'
 
     var modalInstance = undefined;
 
@@ -13,6 +14,7 @@ app.controller('importarCtrl', function ($scope, $http, params, uteisService) {
             let _url = uteisService.apiUrl_();
             $scope._regConta._logo = _url + '/image/' + $scope._regConta.logo;
         };
+        $scope._regConta = uteisService.normalizarConta($scope._regConta);
 
         $scope._regColaborador = uteisService.getCookie('_colaborador');
 
@@ -38,45 +40,57 @@ app.controller('importarCtrl', function ($scope, $http, params, uteisService) {
             const csv = e.target.result;
             const linhas = csv.split(/\r?\n/).filter(l => l.trim() !== '');
 
-
-
             linhas.map((item, index,) => {
                 if (index > 0) {
                     let coluna = item.split(';')
 
-                    if( coluna[1]){
-                        let _tag = coluna[1].replace('"', '').replace('"', '').trim()
-                        if (!_tag.includes(':')) {
-    
-                            _tag = $scope.gerarSGTIN96({
-                                companyPrefix: '7891260',
-                                itemReference: String(_tag).slice(-6),
-                                serial: index,
-                                filter: coluna[16]
+                    // Modo Secundário: apenas 3 colunas (A, B, C)
+                    if ($scope.tipoImportacao === 'secundario') {
+                        if (coluna[0]) { // Coluna A - Item
+                            dados.itens.push({
+                                "categoria": coluna[0].replace('"', '').replace('"', '').trim(), // Item (A)
+                                "ean": coluna[1] ? coluna[1].replace('"', '').replace('"', '').trim() : null, // EAN (B)
+                                "categoria_item": coluna[2] ? coluna[2].replace('"', '').replace('"', '').trim() : null, // Categoria (C)
+                                "categoria_epc": coluna[3] ? coluna[3].replace('"', '').replace('"', '').trim() : null, // Categoria EPC (D)
+                                "_foto": '../assets/images/icon_cadastro.fw.png',
                             });
-    
                         }
-    
-                        dados.itens.push({
-                            "id_interno": coluna[0],
-                            "tag": _tag,
-                            "categoria": coluna[2],
-                            "label1": coluna[3],
-                            "label2": coluna[4],
-                            "label3": coluna[5],
-                            "label4": coluna[6],
-                            "inf1": coluna[7],
-                            "inf2": coluna[8],
-                            "inf3": coluna[9],
-                            "inf4": coluna[10],
-                            "loc_nivel1": coluna[11] ? coluna[11] : null,
-                            "loc_nivel2": coluna[12] ? coluna[12] : null,
-                            "loc_nivel3": coluna[13] ? coluna[13] : null,
-                            "loc_nivel4": coluna[14] ? coluna[14] : null,
-                            "_foto": '../assets/images/icon_cadastro.fw.png',
-                            "categoria_item": coluna[15] ? coluna[15] : null,
-                            "categoria_item_id": coluna[16] ? coluna[16] : null,
-                        });
+                    } else {
+                        // Modo Completo: todas as colunas (A-Q)
+                        if( coluna[1]){
+                            let _tag = coluna[1].replace('"', '').replace('"', '').trim()
+                            if (!_tag.includes(':')) {
+        
+                                _tag = $scope.gerarSGTIN96({
+                                    companyPrefix: '7891260',
+                                    itemReference: String(_tag).slice(-6),
+                                    serial: index,
+                                    filter: coluna[16]
+                                });
+        
+                            }
+        
+                            dados.itens.push({
+                                "id_interno": coluna[0],
+                                "tag": _tag,
+                                "categoria": coluna[2],
+                                "label1": coluna[3],
+                                "label2": coluna[4],
+                                "label3": coluna[5],
+                                "label4": coluna[6],
+                                "inf1": coluna[7],
+                                "inf2": coluna[8],
+                                "inf3": coluna[9],
+                                "inf4": coluna[10],
+                                "loc_nivel1": coluna[11] ? coluna[11] : null,
+                                "loc_nivel2": coluna[12] ? coluna[12] : null,
+                                "loc_nivel3": coluna[13] ? coluna[13] : null,
+                                "loc_nivel4": coluna[14] ? coluna[14] : null,
+                                "_foto": '../assets/images/icon_cadastro.fw.png',
+                                "categoria_item": coluna[15] ? coluna[15] : null,
+                                "categoria_item_id": coluna[16] ? coluna[16] : null,
+                            });
+                        }
                     }
                     
                 }
@@ -117,7 +131,12 @@ app.controller('importarCtrl', function ($scope, $http, params, uteisService) {
             return;
         };
 
-        uteisService.posthBase('/importar-csv-itens', $scope._dadosImportacao).then((res) => {
+        let _url = '/importar-csv-itens'
+        if($scope.tipoImportacao === 'secundario') {
+            _url = '/importar-csv-secundarios'
+        };
+
+        uteisService.posthBase(_url, $scope._dadosImportacao).then((res) => {
             uteisService.onToast('Tudo importado, com sucesso!', 'success', 2000, 'top-end');
             $scope.$apply(() => {
                 $scope._dadosImportacao = []

@@ -1,7 +1,7 @@
 <div class="modal-content">
     <div class="modal-header">
         <h5 class="modal-title h4" id="exampleModalFullscreenLabel">
-            SKU
+            {{ $ctrl._regConta.params_nomenclatura_itens.sku }}
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
     </div>
@@ -10,7 +10,7 @@
         <ol class="breadcrumb d-none d-lg-flex mb-4">
             <li class="breadcrumb-item">
                 <i class="bi bi-geo-alt lh-1"></i>
-                <a class="text-decoration-none">SKU</a>
+                <a class="text-decoration-none">{{ $ctrl._regConta.params_nomenclatura_itens.sku }}</a>
             </li>
             <li class="breadcrumb-item" aria-current="page">
                 <a class="text-decoration-none text-info">
@@ -86,7 +86,7 @@
                                                     <div class="row gx-3 mb-3">
                                                         <div class="col-sm-6">
                                                             <label for="displayName" class="form-label">
-                                                                Item
+                                                                {{ $ctrl._regConta.params_nomenclatura_itens.itens }}
                                                             </label>
 
                                                             <div class="input-group">
@@ -160,7 +160,7 @@
 
                                                         <div class="col-sm-6">
                                                               <label for="displayName" class="form-label">
-                                                                Categoria
+                                                                {{ $ctrl._regConta.params_nomenclatura_itens.categorias }}
                                                             </label>
                                                             <div class="input-group">
                                                                 <select ng-model="$ctrl._editItem.id_categoria_reg1"
@@ -244,7 +244,7 @@
                                             <div class="col-sm-12 col-12">
                                                 <div class="bg-warning bg-opacity-10 text-warning p-2 rounded-2">
                                                     <p class="m-0">
-                                                        Endeereço
+                                                        Endereço
                                                     </p>
                                                 </div>
                                             </div>
@@ -477,6 +477,30 @@
                                                 </div>
                                                 <div>
                                                     <h6 class="mb-1">
+                                                        Condição de Presença
+                                                    </h6>
+                                                </div>
+
+                                                <div class="form-check form-switch m-0 ms-auto">
+                                                    <select ng-model="$ctrl._regAddAssociacao.cond_presenca"
+                                                        class="form-select select2">
+                                                        <option value="todos">
+                                                            Todos os itens associados
+                                                        </option>
+                                                        <option value="qualquer">
+                                                            Qualquer item associado
+                                                        </option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div class="list-group-item d-flex align-items-center gap-3">
+                                                <div
+                                                    class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
+                                                    <i class="bi bi-envelope text-primary fs-6"></i>
+                                                </div>
+                                                <div>
+                                                    <h6 class="mb-1">
                                                         Tipo Cadastro
                                                     </h6>
                                                 </div>
@@ -485,10 +509,10 @@
                                                     <select ng-model="$ctrl._regAddAssociacao.id_ref"
                                                         class="form-select select2">
                                                         <option value="item">
-                                                            SKU
+                                                            {{ $ctrl._regConta.params_nomenclatura_itens.sku }}
                                                         </option>
                                                         <option value="categoria">
-                                                            Item
+                                                            {{ $ctrl._regConta.params_nomenclatura_itens.itens }}
                                                         </option>
                                                     </select>
                                                 </div>

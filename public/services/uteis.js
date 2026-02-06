@@ -3,8 +3,8 @@ app.service('uteisService', ['$rootScope', '$http', function ($rootScope, $http)
   moment.locale('pt-br');
 
   const service = this;
-  // service.ipAPI = 'http://localhost:5000';
-  service.ipAPI = 'https://sealairtracking-3d3268c3e73f.herokuapp.com'
+  service.ipAPI = 'http://localhost:5000';
+  // service.ipAPI = 'https://sealairtracking-3d3268c3e73f.herokuapp.com'
 
   // api
   //  -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_
@@ -299,6 +299,50 @@ app.service('uteisService', ['$rootScope', '$http', function ($rootScope, $http)
           reject(error);
         });
     });
+  };
+
+  // Normaliza e inicializa campos da conta
+  this.normalizarConta = function (regConta) {
+    if (!regConta) {
+      return null;
+    }
+
+    // Verifica e inicializa params_nomenclatura_itens
+    if (!regConta.params_nomenclatura_itens) {
+      regConta.params_nomenclatura_itens = {
+        sku: 'SKU',
+        itens: 'Item',
+        categorias: 'Categoria',
+      };
+    }
+
+    // Verifica e inicializa plano_monitoramento
+    if (!regConta.plano_monitoramento) {
+      regConta.plano_monitoramento = {
+        posicao_esperada: 0,
+        painel_alertas: 0,
+        interacao: 0
+      };
+    } else {
+      // Garante que os valores sejam números
+      regConta.plano_monitoramento.posicao_esperada = parseInt(regConta.plano_monitoramento.posicao_esperada) || 0;
+      regConta.plano_monitoramento.painel_alertas = parseInt(regConta.plano_monitoramento.painel_alertas) || 0;
+      regConta.plano_monitoramento.interacao = parseInt(regConta.plano_monitoramento.interacao) || 0;
+    }
+
+    // Verifica e inicializa plano_conta
+    if (!regConta.plano_conta) {
+      regConta.plano_conta = {
+        valor: 0,
+        representante: '',
+        suporte_celular: '',
+      };
+    } else {
+      // Garante que o valor seja número
+      regConta.plano_conta.valor = parseFloat(regConta.plano_conta.valor) || 0;
+    }
+
+    return regConta;
   };
 
   // fim cookie
