@@ -586,7 +586,7 @@ module.exports = (app, dbConnection) => {
                     console.log(`   ❌ Associado ${associado.id_item} NÃO encontrado no intervalo`);
                 }
 
-                
+
 
                 // 4️⃣ Atualiza o Registro no banco incluindo os associados
                 await Registro.updateOne(
@@ -2128,5 +2128,236 @@ module.exports = (app, dbConnection) => {
             res.status(500).json({ success: false, error: err.message });
         }
     });
+
+    app.get('/_bd/registro/:id/ultimos-associados', async (req, res) => {
+        try {
+            const { id } = req.params;
+
+            // 1) Busca o registro base
+            const registroBase = await Registro.findOne({ _id: String(id) }).lean();
+            if (!registroBase) {
+                return res.status(404).json({ erro: 'Registro não encontrado' });
+            }
+
+            const associados = Array.isArray(registroBase.associados) ? registroBase.associados : [];
+            if (associados.length === 0) {
+                return res.json({
+                    registro: registroBase,
+                    ultimos_por_associado: []
+                });
+            }
+
+            // 2) Define o "escopo" para pegar os últimos registros no MESMO portal/contexto
+            // (ajuste se você quiser menos ou mais restrições)
+            const filtroBase = {
+                id_conta: registroBase.id_conta,
+                id_gateway: registroBase.id_gateway,
+                id_nivel_loc1: registroBase.id_nivel_loc1,
+                id_nivel_loc2: registroBase.id_nivel_loc2,
+                id_nivel_loc3: registroBase.id_nivel_loc3,
+                id_nivel_loc4: registroBase.id_nivel_loc4
+            };
+
+            // 3) Para cada associado, busca os últimos N registros daquela categoria
+            const ultimos_por_associado = await Promise.all(
+                associados.map(async (a) => {
+                    const idCategoria = a?.id_categoria ? String(a.id_categoria) : '';
+                    const qtd = Number(a?.encontrado_categoria) || 0;
+
+                    // se não tiver categoria ou quantidade, não busca
+                    if (!idCategoria || qtd <= 0) {
+                        return {
+                            associado: a,
+                            filtro: null,
+                            registros: []
+                        };
+                    }
+
+                    const filtro = {
+                        ...filtroBase,
+                        id_categoria: idCategoria
+                    };
+
+                    const registros = await Registro.find(filtro)
+                        .sort({ data_registro: -1 })  // últimos primeiro
+                        .limit(qtd)
+                        .lean();
+
+                    return {
+                        associado: a,
+                        filtro,
+                        registros
+                    };
+                })
+            );
+
+            return res.json({
+                registro: registroBase,
+                ultimos_por_associado
+            });
+        } catch (err) {
+            console.error(err);
+            return res.status(500).json({ erro: 'Erro interno' });
+        }
+    });
+
+    // GET /_bd/posicao/gerar-ordem/:id_registro
+  // GET /_bd/posicao/gerar-ordem/:id_registro
+app.get('/_bd/posicao/gerar-ordem/:id_registro', async (req, res) => {
+    try {
+      const { id_registro } = req.params;
+  
+      const now = new Date();
+      const nowPlus30 = new Date(now.getTime() + 30 * 60 * 1000);
+  
+      // 1) Registro base
+      const registroBase = await Registro.findOne({ _id: String(id_registro) }).lean();
+      if (!registroBase) return res.status(404).json({ erro: 'Registro não encontrado' });
+  
+      // 2) Gateway -> origem
+      const gateway = await Gateway.findOne({ _id: String(registroBase.id_gateway), ativo: 1 }).lean();
+      if (!gateway) return res.status(400).json({ erro: 'Gateway do registro não encontrado/ativo' });
+  
+      const origem = {
+        id_nivel_loc1: gateway.id_nivel_loc1 || '',
+        id_nivel_loc2: gateway.id_nivel_loc2 || '',
+        id_nivel_loc3: gateway.id_nivel_loc3 || '',
+        id_nivel_loc4: gateway.id_nivel_loc4 || ''
+      };
+  
+      // 3) Categorias válidas vindas de associados
+      const associados = Array.isArray(registroBase.associados) ? registroBase.associados : [];
+  
+      const categoriasValidas = associados
+        .map(a => a?.id_categoria ? String(a.id_categoria) : '')
+        .filter(Boolean);
+  
+      const setCategoriasValidas = new Set(categoriasValidas);
+  
+      if (setCategoriasValidas.size === 0) {
+        return res.status(400).json({ erro: 'Registro não possui associados com id_categoria válido' });
+      }
+  
+      // 4) Buscar últimos registros por categoria, limitando por encontrado_categoria
+      const filtroBase = {
+        id_conta: registroBase.id_conta,
+        id_gateway: registroBase.id_gateway,
+        id_nivel_loc1: registroBase.id_nivel_loc1,
+        id_nivel_loc2: registroBase.id_nivel_loc2,
+        id_nivel_loc3: registroBase.id_nivel_loc3,
+        id_nivel_loc4: registroBase.id_nivel_loc4
+      };
+  
+      const registrosPorAssociado = await Promise.all(
+        associados.map(async (a) => {
+          const idCat = a?.id_categoria ? String(a.id_categoria) : '';
+          const qtd = Number(a?.encontrado_categoria) || 0;
+  
+          if (!idCat || qtd <= 0) return [];
+  
+          return Registro.find({ ...filtroBase, id_categoria: idCat })
+            .sort({ data_registro: -1 })
+            .limit(qtd)
+            .lean();
+        })
+      );
+  
+      // Flatten
+      const registros = registrosPorAssociado.flat();
+  
+      // 5) Filtra “garantido” (regra 1 do seu ajuste)
+      const registrosFiltrados = registros.filter(r => setCategoriasValidas.has(String(r.id_categoria)));
+  
+      // remove duplicados por _id
+      const mapById = new Map();
+      for (const r of registrosFiltrados) mapById.set(String(r._id), r);
+      const registrosUnicos = Array.from(mapById.values());
+  
+      if (registrosUnicos.length === 0) {
+        return res.status(400).json({ erro: 'Nenhum registro encontrado para as categorias dos associados' });
+      }
+  
+      // 6) Define categoria referência para destino (regra 2 do seu ajuste)
+      // prioridade: categoria do registroBase, se estiver no set. Senão: primeira categoria válida.
+      const categoriaRefDestino = setCategoriasValidas.has(String(registroBase.id_categoria))
+        ? String(registroBase.id_categoria)
+        : String(categoriasValidas[0]);
+  
+      const categoriaDestino = await Categoria.findOne({
+        _id: categoriaRefDestino,
+        id_conta: String(registroBase.id_conta),
+        ativo: 1
+      }).lean();
+  
+      if (!categoriaDestino) {
+        return res.status(400).json({ erro: 'Categoria de referência para destino não encontrada/ativa' });
+      }
+  
+      const destino = {
+        id_nivel_loc1_destino: categoriaDestino.id_nivel_loc1 || '',
+        id_nivel_loc2_destino: categoriaDestino.id_nivel_loc2 || '',
+        id_nivel_loc3_destino: categoriaDestino.id_nivel_loc3 || '',
+        id_nivel_loc4_destino: categoriaDestino.id_nivel_loc4 || ''
+      };
+  
+      // 7) Monta itens (status concluido / destino pendente)
+      const itens = registrosUnicos.map((r) => ({
+        id_item: r.id_item || '',
+        id_categoria: r.id_categoria || '',
+  
+        tag: r.tag || '',
+        ean: '',     // opcional enriquecer com Categoria.ean
+        rssi: r.rssi || '',
+  
+        quantidade: 1,
+        status: 'concluido',
+        status_data: now,
+  
+        id_gatweway: r.id_gateway || '',
+        id_colaborador: r.id_colaborador || registroBase.id_colaborador || '',
+  
+        status_destino: 'pendente',
+        status_destino_data: nowPlus30
+      }));
+  
+      // 8) Cria Posicao
+      const posicao = await Posicao.create({
+        id_conta: registroBase.id_conta,
+        id_colaborador: registroBase.id_colaborador || gateway.id_colaborador || '',
+  
+        ativo: '1',
+        id_doc: registroBase._id,
+        descricao: 'Ordem de Posição Esperada (Automática)',
+        icone: 'portal',
+  
+        partida_data: now,
+        tolerancia: 30,
+  
+        previsao_chegada_data: nowPlus30,
+        previsao_chegada_tolerancia: 30,
+  
+        status: 'aberta',
+        status_data: now,
+  
+        ...origem,
+        itens,
+        ...destino
+      });
+  
+      return res.json({
+        ok: true,
+        posicao_id: posicao._id,
+        categoria_destino: categoriaRefDestino,
+        total_itens: itens.length,
+        origem,
+        destino
+      });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ erro: 'Erro interno' });
+    }
+  });
+  
+
 
 }

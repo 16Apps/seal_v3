@@ -30,14 +30,15 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService) {
 
         await uteisService.getBase(_url)
             .then((res) => {
+                
 
                 res.map((item) => {
 
                     item['_icone'] = '../assets/images/icon_cadastro.fw.png'
 
-                    if (item.icone && !item.foto.includes('assets')) {
-                        item._icone = uteisService.apiUrl_() + '/image/' + item.icone
-                    };
+                    // if (item.icone && !item.foto.includes('assets')) {
+                    //     item._icone = uteisService.apiUrl_() + '/image/' + item.icone
+                    // };
 
                 });
 
@@ -46,6 +47,7 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService) {
                 $scope.$apply();
             })
             .catch((error) => {
+                alert(JSON.stringify(error))
                 uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
             });
 

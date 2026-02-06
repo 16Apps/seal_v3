@@ -42,7 +42,6 @@ const PosicaoSchema = new mongoose.Schema({
 
         status_destino: { type: String },
         status_destino_data: { type: Date },
-
     }],
 
     id_nivel_loc1_destino: { type: String, ref: 'Localizacao' },
