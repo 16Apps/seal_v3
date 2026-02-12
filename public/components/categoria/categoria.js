@@ -87,16 +87,16 @@ app.component('categoria', {
           $ctrl._editCategoria._foto = uteisService.apiUrl_() + '/image/' + $ctrl._editCategoria.foto
         };
 
-        if ($ctrl._editItem.id_nivel_loc1) {
+        if ($ctrl._editCategoria.id_nivel_loc1) {
 
           await $ctrl.onCarregaNiveis('02')
 
           $timeout(async () => {
-            if ($ctrl._editItem.id_nivel_loc2) {
+            if ($ctrl._editCategoria.id_nivel_loc2) {
               await $ctrl.onCarregaNiveis('03')
 
               $timeout(async () => {
-                if ($ctrl._editItem.id_nivel_loc3) {
+                if ($ctrl._editCategoria.id_nivel_loc3) {
                   await $ctrl.onCarregaNiveis('04')
                 };
               }, 200)
@@ -114,11 +114,11 @@ app.component('categoria', {
 
       let id_nivel = null;
       if (nivel == '02') {
-        id_nivel = $ctrl._editItem.id_nivel_loc1
+        id_nivel = $ctrl._editCategoria.id_nivel_loc1
       } else if (nivel == '03') {
-        id_nivel = $ctrl._editItem.id_nivel_loc2
+        id_nivel = $ctrl._editCategoria.id_nivel_loc2
       } else if (nivel == '04') {
-        id_nivel = $ctrl._editItem.id_nivel_loc3
+        id_nivel = $ctrl._editCategoria.id_nivel_loc3
       }
 
       let _url = '/_bd?c=localizacao&id_conta=' + $ctrl._regConta._id + '&id_nivel=' + id_nivel

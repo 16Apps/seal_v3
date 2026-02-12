@@ -192,7 +192,7 @@
                                                     class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3 text-center px-3 py-2">
                                                     N.1
                                                 </div>
-                                                <select ng-model="$ctrl._editItem.id_nivel_loc1"
+                                                <select ng-model="$ctrl._editCategoria.id_nivel_loc1"
                                                     ng-change="$ctrl.onCarregaNiveis('02')"
                                                     class="form-select flex-grow-1" id="basicSelect"
                                                     aria-label="Basic select example">
@@ -208,8 +208,8 @@
                                                     class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3 text-center px-3 py-2">
                                                     N.2
                                                 </div>
-                                                <select ng-model="$ctrl._editItem.id_nivel_loc2"
-                                                    ng-disabled="$ctrl._editItem.id_nivel_loc1==''"
+                                                <select ng-model="$ctrl._editCategoria.id_nivel_loc2"
+                                                    ng-disabled="$ctrl._editCategoria.id_nivel_loc1==''"
                                                     ng-change="$ctrl.onCarregaNiveis('03')"
                                                     class="form-select flex-grow-1" id="basicSelect"
                                                     aria-label="Basic select example">
@@ -225,8 +225,8 @@
                                                     class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3 text-center px-3 py-2">
                                                     N.3
                                                 </div>
-                                                <select ng-model="$ctrl._editItem.id_nivel_loc3"
-                                                    ng-disabled="!$ctrl._editItem.id_nivel_loc2"
+                                                <select ng-model="$ctrl._editCategoria.id_nivel_loc3"
+                                                    ng-disabled="!$ctrl._editCategoria.id_nivel_loc2"
                                                     ng-change="$ctrl.onCarregaNiveis('04')"
                                                     class="form-select flex-grow-1" id="basicSelect"
                                                     aria-label="Basic select example">
@@ -241,8 +241,8 @@
                                                     class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3 text-center px-3 py-2">
                                                     N.4
                                                 </div>
-                                                <select ng-model="$ctrl._editItem.id_nivel_loc4"
-                                                    ng-disabled="!$ctrl._editItem.id_nivel_loc3"
+                                                <select ng-model="$ctrl._editCategoria.id_nivel_loc4"
+                                                    ng-disabled="!$ctrl._editCategoria.id_nivel_loc3"
                                                     class="form-select flex-grow-1" id="basicSelect"
                                                     aria-label="Basic select example">
                                                     <option ng-repeat="item in $ctrl._listNivel4"

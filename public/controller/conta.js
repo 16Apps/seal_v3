@@ -89,6 +89,10 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
 
         if (url[3].includes('profile')) {
 
+            if (url[3].includes('admin')) {
+                $scope.isAdmin = true
+            }
+
             $scope._regConta = uteisService.getCookie('_conta');
             $scope._regConta = uteisService.normalizarConta($scope._regConta);
 
@@ -110,15 +114,15 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
             }
             if (!$scope._regConta.plano_monitoramento) {
                 $scope._regConta.plano_monitoramento = {
-                    posicao_esperada: 0,
-                    painel_alertas: 0,
-                    interacao: 0
+                    posicao_esperada: "0",
+                    painel_alertas: "0",
+                    interacao: "0"
                 };
             } else {
                 // Garante que os valores sejam números
-                $scope._regConta.plano_monitoramento.posicao_esperada = parseInt($scope._regConta.plano_monitoramento.posicao_esperada) || 0;
-                $scope._regConta.plano_monitoramento.painel_alertas = parseInt($scope._regConta.plano_monitoramento.painel_alertas) || 0;
-                $scope._regConta.plano_monitoramento.interacao = parseInt($scope._regConta.plano_monitoramento.interacao) || 0;
+                $scope._regConta.plano_monitoramento.posicao_esperada = "" + parseInt($scope._regConta.plano_monitoramento.posicao_esperada) || 0;
+                $scope._regConta.plano_monitoramento.painel_alertas = "" + parseInt($scope._regConta.plano_monitoramento.painel_alertas) || 0;
+                $scope._regConta.plano_monitoramento.interacao = "" + parseInt($scope._regConta.plano_monitoramento.interacao) || 0;
             }
             if (!$scope._regConta.plano_conta) {
                 $scope._regConta.plano_conta = {
@@ -144,9 +148,8 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
 
             $scope._regColaborador = undefined; 
 
-            if (url[3].includes('admin')) {
-                $scope.isAdmin = true
-            }
+
+   
 
      
             $scope.$apply();

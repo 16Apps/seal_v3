@@ -2302,8 +2302,8 @@ app.get('/_bd/posicao/gerar-ordem/:id_registro', async (req, res) => {
   
       // 7) Monta itens (status concluido / destino pendente)
       const itens = registrosUnicos.map((r) => ({
-        id_item: r.id_item || '',
-        id_categoria: r.id_categoria || '',
+        id_item: r.id_item || null,
+        id_categoria: r.id_categoria || null,
   
         tag: r.tag || '',
         ean: '',     // opcional enriquecer com Categoria.ean
@@ -2317,7 +2317,7 @@ app.get('/_bd/posicao/gerar-ordem/:id_registro', async (req, res) => {
         id_colaborador: r.id_colaborador || registroBase.id_colaborador || '',
   
         status_destino: 'pendente',
-        status_destino_data: nowPlus30
+        status_destino_data: ''
       }));
   
       // 8) Cria Posicao

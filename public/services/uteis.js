@@ -5,6 +5,7 @@ app.service('uteisService', ['$rootScope', '$http', function ($rootScope, $http)
   const service = this;
   // service.ipAPI = 'http://localhost:5000';
   service.ipAPI = 'https://sealairtracking-3d3268c3e73f.herokuapp.com'
+  // service.ipAPI = 'https://connectiot-app.azurewebsites.net'
 
   // api
   //  -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_

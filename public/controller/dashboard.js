@@ -59,7 +59,7 @@ app.controller('dashboardCtrl', function ($scope, $http, params, uteisService, $
 
   $scope.onCarregaResumoItens = async function () {
 
-    let _url = '/_bd/itens/resumo/' + $scope._regConta._id + '/' + $scope.id_nivelPosicao
+    let _url = '/_bd/itens/resumo/' + $scope._regConta._id + '/' + $scope._filtroNivel1
 
     await uteisService.getBase(_url)
       .then((res) => {
@@ -114,6 +114,7 @@ app.controller('dashboardCtrl', function ($scope, $http, params, uteisService, $
           $scope.onCarregaRegistrosRecentes()
           $scope.onCarregaRegistrosRecentesLocalizacao();
           $scope.onCarregaRegistrosDia()
+          $scope.onCarregaResumoItens()
 
         }, 900)
       })
