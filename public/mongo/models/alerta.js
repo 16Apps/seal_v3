@@ -6,7 +6,7 @@ const AlertaSchema = new mongoose.Schema({
     id_conta: { type: String, ref: 'Conta' },
     id_colaborador: { type: String, ref: 'Colaborador' },
 
-    ativo: { type: String },
+    ativo: { type: Number, enum: [0, 1], default: 1 },
     descricao: { type: String },
     icone: { type: String },
 
@@ -17,8 +17,8 @@ const AlertaSchema = new mongoose.Schema({
 
     acoes: [{
         _id: { type: String, default: shortid.generate },
-        acao: { type: String },
-        nivel: { type: String },
+        acao: { type: String, enum: ['aproximar', 'distanciar', 'sair', 'itens_fixo', 'tol_max', 'tol_min'] },
+        nivel: { type: String, enum: ['leve', 'importante', 'critico'] },
         referencia: [{
             valor: { type: String },
             id_item: { type: String, ref: 'Item' },
@@ -32,3 +32,4 @@ const AlertaSchema = new mongoose.Schema({
 });
 
 module.exports = mongoose.model('Alerta', AlertaSchema);
+

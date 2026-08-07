@@ -18,11 +18,13 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
         cnpj: '',
         contato_responsavel: '',
         contato_celular: '',
+        contato_responsavel_email: '',
         logo: '../assets/img/logo_conta.png',
         _logo: '../assets/img/logo_conta.png',
         telefone: '',
         celular: '',
         email: '',
+        senha: '',
         site: '',
         cep: '',
         logradouro: '',
@@ -33,15 +35,19 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
         estado: '',
         tokem_api: '',
         params_nomenclatura_itens: {
-            sku: 'SKUs',
-            itens: 'Itens',
-            categorias: 'Categorias',
+            sku: 'SKU',
+            itens: 'Item',
+            categorias: 'Categoria',
+            enderecos: 'Site',
+            coletores: 'Dispositivo',
         },
     
         plano_monitoramento: {
             posicao_esperada: 0,
             painel_alertas: 0,
-            interacao: 0
+            interacao: 0,
+            regs_associados: 0,
+            portal: 0,
         },
     
         plano_conta: {
@@ -78,6 +84,11 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
         acesso_modulos: []
     }
 
+    $scope._regLimpeza = {
+        email: '',
+        tipo_limpeza: ''
+    }
+
     $scope._regExtras = 'fusos'
 
     $scope.isCadastro = false;
@@ -89,9 +100,16 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
 
         if (url[3].includes('profile')) {
 
-            if (url[3].includes('admin')) {
+            if (url[3].includes('admin') || url[3].includes('ADMIN')) {
                 $scope.isAdmin = true
             }
+
+            setTimeout(() => {
+                $scope._regColaborador = undefined;
+                $scope.$apply();
+
+            }, 2000);
+
 
             $scope._regConta = uteisService.getCookie('_conta');
             $scope._regConta = uteisService.normalizarConta($scope._regConta);
@@ -107,22 +125,28 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
             // Inicializa campos aninhados se não existirem
             if (!$scope._regConta.params_nomenclatura_itens) {
                 $scope._regConta.params_nomenclatura_itens = {
-                    sku: 'SKUs',
-                    itens: 'Itens',
-                    categorias: 'Categorias',
+                    sku: 'SKU',
+                    itens: 'Item',
+                    categorias: 'Categoria',
+                    enderecos: 'Site',
+                    coletores: 'Dispositivo',
                 };
             }
             if (!$scope._regConta.plano_monitoramento) {
                 $scope._regConta.plano_monitoramento = {
                     posicao_esperada: "0",
                     painel_alertas: "0",
-                    interacao: "0"
+                    interacao: "0",
+                    regs_associados: "0",
+                    portal: "0",
                 };
             } else {
                 // Garante que os valores sejam números
                 $scope._regConta.plano_monitoramento.posicao_esperada = "" + parseInt($scope._regConta.plano_monitoramento.posicao_esperada) || 0;
                 $scope._regConta.plano_monitoramento.painel_alertas = "" + parseInt($scope._regConta.plano_monitoramento.painel_alertas) || 0;
                 $scope._regConta.plano_monitoramento.interacao = "" + parseInt($scope._regConta.plano_monitoramento.interacao) || 0;
+                $scope._regConta.plano_monitoramento.regs_associados = "" + parseInt($scope._regConta.plano_monitoramento.regs_associados) || "0";
+                $scope._regConta.plano_monitoramento.portal = "" + parseInt($scope._regConta.plano_monitoramento.portal) || "0";
             }
             if (!$scope._regConta.plano_conta) {
                 $scope._regConta.plano_conta = {
@@ -149,8 +173,7 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
             $scope._regColaborador = undefined; 
 
 
-   
-
+           
      
             $scope.$apply();
 
@@ -185,6 +208,7 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
 
             await uteisService.getBase('/_bd?c=colaborador&login=' + $scope._regConta.email + '&senha=' + $scope._regConta.senha + '&pop=id_conta')
                 .then((res) => {
+                    
 
                     if (res.length == 0) {
 
@@ -195,17 +219,24 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
 
                     } else {
 
-                        uteisService.setCookie('_conta', JSON.stringify($scope._regConta), 365);
-                        uteisService.setCookie('_colaborador', JSON.stringify($scope._regColaborador), 365);
+                 
+                        // uteisService.setCookie('_conta', JSON.stringify($scope._regConta), 365);
+                        // uteisService.setCookie('_colaborador', JSON.stringify($scope._regColaborador), 365);
 
-                        uteisService.setCookie('_conta', JSON.stringify(res[0].id_conta), 365);
+                        res[0].id_conta.widget_layout = []  
+                        uteisService.setCookie('_conta', JSON.stringify(res[0].id_conta), 365);                  
+                        res[0].id_conta = []        
+                  
+                           
                         uteisService.setCookie('_colaborador', JSON.stringify(res[0]), 365);
+
+
                         setTimeout(() => {
                             $scope.$apply(function () {
                                 $scope._await = false
                             });
                             uteisService.onToast('Olá! Bem-vindo, ' + res[0].nome + '.', 'info', 2000, 'top-end');
-                            window.location.assign("/start");
+                            window.location.assign("/widget");
                         }, 2000);
                     };
                 })
@@ -253,6 +284,11 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
 
                                 $scope._regColaborador.login = $scope._regConta.email
                                 $scope._regColaborador.senha = $scope._regConta.senha
+
+                                $scope._regConta.contato_responsavel = $scope._regColaborador.nome;
+                                $scope._regConta.contato_celular = $scope._regConta.celular;
+                                $scope._regConta.contato_responsavel_email = $scope._regConta.email;
+
                                 uteisService.patchBase('/colaborador', $scope._regColaborador)
                                 uteisService.setCookie('_conta', JSON.stringify($scope._regConta), 365);
                                 uteisService.setCookie('_colaborador', JSON.stringify($scope._regColaborador), 365);
@@ -262,7 +298,7 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
                                         $scope._await = false
                                     });
                                     uteisService.onToast('Tudo certo! Conta criada.', 'info', 2000, 'top-end');
-                                    window.location.assign("/start");
+                                    window.location.assign("/widget");
                                 }, 2200);
 
                             })
@@ -553,6 +589,7 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
 
             $scope._regColaborador = JSON.parse(JSON.stringify(_reg))
             $scope._regColaborador.ativo = "" + $scope._regColaborador.ativo;
+            
 
             $scope._regColaborador['_foto'] = '../assets/images/icon_avatar.png'
             if ($scope._regColaborador.foto) {
@@ -654,22 +691,37 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
 
     $scope.onLimpaBase = async function () {
 
-        if ($scope._lb_cnpj == $scope._regConta.cnpj) {
+        alert($scope._regLimpeza.email +"="+ $scope._regConta.email)
+
+        if ($scope._regLimpeza.email == $scope._regConta.email) {
 
 
-            if (!$scope._lb_acao) {
-                uteisService.onToast('Escolha a melhor a Ação', 'error', 2000, 'top-end');
+            if (!$scope._regLimpeza.tipo_limpeza) {
+                uteisService.onToast('Escolha a melhor qual o Tipo de Limpeza', 'error', 2000, 'top-end');
                 return;
             }
 
-            uteisService.onQuestion("Atenção!", "Deseja realmente limpar sua base?")
+
+            if($scope._regLimpeza.tipo_limpeza == 'skus') {
+                uteisService.delBase('item/id_conta/' + $scope._regConta._id).then((res) => {
+                    uteisService.onToast('A base de SKUs foi limpa com sucesso', 'success', 2000, 'top-end');
+                }).catch((error) => {
+                    uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
+                });
+                return;
+            }
+
+            let limpeza = $scope._regLimpeza.tipo_limpeza == 'completa' ? true : false
+            let msgLimpeza = limpeza ? ' toda a sua base?' : ' as movimentações ?	'
+
+            uteisService.onQuestion("Atenção!", "Deseja realmente limpar " + msgLimpeza)
                 .then(async (res) => {
                     if (res) {
 
-                        await uteisService.getBase('/_bd/limpa_base/' + $scope._regConta._id + '/' + $scope._lb_acao)
+                        await uteisService.getBase('/_bd/limpa_base/' + $scope._regConta._id + '/' + limpeza)
                             .then((res) => {
 
-                                if ($scope._lb_acao == '1') {
+                                if (limpeza) {
                                     uteisService.onToast('Toda sua base de dados foi limpa com sucesso', 'success', 2000, 'top-end');
                                 } else {
                                     uteisService.onToast('A base de Movimentação foi limpa com sucesso', 'success', 2000, 'top-end');
@@ -677,8 +729,8 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
                             });
                     } else {
 
-                        $scope._lb_cnpj = "";
-                        $scope._lb_acao = ""
+                        $scope._regLimpeza.email= "";
+                        $scope._regLimpeza.tipo_limpeza = ""
                         $scope.$apply();
 
                     }
@@ -864,6 +916,47 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
             }
         });
 
+    };
+
+    $scope._regLogsPdi = [];
+    $scope._logPdiSelecionado = null;
+    $scope._logPdiJson = '';
+    $scope._awaitLogsPdi = false;
+
+    $scope.onCarregaLogsPdi = async function () {
+        if (!$scope._regConta || !$scope._regConta._id) return;
+
+        $scope._awaitLogsPdi = true;
+        $scope._logPdiSelecionado = null;
+        $scope._logPdiJson = '';
+
+        let _url = '/_bd?c=log&id_conta=' + $scope._regConta._id;
+        _url += '&_sort=data_registro';
+        _url += '&limit=200';
+        _url += '&pop=id_colaborador&pop=id_gateway&pop=id_item&pop=id_posicao&pop=id_registro';
+
+        await uteisService.getBase(_url)
+            .then((res) => {
+                $scope._regLogsPdi = Array.isArray(res) ? res : [];
+                $scope._awaitLogsPdi = false;
+                $scope.$apply();
+            })
+            .catch((error) => {
+                console.error('Erro ao carregar Log PDI:', error);
+                $scope._regLogsPdi = [];
+                $scope._awaitLogsPdi = false;
+                uteisService.onToast('Erro ao carregar Log PDI.', 'error', 2000, 'top-end');
+                $scope.$apply();
+            });
+    };
+
+    $scope.onSelecionaLogPdi = function (log) {
+        $scope._logPdiSelecionado = log;
+        try {
+            $scope._logPdiJson = JSON.stringify(log, null, 2);
+        } catch (e) {
+            $scope._logPdiJson = String(log);
+        }
     };
 
     $scope.onProcessoRegistros = async function () {

@@ -6,7 +6,7 @@ const ItemSchema = new mongoose.Schema({
     id_conta: { type: String, ref: 'Conta' },
     id_categoria: { type: String, ref: 'Categoria' },
     id_externo: { type: String },
-    status: { type: String, enum: ['ativo', 'inativo', 'manutencao', 'descartado', 'emtransporte', 'perca', 'perda'], default: 'ativo' },
+    status: { type: String, enum: ['ativo', 'inativo', 'pendente', 'manutencao', 'descartado', 'emtransporte', 'perca', 'perda', 'ausente'], default: 'ativo' },
     foto: { type: String },
     tag: { type: String },
     tag_secundaria: { type: String },
@@ -31,6 +31,7 @@ const ItemSchema = new mongoose.Schema({
         modelo: { type: String },
         id_mac: { type: String },
         descricao: { type: String },
+        button_click: { type: Date },
     }],
 
     observacao: { type: String },
@@ -38,8 +39,8 @@ const ItemSchema = new mongoose.Schema({
     registro_anterior: { type: Object },
     registro_mov: { type: Object },
 
-    mov_livre: { type: Number, enum: [0, 1], default: 1 },
-    mov_tracking: { type: Number, enum: [0, 1], default: 1 },
+    mov_livre: { type: Number, enum: [0, 1], default: 0 },
+    mov_tracking: { type: Number, enum: [0, 1], default: 0 },
 
     mov_acao: { type: String },
     mov_colaborador: { type: String, ref: 'Colaborador' },

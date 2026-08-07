@@ -3,7 +3,7 @@
         <h5 class="modal-title h4" id="exampleModalFullscreenLabel">
             {{ $ctrl._regConta.params_nomenclatura_itens.sku }}
         </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close" ng-click="$ctrl.fechar()" aria-label="Close"></button>
     </div>
     <div class="modal-body">
 
@@ -133,9 +133,10 @@
                                                                 aria-label="Basic select example">
                                                                 <option value="ativo">Ativo</option>
                                                                 <option value="inativo">Inativo</option>
-                                                                <option value="perda">Perda Sinal</option>
+                                                                <option value="ausente">Ausente</option>
+                                                                <option value="perda">Perda</option>
                                                                 <option value="emtransporte">Em Transporte</option>
-                                                                <option value="manutencao">Manutenção</option>
+                                                                <!-- <option value="manutencao">Manutenção</option> -->
                                                                 <option value="descartado">Descartado</option>
                                                             </select>
                                                         </div>
@@ -159,8 +160,9 @@
                                                         </div>
 
                                                         <div class="col-sm-6">
-                                                              <label for="displayName" class="form-label">
-                                                                {{ $ctrl._regConta.params_nomenclatura_itens.categorias }}
+                                                            <label for="displayName" class="form-label">
+                                                                {{ $ctrl._regConta.params_nomenclatura_itens.categorias
+                                                                }}
                                                             </label>
                                                             <div class="input-group">
                                                                 <select ng-model="$ctrl._editItem.id_categoria_reg1"
@@ -693,7 +695,7 @@
                                                 </div>
                                             </div>
 
-                                            
+
                                             <div class="list-group-item d-flex align-items-center gap-3">
                                                 <div
                                                     class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
@@ -745,7 +747,7 @@
                                                                     {{ item.modelo == 'pdi' ? 'PDI' : 'Tuya' }}
                                                                 </td>
                                                                 <td>
-                                                                    {{ item.id_mac }}                                                                    
+                                                                    {{ item.id_mac }}
                                                                 </td>
                                                                 <td>
                                                                     {{ item.descricao }}
@@ -753,7 +755,8 @@
 
                                                                 <td>
                                                                     <div class="d-flex gap-1">
-                                                                        <button ng-click=" $ctrl.onEditarVinculoDevice(item)"
+                                                                        <button
+                                                                            ng-click=" $ctrl.onEditarVinculoDevice(item)"
                                                                             type="button"
                                                                             class="btn btn-sm btn-outline-primary"
                                                                             data-bs-toggle="tooltip"
@@ -794,25 +797,43 @@
                                             <table class="table table-hover align-middle mb-1">
                                                 <thead>
                                                     <tr>
-                                                        <th scope="col" class="w-20">
-                                                            iD DOC
+                                                        <th scope="col" class="w-20 sortable" ng-click="$ctrl.sortByPosicao('id_doc')">
+                                                             {{ $ctrl._regConta.params_nomenclatura_itens.itens }} / iD DOC
+                                                            <i class="bi" ng-class="{
+                                                                'bi-caret-up-fill': $ctrl.sortFieldPosicao=='id_doc' && !$ctrl.sortReversePosicao,
+                                                                'bi-caret-down-fill': $ctrl.sortFieldPosicao=='id_doc' && $ctrl.sortReversePosicao
+                                                            }"></i>
                                                         </th>
-                                                        <th scope="col" class="w-40">
+                                                        <th scope="col" class="w-40 sortable" ng-click="$ctrl.sortByPosicao('partida_data')">
                                                             Partida / Leitura
+                                                            <i class="bi" ng-class="{
+                                                                'bi-caret-up-fill': $ctrl.sortFieldPosicao=='partida_data' && !$ctrl.sortReversePosicao,
+                                                                'bi-caret-down-fill': $ctrl.sortFieldPosicao=='partida_data' && $ctrl.sortReversePosicao
+                                                            }"></i>
                                                         </th>
-                                                        <th scope="col" class="w-40">
+                                                        <th scope="col" class="w-40 sortable" ng-click="$ctrl.sortByPosicao('_previsao_chegada_data')">
                                                             Destino
+                                                            <i class="bi" ng-class="{
+                                                                'bi-caret-up-fill': $ctrl.sortFieldPosicao=='_previsao_chegada_data' && !$ctrl.sortReversePosicao,
+                                                                'bi-caret-down-fill': $ctrl.sortFieldPosicao=='_previsao_chegada_data' && $ctrl.sortReversePosicao
+                                                            }"></i>
                                                         </th>
-                                                        <th scope="col">Status
+                                                        <th scope="col" class="sortable" ng-click="$ctrl.sortByPosicao('item.status')">Status
+                                                            <i class="bi" ng-class="{
+                                                                'bi-caret-up-fill': $ctrl.sortFieldPosicao=='item.status' && !$ctrl.sortReversePosicao,
+                                                                'bi-caret-down-fill': $ctrl.sortFieldPosicao=='item.status' && $ctrl.sortReversePosicao
+                                                            }"></i>
                                                         </th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    <tr ng-repeat="item in $ctrl._listPosicoes track by $index">
+                                                    <tr ng-repeat="item in $ctrl._listPosicoes | orderBy:$ctrl.sortFieldPosicao:$ctrl.sortReversePosicao track by $index">
 
                                                         <td>
-                                                            <span class="text-white fw-semibold">
-                                                                {{ item.categoria[0].descricao ? item.categoria[0].descricao : 'Sem Vinculo Tipo de Item' }}
+                                                            <span class="text-warning fw-semibold">
+                                                                {{ item.categoria[0].descricao ?
+                                                                item.categoria[0].descricao : 'Sem Vinculo Tipo de Item'
+                                                                }}
                                                             </span>
                                                             <br>
                                                             <span>
@@ -836,12 +857,13 @@
                                                             </span>
                                                         </td>
                                                         <td>
-                                                            <span ng-show="item.item.status=='concluido'" class="text-white fw-semibold">
-                                                                {{ $ctrl.formataDataHora(item.previsao_chegada_data) }}
+                                                            <span ng-show="item.item.status=='concluido'"
+                                                                class="text-white fw-semibold">
+                                                                {{ $ctrl.formataDataHora(item._previsao_chegada_data) }}
                                                             </span>
 
                                                             <br>
-                                                            <span ng-show="item.item.status=='concluido'" >
+                                                            <span ng-show="item.item.status=='concluido'">
                                                                 {{ item.localizacao_destino.nivel1 ?
                                                                 item.localizacao_destino.nivel1 : '' }}
                                                                 {{ item.localizacao_destino.nivel2 ? ' - ' +
@@ -853,7 +875,16 @@
                                                             </span>
                                                         </td>
                                                         <td class="text-white fw-semibold">
-                                                            {{ item.item.status }}
+                                                            
+                                                            <span ng-class="{
+                                                                'badge ': true,
+                                                                'text-bg-success text-white': item.item.status === 'concluido',
+                                                                'text-bg-warning': item.item.status === 'parcial',
+                                                                'text-bg-danger text-white': item.item.status === 'aberta' || item.item.status === 'partida'
+                                                              }">
+                                                              {{ item.item.status.toUpperCase() }}
+                                                            </span>
+
                                                         </td>
                                                     </tr>
 

@@ -7,6 +7,7 @@ const CategoriaSchema = new mongoose.Schema({
     ativo: { type: Number, enum: [0, 1], default: 1 },
     descricao: { type: String },
     ean: { type: String },
+   
     foto: { type: String },
     observacao: { type: String },
     labelInf1: { type: String },
@@ -14,6 +15,11 @@ const CategoriaSchema = new mongoose.Schema({
     labelInf3: { type: String },
     labelInf4: { type: String },
     labelInf5: { type: String },
+    valor_labelInf1: { type: String },
+    valor_labelInf2: { type: String },
+    valor_labelInf3: { type: String },
+    valor_labelInf4: { type: String },
+    valor_labelInf5: { type: String },
 
     estoque_minimo: { type: Number, default: 0 },
     estoque_maximo: { type: Number, default: 0 },

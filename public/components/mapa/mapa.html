@@ -1,6 +1,15 @@
-<div class="row gx-3 mb-4">
-    <div class="col-xxl-12 col-sm-6">
-        <div id="map2" style="height: 500px; border-radius: 12px;"></div>
-    </div>
+<div class="row gx-3">
+  <h5 class="card-title mb-2">{{ $ctrl.descricaoNivel || $ctrl.titulo || 'Mapa' }}</h5>
+  <p class="small text-danger mb-2" ng-if="$ctrl.erro">{{ $ctrl.erro }}</p>
+  <p class="small text-muted mb-2" ng-if="$ctrl.carregando">Carregando mapa…</p>
 
+  <div class="col-xxl-12 col-sm-12">
+    <div data-mapa-canvas class="mapa-widget-canvas" style="height: 420px; width: 100%; border-radius: 12px;"></div>
+  </div>
+
+  <div class="col-12 mt-2" ng-if="!$ctrl.carregando && !$ctrl.erro">
+    <small class="text-muted">
+      Itens nas áreas: <strong class="text-white">{{ $ctrl._regTotais.itens || 0 }}</strong>
+    </small>
+  </div>
 </div>

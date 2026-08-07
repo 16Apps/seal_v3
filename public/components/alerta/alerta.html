@@ -3,7 +3,7 @@
         <h5 class="modal-title h4" id="exampleModalFullscreenLabel">
             Central de Alerta
         </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close" ng-click="$ctrl.fechar()" aria-label="Close"></button>
     </div>
     <div class="modal-body">
 
@@ -179,6 +179,7 @@
                                                         <span class="input-group-text">
                                                             <i class="bi bi-lightning text-muted"></i>
                                                         </span>
+                                                        
                                                         <select ng-model="$ctrl._editAlertaAcao.acao"
                                                             class="form-select">
                                                             <option value="" disabled>Ação...</option>

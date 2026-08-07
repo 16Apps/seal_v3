@@ -3,9 +3,10 @@ app.service('uteisService', ['$rootScope', '$http', function ($rootScope, $http)
   moment.locale('pt-br');
 
   const service = this;
-  // service.ipAPI = 'http://localhost:3000';
-  service.ipAPI = 'https://sealairtracking-3d3268c3e73f.herokuapp.com'
+  service.ipAPI = 'http://192.168.0.111:3000';
+  //service.ipAPI = 'https://sealairtracking-3d3268c3e73f.herokuapp.com'
   // service.ipAPI = 'https://connectiot-app.azurewebsites.net'
+
 
   // api
   //  -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_
@@ -173,6 +174,7 @@ app.service('uteisService', ['$rootScope', '$http', function ($rootScope, $http)
   //  -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_
 
 
+  
   // uteis
   //  -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_
 

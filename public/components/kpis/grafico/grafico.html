@@ -1,0 +1,23 @@
+<div class="col-xxl-12 col-sm-12 col-12 p-3 rounded-3 kpi-widget-fill" style="background-color: #444957;">
+  <h5 class="card-title">{{$ctrl.titulo}}</h5>
+  <p class="small text-muted mb-2 grafico-loc-trilha kpi-widget-meta" ng-if="$ctrl.localizacaoTrilha">
+    <i class="bi bi-geo-alt me-1" aria-hidden="true"></i>
+    <span class="grafico-loc-trilha-text">{{$ctrl.localizacaoTrilha}}</span>
+  </p>
+  <div class="grafico-kpi-card kpi-widget-content">
+    <p class="small text-danger mb-2" ng-if="$ctrl.erro">{{$ctrl.erro}}</p>
+    <div class="grafico-kpi-chart-area position-relative">
+      <p class="small text-muted mb-2" ng-if="$ctrl.carregando">Carregando…</p>
+      <div
+        class="grafico-kpi-empty-state position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+        style="z-index: 1"
+        ng-if="!$ctrl.carregando && !$ctrl.erro && !$ctrl.temDados">
+        <p class="small text-muted mb-0 text-center">Nenhum dado para exibir.</p>
+      </div>
+      <div
+        class="grafico-kpi-mount w-100"
+        ng-attr-id="{{$ctrl.chartDomId}}">
+      </div>
+    </div>
+  </div>
+</div>

@@ -45,6 +45,11 @@ app.component('categoria', {
       await $ctrl.onCarregaCategorias();
       await $ctrl.onCarregaItens();
       await $ctrl.onCarregaNiveis('01');
+      await $ctrl.onCarregaCategoriasItem();
+
+      const tabTrigger = document.querySelector('#categorias-a-tab');
+      const tab = new bootstrap.Tab(tabTrigger);
+      tab.show();
 
       if (reg == undefined) {
 
@@ -55,6 +60,7 @@ app.component('categoria', {
           ativo: '1',
           descricao: '',
           ean: '',
+  
           observacao: '',
           foto: '',
           _foto: '../assets/images/icon_cadastro.fw.png',
@@ -63,6 +69,11 @@ app.component('categoria', {
           labelInf3: '',
           labelInf4: '',
           labelInf5: '',
+          valor_labelInf1: '',
+          valor_labelInf2: '',
+          valor_labelInf3: '',
+          valor_labelInf4: '',
+          valor_labelInf5: '',
           estoque_minimo: 0,
           estoque_maximo: 0,
           valor: '0',
@@ -70,7 +81,7 @@ app.component('categoria', {
           id_nivel_cat2: '',
           id_nivel_cat3: '',
           id_nivel_cat4: '',
-          
+
           id_nivel_loc1: '',
           id_nivel_loc2: '',
           id_nivel_loc3: '',
@@ -127,24 +138,22 @@ app.component('categoria', {
       await uteisService.getBase(_url)
         .then((res) => {
 
-          $timeout(() => {
-            if (nivel == '01') {
-              $ctrl._listNivel1 = res
-              $ctrl._listNivel2 = []
-              $ctrl._listNivel3 = [];
-              $ctrl._listNivel4 = [];
-            } else if (nivel == '02') {
-              $ctrl._listNivel2 = res
-              $ctrl._listNivel3 = [];
-              $ctrl._listNivel4 = [];
-            } else if (nivel == '03') {
-              $ctrl._listNivel3 = res
-              $ctrl._listNivel4 = [];
+          if (nivel == '01') {
+            $ctrl._listNivel1 = res
+            $ctrl._listNivel2 = []
+            $ctrl._listNivel3 = [];
+            $ctrl._listNivel4 = [];
+          } else if (nivel == '02') {
+            $ctrl._listNivel2 = res
+            $ctrl._listNivel3 = [];
+            $ctrl._listNivel4 = [];
+          } else if (nivel == '03') {
+            $ctrl._listNivel3 = res
+            $ctrl._listNivel4 = [];
 
-            } else if (nivel == '04') {
-              $ctrl._listNivel4 = res
-            };
-          }, 900)
+          } else if (nivel == '04') {
+            $ctrl._listNivel4 = res
+          };
         })
         .catch((error) => {
           uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
@@ -180,6 +189,24 @@ app.component('categoria', {
 
           $timeout(() => {
             $ctrl._listCategorias = res
+          }, 10);
+
+        })
+        .catch((error) => {
+          uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
+        });
+    };
+
+    $ctrl.onCarregaCategoriasItem = async function () {
+
+      let _url = '/_bd?c=categoria_item&id_conta=' + $ctrl._regConta._id
+      _url += '&sort=descricao'
+
+      await uteisService.getBase(_url)
+        .then((res) => {
+
+          $timeout(() => {
+            $ctrl._listCategoriasItem = res
           }, 10);
 
         })
@@ -268,6 +295,20 @@ app.component('categoria', {
           $ctrl.$ctrl._editAssocicao.associados[iFind].quantidade = $ctrl._regAddAssociacao.quantidade
         }
 
+      } else if ($ctrl._regAddAssociacao.id_ref == 'generico') {
+
+        let iFind = $ctrl._editAssocicao.associados.findIndex((item) => item._id == $ctrl._regAddAssociacao._id)
+        if (iFind == -1) {
+          $ctrl._editAssocicao.associados.push({
+            _id: uteisService.onGetID(),
+            id_item: '',
+            id_categoria: '',
+            quantidade: $ctrl._regAddAssociacao.quantidade
+          })
+        } else {
+          $ctrl.$ctrl._editAssocicao.associados[iFind].quantidade = $ctrl._regAddAssociacao.quantidade
+        }
+
       } else {
 
 
@@ -288,9 +329,43 @@ app.component('categoria', {
 
     };
 
+    $ctrl.onEditarAssociacao = function (_id) {
+      let item = $ctrl._editAssocicao.associados.find((item) => item._id == _id)
+
+      if (item) {
+        $ctrl._regAddAssociacao = {
+          id_ref: item.id_item ? 'item' : item.id_categoria ? 'categoria' : 'generico',
+          id_item: item.id_item,
+          id_categoria: item.id_categoria,
+          quantidade: item.quantidade
+        }
+      }
+    }
+    
+    $ctrl.onApagarAssociacao = function (_id) {
+
+      uteisService.onQuestion("Atenção!", "Deseja realmente excluir essa associação?")
+        .then((res) => {
+          if (res) {
+            $timeout(() => {
+              $ctrl._editAssocicao.associados = $ctrl._editAssocicao.associados.filter((item) => item._id != _id)
+              uteisService.onToast('Associação excluída!', 'success', 3000, 'top-end');
+            }, 100);
+          }
+        })
+    }
+
+
     $ctrl.idItemDescricao = function (_idItem, _idCategoria, desc) {
 
-      if (_idItem != '') {
+      if (_idItem == '' && _idCategoria == '') {
+        if (desc) {
+          return 'Genérico';
+        } else {	
+          return '';
+        }
+
+      } else if (_idItem != '') {
         let iFind = $ctrl._listItens.findIndex((item) => item._id == _idItem)
         if (desc) {
           return $ctrl._listItens[iFind].id_categoria.descricao;
@@ -344,7 +419,12 @@ app.component('categoria', {
 
 
     $ctrl.fechar = function () {
-      // dispara o callback do pai
+      setTimeout(() => {
+        $ctrl._listNivel1 = [];
+        $ctrl._listNivel2 = [];
+        $ctrl._listNivel3 = [];
+        $ctrl._listNivel4 = [];
+      }, 100);
       $ctrl.onFechar();
     };
 

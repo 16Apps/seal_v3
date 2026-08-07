@@ -1,0 +1,36 @@
+<div class="col-xxl-12 col-sm-12 col-12">
+  <div class="card mb-3" ng-attr-title="{{$ctrl.tipo}} — {{$ctrl.idNivel}}">
+    <div class="card-body">
+      <div class="d-flex align-items-center justify-content-between">
+        <div
+          class="icon-box md rounded-5"
+          ng-class="'border border-' + $ctrl.color + ' bg-' + $ctrl.color + ' bg-opacity-10'">
+          <i class="fs-4 {{$ctrl.icon}}" ng-class="'text-' + $ctrl.color"></i>
+        </div>
+
+        <div class="text-end">
+          <!-- Inventário: total + % encontrados -->
+          <div ng-if="$ctrl.exibirPercentual">
+            <span ng-if="$ctrl.carregando" class="fs-4" ng-class="'text-' + $ctrl.color">…</span>
+            <div ng-if="!$ctrl.carregando && $ctrl.totalKpi" class="d-flex align-items-end justify-content-end gap-3">
+              <h3 class="display-5 mb-0" ng-class="'text-' + $ctrl.color">{{$ctrl.totalKpi.total}}</h3>
+              <h3 class="display-5 mb-0 text-success">{{$ctrl.percentualEncontrados}}%</h3>
+            </div>
+            <span ng-if="!$ctrl.carregando && !$ctrl.totalKpi && !$ctrl.erroKpi" class="fs-4 text-muted">—</span>
+          </div>
+
+          <!-- Demais KPIs: apenas total -->
+          <h3 class="display-5 mb-0" ng-class="'text-' + $ctrl.color" ng-if="!$ctrl.exibirPercentual">
+            <span ng-if="$ctrl.temCollection() && $ctrl.carregando" class="fs-4">…</span>
+            <span ng-if="$ctrl.temCollection() && !$ctrl.carregando && $ctrl.totalKpi">{{$ctrl.totalKpi.total}}</span>
+            <span ng-if="$ctrl.temCollection() && !$ctrl.carregando && !$ctrl.totalKpi && !$ctrl.erroKpi">—</span>
+            <span ng-if="!$ctrl.temCollection()">100</span>
+          </h3>
+        </div>
+      </div>
+      <h6 class="m-0 mt-1" ng-class="'text-' + $ctrl.color">{{$ctrl.titulo || 'Total'}}</h6>
+      <!-- <p class="m-0 mt-1 small text-muted" ng-if="$ctrl.titulosub && !$ctrl.erroKpi">{{$ctrl.titulosub}}</p> -->
+      <p class="m-0 mt-1 small text-danger" ng-if="$ctrl.erroKpi">{{$ctrl.erroKpi}}</p>
+    </div>
+  </div>
+</div>

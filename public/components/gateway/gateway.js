@@ -7,8 +7,9 @@ app.component('gateway', {
     onFechar: '&'    // callback (pai define o que acontece quando algo retorna)
   },
 
-  controller: function (uteisService, $http, $timeout) {
+  controller: function (uteisService, $http, $timeout, params) {
     const $ctrl = this
+
 
     $ctrl._editGateway = {};
     $ctrl._regConta = {};
@@ -17,6 +18,12 @@ app.component('gateway', {
     $ctrl._listNivel2 = [];
     $ctrl._listNivel3 = [];
     $ctrl._listNivel4 = [];
+
+    $ctrl._listNivel1_destino = [];
+    $ctrl._listNivel2_destino = [];
+    $ctrl._listNivel3_destino = [];
+    $ctrl._listNivel4_destino = [];
+
     $ctrl._regLeituras = [];
     $ctrl.socket = null;
 
@@ -31,6 +38,8 @@ app.component('gateway', {
 
     $ctrl.$onChanges = function (changes) {
 
+
+
       if ($ctrl.funcao == 'add') {
         $ctrl.onEditar(undefined)
       } else if ($ctrl.funcao == 'edit') {
@@ -41,10 +50,17 @@ app.component('gateway', {
 
     $ctrl.onEditar = async function (reg) {
 
+      const tabTrigger = document.querySelector('#gateways-a-tab');
+      const tab = new bootstrap.Tab(tabTrigger);
+      tab.show();
+
       await $ctrl.onCarregaColaboradores();
-      await $ctrl.onCarregaNiveis('01');
+
 
       if (reg == undefined) {
+
+        await $ctrl.onCarregaNiveis('01');
+        await $ctrl.onCarregaNiveisDestino('01');
 
         $ctrl._editGateway = {
           _id: uteisService.onGetID(),
@@ -91,6 +107,7 @@ app.component('gateway', {
 
         };
 
+
         $ctrl._modoFixo = true;
 
       } else {
@@ -105,6 +122,9 @@ app.component('gateway', {
           $ctrl._editGateway._foto = uteisService.apiUrl_() + '/image/' + $ctrl._editGateway.foto
         };
 
+        await $ctrl.onCarregaNiveis('01');
+       
+
         if ($ctrl._editGateway.id_nivel_loc1) {
           await $ctrl.onCarregaNiveis('02')
 
@@ -116,6 +136,20 @@ app.component('gateway', {
             };
           }
         }
+
+        await $ctrl.onCarregaNiveisDestino('01');
+        if ($ctrl._editGateway.id_nivel_loc1_destino) {
+          await $ctrl.onCarregaNiveisDestino('02')
+
+          if ($ctrl._editGateway.id_nivel_loc2_destino) {
+            await $ctrl.onCarregaNiveisDestino('03')
+
+            if ($ctrl._editGateway.id_nivel_loc3_destino) {
+              await $ctrl.onCarregaNiveisDestino('04')
+            };
+          }
+        }
+
       };
 
       $ctrl.onLogs()
@@ -199,6 +233,49 @@ app.component('gateway', {
         });
     };
 
+    $ctrl.onCarregaNiveisDestino = async function (nivel) {
+
+      let id_nivel = null;
+      if (nivel == '02') {
+        id_nivel = $ctrl._editGateway.id_nivel_loc1_destino
+      } else if (nivel == '03') {
+        id_nivel = $ctrl._editGateway.id_nivel_loc2_destino
+      } else if (nivel == '04') {
+        id_nivel = $ctrl._editGateway.id_nivel_loc3_destino
+      }
+
+      let _url = '/_bd?c=localizacao&id_conta=' + $ctrl._regConta._id + '&id_nivel=' + id_nivel
+      _url += '&sort=descricao'
+
+      await uteisService.getBase(_url)
+        .then((res) => {
+
+          $timeout(() => {
+            if (nivel == '01') {
+              $ctrl._listNivel1_destino = res
+              $ctrl._listNivel2_destino = []
+              $ctrl._listNivel3_destino = [];
+              $ctrl._listNivel4_destino = [];
+
+            } else if (nivel == '02') {
+              $ctrl._listNivel2_destino = res
+              $ctrl._listNivel3_destino = [];
+              $ctrl._listNivel4_destino = [];
+
+            } else if (nivel == '03') {
+              $ctrl._listNivel3_destino = res
+              $ctrl._listNivel4_destino = [];
+
+            } else if (nivel == '04') {
+              $ctrl._listNivel4_destino = res
+            };
+          }, 700)
+        })
+        .catch((error) => {
+          uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
+        });
+    };
+
     $ctrl.onGetFoto = function () {
 
       document.getElementById('imgLogo').click();
@@ -240,6 +317,18 @@ app.component('gateway', {
         return;
       };
 
+      if($ctrl._editGateway.modo == 'fixo' && $ctrl._editGateway.id_nivel_loc1 == '') {
+        uteisService.onToast('Selecione ao menos um Nível da Localizacão.', 'warning', 3000, 'top-end');
+        return;
+      }
+
+      if($ctrl._editGateway.modo != 'fixo') {
+        $ctrl._editGateway.id_nivel_loc1 = '';
+        $ctrl._editGateway.id_nivel_loc2 = '';
+        $ctrl._editGateway.id_nivel_loc3 = '';
+        $ctrl._editGateway.id_nivel_loc4 = '';
+      }
+
       uteisService.patchBase('/gateway', $ctrl._editGateway)
         .then((res) => {
           uteisService.onToast('Registrado!', 'success', 3000, 'top-end');
@@ -275,44 +364,71 @@ app.component('gateway', {
       $ctrl.socket = io(); // conexão padrão
 
       $ctrl.socket.on($ctrl._editGateway._id, function (data) {
-          try {
-              // Se os dados vierem como string JSON, converte para objeto
-              let leitura = typeof data === 'string' ? JSON.parse(data) : data;
-              
-              // Adiciona timestamp de recebimento
-              leitura._timestamp_recebido = new Date().toISOString();
-              
-              $timeout(() => {
-                  // Adiciona no início da lista (mais recente primeiro)
-                  $ctrl._regLeituras.unshift(leitura);
-                  
-                  // Mantém apenas os 50 últimos registros
-                  if ($ctrl._regLeituras.length > 50) {
-                      $ctrl._regLeituras = $ctrl._regLeituras.slice(0, 50);
-                  }
-              }, 0);
-          } catch (error) {
-              console.error('Erro ao processar leitura:', error, data);
-          }
+        try {
+          // Se os dados vierem como string JSON, converte para objeto
+          let leitura = typeof data === 'string' ? JSON.parse(data) : data;
+
+          // Adiciona timestamp de recebimento
+          leitura._timestamp_recebido = new Date().toISOString();
+
+          $timeout(() => {
+            // Adiciona no início da lista (mais recente primeiro)
+            $ctrl._regLeituras.unshift(leitura);
+
+            // Mantém apenas os 50 últimos registros
+            if ($ctrl._regLeituras.length > 50) {
+              $ctrl._regLeituras = $ctrl._regLeituras.slice(0, 50);
+            }
+          }, 0);
+        } catch (error) {
+          console.error('Erro ao processar leitura:', error, data);
+        }
       });
 
     };
+
+    $ctrl.onAtualizaDados = async function () {
+      if (!$ctrl._editGateway || !$ctrl._editGateway._id) {
+        uteisService.onToast('Salve o gateway antes de atualizar os dados.', 'warning', 2500, 'top-end');
+        return;
+      }
+
+      await uteisService.getBase('/_bd?c=gateway&_id=' + $ctrl._editGateway._id)
+        .then((res) => {
+          const reg = (res && res.length > 0) ? res[0] : null;
+          $timeout(() => {
+            $ctrl._editGateway.dados = (reg && Array.isArray(reg.dados)) ? reg.dados : [];
+          }, 0);
+        })
+        .catch(() => {
+          uteisService.onToast('Erro ao atualizar os dados do gateway.', 'error', 2500, 'top-end');
+        });
+    };
+
+
+    $ctrl.formataDataHora = function (data) {
+      const date = moment(data, 'YYYY-MM-DD HH:mm:ss')
+        .add(params.timeAdd, 'hours'); // Remove 3 horas
+
+      return date.format('DDMMM HH[h]mm:ss');
+    };
+
 
     // Função para formatar data/hora
-    $ctrl.formataDataHora = function (data) {
-      if (!data) return '-';
-      const date = new Date(data);
-      // Subtrai 3 horas
-      date.setHours(date.getHours() - 3);
-      return date.toLocaleString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-      });
-    };
+    // $ctrl.formataDataHora = function (data) {
+    //   if (!data) return '-';
+    //   const date = new Date(data);
+    //   // Subtrai 3 horas
+    //   date.setHours(date.getHours() - params.timeAdd);
+    //   return date.toLocaleString('pt-BR', {
+    //     day: '2-digit',
+    //     month: '2-digit',
+    //     year: 'numeric',
+    //     hour: '2-digit',
+    //     minute: '2-digit',
+    //     second: '2-digit'
+    //   });
+    // };
 
     // Limpa socket ao fechar o componente
     $ctrl.$onDestroy = function () {
@@ -325,6 +441,18 @@ app.component('gateway', {
 
     $ctrl.fechar = function () {
       // dispara o callback do pai
+      setTimeout(() => {
+        $ctrl._listNivel1 = [];
+        $ctrl._listNivel2 = [];
+        $ctrl._listNivel3 = [];
+        $ctrl._listNivel4 = [];
+
+        $ctrl._listNivel1_destino = [];
+        $ctrl._listNivel2_destino = [];
+        $ctrl._listNivel3_destino = [];
+        $ctrl._listNivel4_destino = [];
+    
+      }, 100);
       $ctrl.onFechar();
     };
 

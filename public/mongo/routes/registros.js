@@ -11,7 +11,7 @@ const Registro = require("../models/registro");
 const Alerta = require("../models/alerta");
 const Posicao = require("../models/posicao");
 const Associacao = require("../models/associacao");
-
+const AssociacaoRegistro = require("../models/associacao_reg");
 
 const Interacao = require("../models/interacao");
 const Colaborador = require("../models/colaborador");
@@ -101,7 +101,7 @@ module.exports = (app, dbConnection) => {
                 if (thresholdRSSI === 0 || rssiValor < thresholdRSSI) {
                     try {
                         await axios.post(
-                            'https://sealairtracking-3d3268c3e73f.herokuapp.com/_bd/registro',
+                            'https://connectiot-app.azurewebsites.net/_bd/registro',
                             registro,
                             { timeout: 5000 }
                         );
@@ -131,10 +131,17 @@ module.exports = (app, dbConnection) => {
 
     app.post('/_bd/registro', async (req, res) => {
 
+        console.log("chegou_aqui_no_registro")
+        console.log(req.body)
+
+        let retorno;
+        let status;
+
         let {
             tokem,
             id_colaborador,
             tag,
+            id_categoria,
             data_leitura,
             antena,
             rssi,
@@ -149,22 +156,22 @@ module.exports = (app, dbConnection) => {
             id_nivel_loc1_final,
             id_nivel_loc2_final,
             id_nivel_loc3_final,
-            id_nivel_loc4_final
+            id_nivel_loc4_final,
+            inf_compl1,
+            inf_compl2,
+            inf_compl3,
+            inf_compl4,
+            inf_compl5
         } = req.body;
 
-        console.log('/_bd/registro::' + tokem + '::' + tag)
-        // console.log('/_bd/registro::' + JSON.stringify(req.body))
 
-        // Verificar Localização
-        let retorno;
-        let status;
-
+        //Todo: Se não foi informado a data de leitura, usa a data atual
         if (!data_leitura) {
-            data_leitura = moment().format('YYYY-MM-DD HH:mm:ss');
-            console.log("::::::" + data_leitura)
-        }
+            data_leitura = moment().utcOffset(-3).format('YYYY-MM-DD HH:mm:ss');
+        };
 
-        // Inibir leituras repetidas em menos de 5 segundos
+
+        // Todo: Inibe leituras repetidas em menos de 5 segundos
         const agora = Date.now();
         if (ultimasLeituras.has(tag)) {
             const ultimo = ultimasLeituras.get(tag);
@@ -177,11 +184,10 @@ module.exports = (app, dbConnection) => {
                 });
             };
         };
-
         ultimasLeituras.set(tag, agora);
-        // final validação
 
-        // Cadastro do gateway
+
+        //T odo: Busca cadastro do gateway
         let gateway = await Gateway.findOne({ tokem, ativo: 1 });
         if (!gateway) {
             return res.status(200).json({
@@ -189,8 +195,10 @@ module.exports = (app, dbConnection) => {
                 ignored: true,
                 message: `Gateway ${tokem} não cadastrado na conta`
             });
-        }
+        };
 
+
+        // Todo: Checa associação do Gateway
         // Se existir associação, resolve para o gateway primário
         if (gateway.tokem_associado) {
             const visited = new Set();
@@ -222,13 +230,16 @@ module.exports = (app, dbConnection) => {
             }
 
             gateway = current; // <- a partir daqui, "gateway" é o primário
-        }
+        };
 
+
+        // Todo: Envia dados para log via socket
         const io = req.app.get('io');
         const dadosRegistro = {
             tokem,
             id_colaborador,
             tag,
+            id_categoria: id_categoria ?? null,
             data_leitura,
             antena,
             rssi,
@@ -243,13 +254,18 @@ module.exports = (app, dbConnection) => {
             id_nivel_loc1_final,
             id_nivel_loc2_final,
             id_nivel_loc3_final,
-            id_nivel_loc4_final
+            id_nivel_loc4_final,
+            inf_compl1,
+            inf_compl2,
+            inf_compl3,
+            inf_compl4,
+            inf_compl5
         };
         io.emit(gateway._id, dadosRegistro);
+        io.emit(gateway.id_conta, dadosRegistro);
 
 
-        // Se não foi informado o nível de localização, usa o nível do gateway
-
+        // Todo: Se não foi informado o nível de localização, usa o nível do gateway
         if (!id_nivel_loc1 && gateway.modo == 'fixo') {
             id_nivel_loc1 = gateway.id_nivel_loc1;
             id_nivel_loc2 = gateway.id_nivel_loc2;
@@ -257,7 +273,8 @@ module.exports = (app, dbConnection) => {
             id_nivel_loc4 = gateway.id_nivel_loc4;
         };
 
-        // Cadastro do item
+
+        // Todo: Busca cadastro do item
         let item = await Item.findOne({ tag, id_conta: gateway.id_conta });
         if (!item) return res.status(200).json({
             success: true,
@@ -265,12 +282,21 @@ module.exports = (app, dbConnection) => {
             message: `Item ${tag} não cadastrado na conta`
         });
 
-        // Ultimo registro do item
-        let ultimoRegistro = await Registro.findOne({ tag, id_conta: gateway.id_conta }).sort({ createdAt: -1 }).limit(1);;
 
+        // Todo: Caso o Item possua uma tag Secundária
+        if (item.tag_secundaria) {
+            tag = item.tag_secundaria;
+            let item = await Item.findOne({ tag, id_conta: gateway.id_conta });
+            if (!item) return res.status(200).json({
+                success: true,
+                ignored: true,
+                message: `Item ${tag} não cadastrado na conta`
+            });
+        };
+
+
+        // Todo: Cria um novo ciclo de Registro e Atualiza Status e Endereço do Item (SKU)
         let _addReg = async () => {
-
-            console.log("novo");
 
             const novoRegistro = new Registro({
                 _id: shortid.generate(),
@@ -311,22 +337,25 @@ module.exports = (app, dbConnection) => {
                 alerta_data: null,
                 alerta_data_finalizada: null,
 
+                interacoes: []
+
             });
             await novoRegistro.save();
             await _updItem(novoRegistro)
 
-            console.log("..................." + '_addReg')
-            _checkAlerta(novoRegistro)
+            _checkAssociacao(novoRegistro)
             _checkInteracao('entrada', novoRegistro)
 
-            console.log("_checkAssociacao:1");
-            _checkAssociacao('entrada', novoRegistro)
+            // _checkAlerta(novoRegistro)
 
         };
 
+        //Todo: Atualiza Status e Endereço do Item (SKU)
         let _updItem = async (_reg) => {
-
             item.status = 'ativo'
+            if (id_categoria != null && String(id_categoria).trim() !== '') {
+                item.id_categoria = id_categoria;
+            }
             item.id_nivel_loc1 = id_nivel_loc1;
             item.id_nivel_loc2 = id_nivel_loc2;
             item.id_nivel_loc3 = id_nivel_loc3;
@@ -334,11 +363,18 @@ module.exports = (app, dbConnection) => {
             item.registro_atual = _reg
             await item.save();
 
-            console.log("_checkAssociacao:2");
-
-            // _checkAssociacao('neutro', _reg)
+            try {
+                await axios.get(`https://connectiot-app.azurewebsites.net/_bd/item/preencher-inf-complementares`, {
+                    params: { id_item: item._id }
+                });
+            } catch (err) {
+                console.error('Erro ao executar preenchimento inf_compl do item:', err.message);
+            }
 
         };
+
+        // Todo: Checa último registro do item
+        let ultimoRegistro = await Registro.findOne({ tag, id_conta: gateway.id_conta }).sort({ createdAt: -1 }).limit(1);;
 
         if (id_nivel_loc1) {
             status = 'entrada';
@@ -370,52 +406,50 @@ module.exports = (app, dbConnection) => {
             };
         };
 
-        if (ultimoRegistro) {
+        if (ultimoRegistro?.data_permanecia && ultimoRegistro?.data_registro) {
 
-            if (ultimoRegistro?.data_permanecia && ultimoRegistro?.data_registro) {
-                // const diffMs = new Date(ultimoRegistro.data_permanecia) - new Date(ultimoRegistro.data_registro);
-                //const diffMs = new Date(new Date().getTime()) - new Date(ultimoRegistro.data_permanecia);
+            const diffMs = new Date(data_leitura) - new Date(ultimoRegistro.data_permanecia);
 
-                const diffMs = new Date(data_leitura) - new Date(ultimoRegistro.data_permanecia);
+            const diffSegundos = Math.floor(diffMs / 1000);
+            console.log(`Diferença: ${diffSegundos} segundos ${gateway.intervalo_ausencia}`);
 
-                const diffSegundos = Math.floor(diffMs / 1000);
-                console.log(`Diferença: ${diffSegundos} segundos ${gateway.intervalo_ausencia}`);
+            // Todo: Ultrapassou o limte de perca de leitura
+            // ou status não é de permanencia
+            if ((diffSegundos > gateway.intervalo_ausencia) || (status == 'em_transito' || status == 'entrada')) {
 
-                // Ultrapassou o limte de perca de leitura
-                if (diffSegundos > gateway.intervalo_ausencia) {
+                _addReg();
 
-                    _addReg();
+            } else {
 
-                } else {
+                ultimoRegistro.rssi = rssi;
+                ultimoRegistro.bateria = bateria;
+                ultimoRegistro.temperatura = temperatura;
+                ultimoRegistro.data_permanecia = data_leitura;
 
-                    ultimoRegistro.rssi = rssi;
-                    ultimoRegistro.bateria = bateria;
-                    ultimoRegistro.temperatura = temperatura;
-                    ultimoRegistro.data_permanecia = data_leitura;
+                // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                // Todo: Removi por não compreender o porque de criar um novo
+                // ciclo de Registro que está dentro do tempo de ausencia
+                // Não vou tratar o endereço final, por não ver aplicação no momento
+                // if (status == 'em_transito' || status == 'entrada') {
+                //     ultimoRegistro.id_nivel_loc1_final = id_nivel_loc1;
+                //     ultimoRegistro.id_nivel_loc2_final = id_nivel_loc2;
+                //     ultimoRegistro.id_nivel_loc3_final = id_nivel_loc3;
+                //     ultimoRegistro.id_nivel_loc4_final = id_nivel_loc4;
+                //     _addReg();
+                // };
 
-                    if (status == 'em_transito' || status == 'entrada') {
+                //Todo: Atualiza o Registro e Atualiza Status e Endereço do Item (SKU)
+                await ultimoRegistro.save();
+                await sleep(1600);
 
-                        ultimoRegistro.id_nivel_loc1_final = id_nivel_loc1;
-                        ultimoRegistro.id_nivel_loc2_final = id_nivel_loc2;
-                        ultimoRegistro.id_nivel_loc3_final = id_nivel_loc3;
-                        ultimoRegistro.id_nivel_loc4_final = id_nivel_loc4;
+                //Todo: Atualiza Status e Endereço do Item (SKU)
+                // Não haveria necessidade de atualizar o item, pois o registro já foi atualizado
+                // await _updItem(ultimoRegistro)
 
-                        _addReg();
+                //_checkAlerta(ultimoRegistro)
 
-                    };
-
-                    // Atualizar Registro
-                    await ultimoRegistro.save();
-
-                    await sleep(1600);
-                    await _updItem(ultimoRegistro)
-
-                    console.log("..................." + '_updReg')
-                    _checkAlerta(ultimoRegistro)
-
-
-                };
             };
+
 
         } else {
 
@@ -433,8 +467,633 @@ module.exports = (app, dbConnection) => {
         })
     });
 
+    async function _checkAssociacao(_reg) {
 
-    async function _checkAssociacao(movimento, _reg) {
+        // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        // Todo: Falta Verificar por Associacao por Categoria : idItem e idCategoria
+        // Todo: Falta Verificar por Associacao por Item (SkU)
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Todo: Verifica se o Item(SKU) lido  possui associação
+        let associacao = await Associacao.findOne({
+            ativo: '1',
+            $or: [
+                { id_item: _reg.id_item },
+                { id_categoria: _reg.id_categoria }
+            ]
+        });
+
+        if (!associacao) {
+            console.log("ℹ️ checkAssociacao:", "Não encontrado");
+            return;
+        }
+
+        // Todo: Verifica se há associados Genericos
+        const associadosValidos = (associacao.associados || []).filter((associado) => {
+            const idItem = (associado.id_item || '').trim();
+            const idCategoria = (associado.id_categoria || '').trim();
+            return idItem == '' || idCategoria == '';
+        });
+
+        if (associadosValidos.length === 0) {
+            console.log("ℹ️ checkAssociacao:", "Sem associação genérica");
+            return;
+        }
+
+        console.log("🕒 checkAssociacao: Aguardando " + associacao.intervalo + "s para confirmar leituras...");
+        await delay((associacao.intervalo * 1000) + 1000 || 8000);
+
+        const intervaloSegundos = Number(associacao.intervalo) > 0 ? Number(associacao.intervalo) : 5;
+        const base = new Date(_reg.data_registro || _reg.data_permanecia || new Date());
+        const inicio = new Date(base.getTime() - (intervaloSegundos * 1000));
+        const fim = new Date(base.getTime() + (intervaloSegundos * 1000));
+
+        const registrosIntervalo = await Registro.find({
+            data_registro: { $gte: inicio, $lte: fim },
+            id_gateway: _reg.id_gateway,
+            tag: { $ne: _reg.tag }
+        }).sort({ data_registro: -1 });
+
+
+        let asssociao_reg = {
+            id_conta: _reg.id_conta,
+            id_registro: _reg._id,
+            id_colaborador: '',
+            id_gateway: _reg.id_gateway,
+
+            id_item: _reg.id_item,
+            id_categoria: _reg.id_categoria,
+            tag: _reg.tag,
+            rssi: _reg.rssi,
+            data_registro: _reg.data_registro,
+
+            quantidade_esperada: associadosValidos[0].quantidade,
+            quantidade_encontrada: registrosIntervalo.length,
+            status: associadosValidos[0].quantidade == registrosIntervalo.length ? 'associacao_ok' : 'associacao_erro',
+
+            associados: []
+        }
+
+        for (let i = 0; i < registrosIntervalo.length; i++) {
+            asssociao_reg.associados.push({
+                id_registro: registrosIntervalo[i]._id,
+                id_item: registrosIntervalo[i].id_item,
+                id_categoria: registrosIntervalo[i].id_categoria,
+                tag: registrosIntervalo[i].tag,
+                rssi: registrosIntervalo[i].rssi,
+                data_leitura: registrosIntervalo[i].data_permanecia
+            })
+        }
+
+        await new AssociacaoRegistro(asssociao_reg).save();
+        console.log("✅ checkAssociacao: Registro de associacao criado " + registrosIntervalo.length + " registros");
+
+        // Todo: Se houver registros no intervalo, gera a Ordem de Posição Esperada
+        if (registrosIntervalo.length > 0) {
+            await _gerarOrdem(_reg);
+        }
+
+    };
+
+    async function _gerarOrdem(_regBase) {
+
+        // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        // Checar se o Gateway, possui endereço fixo para Destino de Ordens de Posição Esperada
+
+        // try {
+
+        // Todo: Busca pelo Gateway, e checa se ele está parametrizado para Gerar Ordem de Posição Esperada
+        const gateway = await Gateway.findOne({ _id: _regBase.id_gateway, ativo: 1, posicao_esperada_auto: 1 }).lean();
+        if (!gateway) {
+            console.log('ℹ️ gerarOrdem: Gateway não parametrizado para gerar Ordem de Posição Esperada');
+            return;
+        };
+
+        const _reg = await AssociacaoRegistro.findOne({ id_registro: _regBase._id }).lean();
+
+        const origem = {
+            id_nivel_loc1: gateway.id_nivel_loc1 || '',
+            id_nivel_loc2: gateway.id_nivel_loc2 || '',
+            id_nivel_loc3: gateway.id_nivel_loc3 || '',
+            id_nivel_loc4: gateway.id_nivel_loc4 || ''
+        };
+
+        // Todo: Se o Gateway possui endereço fixo para Destino de Ordens de Posição Esperada, gera a Ordem de Posição Esperada
+        if (gateway.id_nivel_loc1_destino) {
+
+
+            const now = moment().toDate();
+            const nowPlus30 = new Date(now.getTime() + 30 * 60 * 1000);
+
+            let destino = {
+                id_nivel_loc1: gateway.id_nivel_loc1_destino || '',
+                id_nivel_loc2: gateway.id_nivel_loc2_destino || '',
+                id_nivel_loc3: gateway.id_nivel_loc3_destino || '',
+                id_nivel_loc4: gateway.id_nivel_loc4_destino || ''
+            };
+
+            let itens = [];
+            for (let i = 0; i < _reg.associados.length; i++) {
+
+                itens.push({
+                    id_item: _reg.associados[i].id_item || null,
+                    id_categoria: _reg.associados[i].id_categoria || null,
+
+                    tag: _reg.associados[i].tag || '',
+                    ean: '',
+                    rssi: _reg.associados[i].rssi || '',
+
+                    quantidade: 1,
+                    status: 'concluido',
+                    status_data: now,
+
+                    id_gatweway: _regBase.id_gateway || '',
+                    id_colaborador: _regBase.id_colaborador || '',
+
+                    status_destino: 'pendente',
+                    status_destino_data: ''
+                })
+
+                if (i == _reg.associados.length - 1) {
+
+
+                    const posicao = await Posicao.create({
+                        id_conta: _regBase.id_conta,
+                        id_colaborador: _regBase.id_colaborador || '',
+
+                        ativo: '1',
+                        id_doc: _regBase._id,
+                        descricao: 'Ordem de Posição Esperada (Automática)',
+                        icone: 'portal',
+
+                        partida_data: now,
+                        tolerancia: 30,
+
+                        previsao_chegada_data: nowPlus30,
+                        previsao_chegada_tolerancia: 30,
+
+                        status: 'aberta',
+                        status_data: now,
+
+                        id_nivel_loc1: origem.id_nivel_loc1,
+                        id_nivel_loc2: origem.id_nivel_loc2,
+                        id_nivel_loc3: origem.id_nivel_loc3,
+                        id_nivel_loc4: origem.id_nivel_loc4,
+
+                        itens: itens,
+
+                        id_nivel_loc1_destino: destino.id_nivel_loc1,
+                        id_nivel_loc2_destino: destino.id_nivel_loc2,
+                        id_nivel_loc3_destino: destino.id_nivel_loc3,
+                        id_nivel_loc4_destino: destino.id_nivel_loc4,
+                    });
+
+                    console.log('✅ gerarOrdem: Ordem de Posição Esperada (Automática) / Destino Coletor, criada ' + _reg.associados[i].tag);
+                };
+            };
+
+        } else {
+
+
+            const now = moment().toDate();
+            const nowPlus30 = new Date(now.getTime() + 30 * 60 * 1000);
+
+            for (let i = 0; i < _reg.associados.length; i++) {
+                const categoriaBase = await Categoria.findOne({ _id: _reg.associados[i].id_categoria }).lean();
+
+                let destino = {
+                    id_nivel_loc1: categoriaBase.id_nivel_loc1 || '',
+                    id_nivel_loc2: categoriaBase.id_nivel_loc2 || '',
+                    id_nivel_loc3: categoriaBase.id_nivel_loc3 || '',
+                    id_nivel_loc4: categoriaBase.id_nivel_loc4 || ''
+                };
+
+
+                const posicao = await Posicao.create({
+                    id_conta: _regBase.id_conta,
+                    id_colaborador: _regBase.id_colaborador || '',
+
+                    ativo: '1',
+                    id_doc: _regBase._id,
+                    descricao: 'Ordem de Posição Esperada (Automática)',
+                    icone: 'portal',
+
+                    partida_data: now,
+                    tolerancia: 30,
+
+                    previsao_chegada_data: nowPlus30,
+                    previsao_chegada_tolerancia: 30,
+
+                    status: 'aberta',
+                    status_data: now,
+
+                    id_nivel_loc1: origem.id_nivel_loc1,
+                    id_nivel_loc2: origem.id_nivel_loc2,
+                    id_nivel_loc3: origem.id_nivel_loc3,
+                    id_nivel_loc4: origem.id_nivel_loc4,
+
+                    itens: [{
+
+                        id_item: _reg.associados[i].id_item || null,
+                        id_categoria: _reg.associados[i].id_categoria || null,
+
+                        tag: _reg.associados[i].tag || '',
+                        ean: '',
+                        rssi: _reg.associados[i].rssi || '',
+
+                        quantidade: 1,
+                        status: 'concluido',
+                        status_data: now,
+
+                        id_gatweway: _regBase.id_gateway || '',
+                        id_colaborador: _regBase.id_colaborador || '',
+
+                        status_destino: 'pendente',
+                        status_destino_data: ''
+
+                    }],
+                    id_nivel_loc1_destino: destino.id_nivel_loc1,
+                    id_nivel_loc2_destino: destino.id_nivel_loc2,
+                    id_nivel_loc3_destino: destino.id_nivel_loc3,
+                    id_nivel_loc4_destino: destino.id_nivel_loc4,
+                });
+
+                console.log('✅ gerarOrdem: Ordem de Posição Esperada (Automática) Destino Item, criada ' + _reg.associados[i].tag);
+
+            };
+
+        }
+
+
+
+        // } catch (error) {
+        //     console.log('gerarOrdem:1_error' + error);
+        //     return;
+        // }
+
+    };
+
+
+    async function _checkInteracao(movimento, _reg) {
+
+        if (!_reg) {
+            return
+        };
+
+
+        // Todo: Busca pela Posição
+        // Checa-se também se trata-se de entrada ou saida indevida ou nao 
+        let posicao
+        const inicio = new Date();
+        inicio.setHours(0, 0, 0, 0);
+
+        const fim = new Date();
+        fim.setHours(23, 59, 59, 999);
+
+        let campoStatus = movimento === 'saida'
+            ? { status: "pendente" }
+            : { status_destino: "pendente" };
+
+        let filtro = {
+            itens: {
+                $elemMatch: {
+                    id_item: _reg.id_item,
+                    ...campoStatus
+                }
+            }
+        };
+
+        if (movimento == 'entrada') {
+
+            filtro.previsao_chegada_data = { $gte: inicio, $lte: fim }
+
+            if (_reg.id_nivel_loc4) {
+                filtro.id_nivel_loc3_destino = _reg.id_nivel_loc3;
+                filtro.id_nivel_loc4_destino = "";
+            }
+            // Nível 3 → 2
+            else if (_reg.id_nivel_loc3) {
+                filtro.id_nivel_loc3_destino = _reg.id_nivel_loc3;
+                filtro.id_nivel_loc4_destino = "";
+            }
+            // Nível 2 → 1
+            else if (_reg.id_nivel_loc2) {
+                filtro.id_nivel_loc2_destino = _reg.id_nivel_loc2;
+                filtro.id_nivel_loc3_destino = "";
+            }
+            // Nível 1 → 0
+            else if (_reg.id_nivel_loc1) {
+                filtro.id_nivel_loc1_destino = _reg.id_nivel_loc1;
+                filtro.id_nivel_loc2_destino = "";
+            }
+
+        } else if (movimento == 'saida') {
+
+            filtro.partida_data = { $gte: inicio, $lte: fim }
+
+            if (_reg.id_nivel_loc4) {
+                filtro.id_nivel_loc3 = _reg.id_nivel_loc3;
+                filtro.id_nivel_loc4 = "";
+            }
+            // Nível 3 → 2
+            else if (_reg.id_nivel_loc3) {
+                filtro.id_nivel_loc3 = _reg.id_nivel_loc3;
+                filtro.id_nivel_loc4 = "";
+            }
+            // Nível 2 → 1
+            else if (_reg.id_nivel_loc2) {
+                filtro.id_nivel_loc2 = _reg.id_nivel_loc2;
+                filtro.id_nivel_loc3 = "";
+            }
+            // Nível 1 → 0
+            else if (_reg.id_nivel_loc1) {
+                filtro.id_nivel_loc1 = _reg.id_nivel_loc1;
+                filtro.id_nivel_loc2 = "";
+            }
+
+        };
+
+        posicao = await Posicao.findOne(filtro);
+
+        // Todo: Se não houver Posição, trata-se de entrada ou saida indevida
+        if (!posicao) {
+            movimento == movimento + '_i'
+        } else {
+
+            // Todo: Altera o Status da Posição e do Item
+            if (movimento == 'entrada') {
+                concluirItemPosicaoChegada(posicao, _reg.id_item)
+            } else {
+                concluirItemPosicao(posicao, _reg.id_item)
+            }
+        };
+
+
+        // Todo: Verifica se há Interação para o Endereço do Registro de Leitura
+        const query = {};
+
+        if (_reg.id_nivel_loc4) {
+            query.id_nivel_loc4 = _reg.id_nivel_loc4;
+        } else if (_reg.id_nivel_loc3) {
+            query.id_nivel_loc3 = _reg.id_nivel_loc3;
+            query.id_nivel_loc4 = { $in: [null, ""] };
+        } else if (_reg.id_nivel_loc2) {
+            query.id_nivel_loc2 = _reg.id_nivel_loc2;
+            query.id_nivel_loc3 = { $in: [null, ""] };
+        } else if (_reg.id_nivel_loc1) {
+            query.id_nivel_loc1 = _reg.id_nivel_loc1;
+            query.id_nivel_loc2 = { $in: [null, ""] };
+        }
+
+        let interacao = await Interacao.findOne(query);
+
+        if (!interacao) {
+            console.log("checkInteracao:", "Não encontrado");
+            return;
+        };
+
+        // 🔹 URL correta para OBJECTS
+        // const urlSepioo = 'http://localhost:3000/sepioo';
+        const urlSepioo = 'https://connectiot-app.azurewebsites.net/sepioo';
+
+        for (let i = 0; i < interacao.acoes.length; i++) {
+
+            // Todo: Verifica se a Ação PDI LED Verde ou Vermelho
+            if (interacao.acoes[i].movimento == movimento && (interacao.acoes[i].acao == 'pdi_led_vr' || interacao.acoes[i].acao == 'pdi_led_vm')) {
+
+                let _serialPDI = interacao.acoes[i].serial;
+                if (interacao.acoes[i].equipamento == 'pdi_vinculado') {
+                    let _item = await Item.findOne({ _id: _reg.id_item });
+                    if (_item && _item.vinculos_device && Array.isArray(_item.vinculos_device) && _item.vinculos_device.length > 0 && _item.vinculos_device[0].id_mac) {
+                        _serialPDI = _item.vinculos_device[0].id_mac;
+                        console.log('Serial PDI:' + _serialPDI);
+                    } else {
+                        console.log('Item sem vinculos_device válido ou id_mac não encontrado');
+                        return;
+                    }
+                }
+
+                // 🔹 payload padrão da Sepioo
+                const payload = {
+                    color: interacao.acoes[i].acao == 'pdi_led_vr' ? 'RED' : 'GREEN',
+                    pattern: 'FLASH_1_SECOND',
+                    duration: interacao.acoes[i].comando ?? 5,
+                    durationInMinutes: 0,
+                    objectIds: [_serialPDI]
+                };
+
+                const axiosFlashOpts = {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-cache'
+                    },
+                    timeout: 12000
+                };
+
+                try {
+                    axios.post(urlSepioo + '/flash', payload, axiosFlashOpts)
+                        .then(async function (res) {
+                            await _atualizaInteracaoRegistro(_reg, _serialPDI, 'ok', JSON.stringify(payload), JSON.stringify(res.data));
+                        })
+                        .catch(async function (err) {
+                            await _atualizaInteracaoRegistro(_reg, _serialPDI, 'error', JSON.stringify(payload), JSON.stringify(err.code || err.message));
+                        });
+
+                } catch (error) {
+                    await _atualizaInteracaoRegistro(_reg, _serialPDI, 'error', JSON.stringify(payload), JSON.stringify(error.code || error.message));
+                }
+
+            };
+
+            // Todo: Verifica se a Ação para PDI Display
+            if (interacao.acoes[i].movimento == movimento && interacao.acoes[i].acao == 'pdi_display') {
+
+                let _serialPDI = interacao.acoes[i].serial;
+                if (interacao.acoes[i].equipamento == 'pdi_vinculado') {
+                    let _item = await Item.findOne({ _id: _reg.id_item });
+                    if (_item && _item.vinculos_device && Array.isArray(_item.vinculos_device) && _item.vinculos_device.length > 0 && _item.vinculos_device[0].id_mac) {
+                        _serialPDI = _item.vinculos_device[0].id_mac;
+                        console.log('Serial PDI:' + _serialPDI);
+                    } else {
+                        console.log('Item sem vinculos_device válido ou id_mac não encontrado');
+                        return;
+                    }
+                };
+
+                const runPdiDisplaySepioo = async function () {
+                    try {
+                        const responseDisplay = await axios.get(urlSepioo + '/object/' + _serialPDI, {
+                            headers: {
+                                'Cache-Control': 'no-cache'
+                            },
+                            timeout: 12000
+                        });
+
+                        const rawFields = responseDisplay.data && responseDisplay.data.customFields;
+
+                        let customFields = rawFields && typeof rawFields === 'object'
+                            ? Object.assign({}, rawFields)
+                            : {};
+                        customFields.DESTINO = movimento.includes('_i') ? 'Incorreto' : 'Correto';
+
+                        // customFields =  {
+                        //     "SEQUENCE": "921-943",
+                        //     "PARTNUMBER": "1 6EA 711 049 \n 2 6EA 711 049 \n 3 6EA 711 049 \n 4 6EA 711 049 \n 5 6EA 711 049 \n 6 6EA 711 049 \n 7 6 EA 711 049",
+                        //     "INSERTION": "1 \n 2\n 3\n 4\n 5\n 6\n 7\n 8\n 9\n 10",
+                        //     "STATUS": "INICIO",
+                        //     "DESTINO": movimento.includes('_i') ? 'Incorreto' : 'Correto'
+                        // }
+
+                        const payload = {
+                            objectId: _serialPDI,
+                            deviceIds: [_serialPDI],
+                            customFields
+                        };
+
+                        await axios.post(urlSepioo + '/object', payload, {
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Cache-Control': 'no-cache'
+                            },
+                            timeout: 12000
+                        })
+                            .then(async function (res) {
+                                await _atualizaInteracaoRegistro(_reg, _serialPDI, 'ok', JSON.stringify(payload), JSON.stringify(res.data));
+                            })
+                            .catch(async function (err) {
+                                await _atualizaInteracaoRegistro(_reg, _serialPDI, 'error', JSON.stringify(payload), JSON.stringify(err.code || err.message));
+                            });
+
+                    } catch (error) {
+                        if(_serialPDI){
+                            await _atualizaInteracaoRegistro(_reg, _serialPDI, 'error', JSON.stringify(payload), JSON.stringify(error.code || error.message));
+                        };
+                    }
+                };
+                runPdiDisplaySepioo();
+            };
+        };
+        
+    };
+
+    async function _atualizaInteracaoRegistro(_reg, _id, status, envio, retorno) {
+        _reg.interacoes.push({
+            interacao_id: _id,
+            interacao_status: status,
+            interacao_envio: envio,
+            interacao_retorno: retorno
+        })
+        await _reg.save();
+    };
+
+    async function concluirItemPosicao(posicao, id_item) {
+
+        const agora = moment().toDate();
+
+        // 1️⃣ localiza item dentro do array
+        const item = posicao.itens.find(i => i.id_item === id_item);
+        if (!item) return null;
+
+        // 2️⃣ atualiza os campos do item
+        item.status = "concluido";
+        item.status_data = agora;
+
+        // 3️⃣ recalcular status geral
+        const total = posicao.itens.length;
+        const concluidos = posicao.itens.filter(i => i.status === "concluido").length;
+        const pendentes = posicao.itens.filter(i => i.status === "pendente").length;
+
+        if (concluidos === total) {
+            posicao.status = "concluido";     // ou "finalizada", conforme sua regra
+        } else if (concluidos > 0) {
+            posicao.status = "parcial";
+        } else {
+            posicao.status = "aberta";
+        }
+
+        posicao.status_data = agora;
+
+        // 4️⃣ salva o documento
+        await posicao.save();
+
+        return posicao;
+    }
+
+    async function concluirItemPosicaoChegada(posicao, id_item) {
+
+        const agora = moment().toDate();
+
+        // 1️⃣ localiza item dentro do array
+        const item = posicao.itens.find(i => i.id_item === id_item);
+        if (!item) return null;
+
+        // 2️⃣ atualiza os campos do item
+        item.status_destino = "concluido";
+        item.status_destino_data = agora;
+
+        // 3️⃣ recalcular status geral
+        const total = posicao.itens.length;
+        const concluidos = posicao.itens.filter(i => i.status_destino === "concluido").length;
+        const pendentes = posicao.itens.filter(i => i.status_destino === "pendente").length;
+
+        if (concluidos === total) {
+            posicao.status = "concluido";     // ou "finalizada", conforme sua regra
+        } else if (concluidos > 0) {
+            posicao.status = "parcial";
+        } else {
+            posicao.status = "aberta";
+        }
+
+        posicao.status_data = agora;
+
+        // 4️⃣ salva o documento
+        await posicao.save();
+
+        return posicao;
+    };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    async function _XcheckAssociacaoBkp(movimento, _reg) {
 
         let tpAssociacao = 'item';
 
@@ -466,7 +1125,7 @@ module.exports = (app, dbConnection) => {
 
         }
 
-        console.log("_checkAssociacao:", associacao._id);
+        console.log("checkAssociacao:", associacao._id);
 
         // 🕒 Aguarda 6 segundos para garantir que as outras leituras chegaram
         console.log("⏳ Associação encontrada, aguardando 6s para confirmar leituras..." + tpAssociacao);
@@ -598,30 +1257,39 @@ module.exports = (app, dbConnection) => {
                         }
                     }
                 );
+
+                _gerarOrdem(_reg._id)
             };
         };
     };
 
-    async function _checkInteracao(movimento, _reg) {
+    async function _XcheckInteracao(movimento, _reg) {
 
         if (!_reg) {
             return
         };
 
-        console.log("_checkInteracao: " + movimento + ' ' + _reg.id_nivel_loc1)
+        //console.log("_checkInteracao: " + movimento + ' ' + _reg.id_nivel_loc1)
 
-        let interacao
+
+        const query = {};
+
         if (_reg.id_nivel_loc4) {
-            interacao = await Interacao.findOne({ id_nivel_loc4: _reg.id_nivel_loc4 });
+            query.id_nivel_loc4 = _reg.id_nivel_loc4;
         } else if (_reg.id_nivel_loc3) {
-            interacao = await Interacao.findOne({ id_nivel_loc3: _reg.id_nivel_loc3, id_nivel_loc4: null });
+            query.id_nivel_loc3 = _reg.id_nivel_loc3;
+            query.id_nivel_loc4 = { $in: [null, ""] };
         } else if (_reg.id_nivel_loc2) {
-            interacao = await Interacao.findOne({ id_nivel_loc2: _reg.id_nivel_loc2, id_nivel_loc3: null });
+            query.id_nivel_loc2 = _reg.id_nivel_loc2;
+            query.id_nivel_loc3 = { $in: [null, ""] };
         } else if (_reg.id_nivel_loc1) {
-            interacao = await Interacao.findOne({ id_nivel_loc1: _reg.id_nivel_loc1, id_nivel_loc2: null });
-        };
+            query.id_nivel_loc1 = _reg.id_nivel_loc1;
+            query.id_nivel_loc2 = { $in: [null, ""] };
+        }
 
-        console.log("_checkInteracao_result: " + interacao)
+        let interacao = await Interacao.findOne(query);
+
+        //console.log("_checkInteracao_result: " + interacao)
 
         //checa se trata-se de entrada ou saida indevida ou nao 
         let posicao
@@ -631,11 +1299,15 @@ module.exports = (app, dbConnection) => {
         const fim = new Date();
         fim.setHours(23, 59, 59, 999);
 
+        let campoStatus = movimento === 'saida'
+            ? { status: "pendente" }
+            : { status_destino: "pendente" };
+
         let filtro = {
             itens: {
                 $elemMatch: {
                     id_item: _reg.id_item,
-                    status: "pendente"
+                    ...campoStatus
                 }
             }
         };
@@ -690,26 +1362,34 @@ module.exports = (app, dbConnection) => {
 
         }
 
+        console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!filtro: ' + JSON.stringify(filtro));
+
         posicao = await Posicao.findOne(filtro);
         if (!posicao) {
             movimento == movimento + '_i'
+        } else {
+            if (movimento == 'entrada') {
+                concluirItemPosicaoChegada(posicao, _reg.id_item)
+            } else {
+                concluirItemPosicao(posicao, _reg.id_item)
+            }
         }
 
-        console.log('_regPosicao:' + posicao + ' >> id_nivel_loc1:' + _reg.id_nivel_loc1 + " >> filtro:" + JSON.stringify(filtro))
+        //console.log('_regPosicao:' + posicao + ' >> id_nivel_loc1:' + _reg.id_nivel_loc1 + " >> filtro:" + JSON.stringify(filtro))
 
         // 🔹 URL correta para OBJECTS
-        const urlSepioo = 'https://sealairtracking-3d3268c3e73f.herokuapp.com/sepioo';
-        //const urlSepioo = 'http://localhost:5000/sepioo';
+        // const urlSepioo = 'http://localhost:3000/sepioo';
+        // const urlSepioo = 'https://connectiot-app.azurewebsites.net/sepioo';
         if (interacao && Array.isArray(interacao.acoes)) {
 
             for (let i = 0; i < interacao.acoes.length; i++) {
 
-                console.log('......>>' + movimento + ' ' + interacao.acoes[i].movimento)
+                console.log("_checkInteracao: " + '......>>' + movimento + ' ' + interacao.acoes[i].movimento + ' ' + interacao.acoes[i].acao)
 
                 if (interacao.acoes[i].movimento == movimento && (interacao.acoes[i].acao == 'pdi_led_vr' || interacao.acoes[i].acao == 'pdi_led_vm')) {
 
                     if (posicao && posicao.itens && Array.isArray(posicao.itens) && posicao.itens.length > 0 && posicao.itens[0].id_item) {
-                        concluirItemPosicao(posicao, posicao.itens[0].id_item)
+                        // concluirItemPosicao(posicao, posicao.itens[0].id_item)
                     }
                     let _serialPDI = interacao.acoes[i].serial;
                     if (interacao.acoes[i].equipamento == 'pdi_vinculado') {
@@ -734,16 +1414,91 @@ module.exports = (app, dbConnection) => {
 
                     console.log(payload)
 
-                    const response = await axios.post(urlSepioo + '/flash', payload, {
+                    const axiosFlashOpts = {
                         headers: {
                             'Content-Type': 'application/json',
                             'Cache-Control': 'no-cache'
-                        }
-                    });
-
-                    //console.log(response.data)
+                        },
+                        timeout: 12000
+                    };
+                    axios.post(urlSepioo + '/flash', payload, axiosFlashOpts)
+                        .then(function () {
+                            // opcional: console.log('Sepioo /flash ok');
+                        })
+                        .catch(function (err) {
+                            console.error(
+                                'Sepioo /flash falhou (não bloqueia o registro):',
+                                err.code || err.message,
+                                err.response && err.response.status,
+                                err.response && err.response.data
+                            );
+                        });
 
                 }
+
+                if (interacao.acoes[i].movimento == movimento && interacao.acoes[i].acao == 'pdi_display') {
+
+                    let _serialPDI = interacao.acoes[i].serial;
+                    if (interacao.acoes[i].equipamento == 'pdi_vinculado') {
+                        let _item = await Item.findOne({ _id: _reg.id_item });
+                        if (_item && _item.vinculos_device && Array.isArray(_item.vinculos_device) && _item.vinculos_device.length > 0 && _item.vinculos_device[0].id_mac) {
+                            _serialPDI = _item.vinculos_device[0].id_mac;
+                            console.log('Serial PDI:' + _serialPDI);
+                        } else {
+                            console.log('Item sem vinculos_device válido ou id_mac não encontrado');
+                            return;
+                        }
+                    }
+
+                    const runPdiDisplaySepioo = async function () {
+                        try {
+                            const responseDisplay = await axios.get(urlSepioo + '/object/' + _serialPDI, {
+                                headers: {
+                                    'Cache-Control': 'no-cache'
+                                },
+                                timeout: 12000
+                            });
+
+                            const rawFields = responseDisplay.data && responseDisplay.data.customFields;
+                            console.log('Retorno pdi_display:', rawFields);
+
+                            const customFields = rawFields && typeof rawFields === 'object'
+                                ? Object.assign({}, rawFields)
+                                : {};
+                            // customFields.DESTINO = movimento.includes('_i') ? 'Incorreto' : 'Correto';
+
+                            customFields = {
+                                "SEQUENCE": "921-943",
+                                "PARTNUMBER": "1 6EA 711 049 \n 2 6EA 711 049 \n 3 6EA 711 049 \n 4 6EA 711 049 \n 5 6EA 711 049 \n 6 6EA 711 049 \n 7 6 EA 711 049",
+                                "INSERTION": "1 \n 2\n 3\n 4\n 5\n 6\n 7\n 8\n 9\n 10",
+                                "STATUS": "INICIO",
+                                "DESTINO": movimento.includes('_i') ? 'Incorreto' : 'Correto'
+                            }
+
+                            const payload = {
+                                objectId: _serialPDI,
+                                deviceIds: [_serialPDI],
+                                customFields
+                            };
+
+                            await axios.post(urlSepioo + '/object', payload, {
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Cache-Control': 'no-cache'
+                                },
+                                timeout: 12000
+                            });
+
+                        } catch (error) {
+                            console.error(
+                                'pdi_display Sepioo falhou (não bloqueia o registro):',
+                                error && error.response && error.response.data ? error.response.data : (error && error.message)
+                            );
+                        }
+                    };
+                    runPdiDisplaySepioo();
+                }
+
 
 
                 // if (interacao.acoes[i].movimento == 'entrada' || interacao.acoes[i].movimento == 'entrada_i') {
@@ -755,42 +1510,75 @@ module.exports = (app, dbConnection) => {
 
     }
 
-    async function concluirItemPosicao(posicao, id_item) {
-        const agora = moment().toDate();
 
-        // 1️⃣ localiza item dentro do array
-        const item = posicao.itens.find(i => i.id_item === id_item);
-        if (!item) return null;
-
-        // 2️⃣ atualiza os campos do item
-        item.status = "concluido";
-        item.status_data = agora;
-
-        // 3️⃣ recalcular status geral
-        const total = posicao.itens.length;
-        const concluidos = posicao.itens.filter(i => i.status === "concluido").length;
-        const pendentes = posicao.itens.filter(i => i.status === "pendente").length;
-
-        if (concluidos === total) {
-            posicao.status = "concluido";     // ou "finalizada", conforme sua regra
-        } else if (concluidos > 0) {
-            posicao.status = "parcial";
-        } else {
-            posicao.status = "aberta";
-        }
-
-        posicao.status_data = agora;
-
-        // 4️⃣ salva o documento
-        await posicao.save();
-
-        return posicao;
-    }
 
 
     async function _checkAlerta(_reg) {
 
         try {
+
+            // Envia notificação externa (ex: WhatsApp) conforme tipo de alerta
+            const enviarNotificacaoAlerta = async (tipoAlerta, itensLocal, referencia, alertaDoc, regAtual) => {
+                try {
+                    // Ajuste aqui se o número de destino variar por conta / alerta
+                    const telefoneDestino = "553192912523";
+
+                    // Monta descrição das localizações (níveis)
+                    let descricaoLoc = "";
+                    try {
+                        const partes = [];
+                        if (regAtual?.id_nivel_loc1) {
+                            const n1 = await Localizacao.findById(regAtual.id_nivel_loc1);
+                            if (n1) partes.push(n1.descricao);
+                        }
+                        if (regAtual?.id_nivel_loc2) {
+                            const n2 = await Localizacao.findById(regAtual.id_nivel_loc2);
+                            if (n2) partes.push(n2.descricao);
+                        }
+                        if (regAtual?.id_nivel_loc3) {
+                            const n3 = await Localizacao.findById(regAtual.id_nivel_loc3);
+                            if (n3) partes.push(n3.descricao);
+                        }
+                        if (regAtual?.id_nivel_loc4) {
+                            const n4 = await Localizacao.findById(regAtual.id_nivel_loc4);
+                            if (n4) partes.push(n4.descricao);
+                        }
+                        if (partes.length > 0) {
+                            descricaoLoc = ` Localização: ${partes.join(" > ")}.`;
+                        }
+                    } catch (e) {
+                        console.error("Erro ao montar descrição de localização para alerta:", e.message);
+                    }
+
+                    let mensagemBase = "Olá, sou o bot da Seal RTI! ";
+
+                    if (tipoAlerta === "tol_max") {
+                        mensagemBase += `Alerta de TOLERÂNCIA MÁXIMA excedida. Local com ${itensLocal.length} itens, limite configurado: ${referencia}.${descricaoLoc}`;
+                    } else if (tipoAlerta === "tol_min") {
+                        mensagemBase += `Alerta de TOLERÂNCIA MÍNIMA não atingida. Local com ${itensLocal.length} itens, mínimo configurado: ${referencia}.${descricaoLoc}`;
+                    } else if (tipoAlerta === "itens_fixo") {
+                        mensagemBase += `Alerta de QUANTIDADE FIXA divergente. Local com ${itensLocal.length} itens, quantidade esperada: ${referencia}.${descricaoLoc}`;
+                    } else {
+                        mensagemBase += `Alerta detectado do tipo: ${tipoAlerta}.${descricaoLoc}`;
+                    }
+
+                    // Pode enriquecer com mais dados do registro / localização
+                    const payload = {
+                        to: telefoneDestino,
+                        message: mensagemBase
+                    };
+
+                    await axios.post(
+                        "http://ec2-44-204-148-169.compute-1.amazonaws.com:3333/send/16apps",
+                        payload,
+                        { timeout: 8000 }
+                    );
+
+                    console.log("📲 Notificação de alerta enviada:", payload);
+                } catch (err) {
+                    console.error("Erro ao enviar notificação de alerta:", err.message);
+                }
+            };
 
             console.log("CHECAR ITEM NAO MAIS LIDO TALVEZ ALGO AQUI, DE  ITENS COM A ULTIMA LEITURA ANTIGA")
 
@@ -818,19 +1606,25 @@ module.exports = (app, dbConnection) => {
                         if (_reg.id_nivel_loc4) {
                             itensLocal = await Item.find({ id_nivel_loc4: _reg.id_nivel_loc4 });
                         } else if (_reg.id_nivel_loc3) {
-                            itensLocal = await Item.find({ id_nivel_loc3: _reg.id_nivel_loc3, id_nivel_loc4: null });
+                            itensLocal = await Item.find({ id_nivel_loc3: _reg.id_nivel_loc3, id_nivel_loc4: "" }); //null  
                         } else if (_reg.id_nivel_loc2) {
-                            itensLocal = await Item.find({ id_nivel_loc2: _reg.id_nivel_loc2, id_nivel_loc3: null });
+                            itensLocal = await Item.find({ id_nivel_loc2: _reg.id_nivel_loc2, id_nivel_loc3: "" }); //null  
                         } else if (_reg.id_nivel_loc1) {
-                            itensLocal = await Item.find({ id_nivel_loc1: _reg.id_nivel_loc1, id_nivel_loc2: null });
+                            itensLocal = await Item.find({ id_nivel_loc1: _reg.id_nivel_loc1, id_nivel_loc2: "" }); //null  
                         };
-
 
                         if (alerta.acoes[i].acao == 'tol_max') {
                             console.log('tol_max:' + alerta.acoes[i].referencia[0].valor + ' tol_itens: ' + itensLocal.length)
                             if (itensLocal.length > alerta.acoes[i].referencia[0].valor) {
                                 _reg.alerta = alerta.acoes[i].acao
                                 console.log('alerta_tol_max')
+                                await enviarNotificacaoAlerta(
+                                    'tol_max',
+                                    itensLocal,
+                                    alerta.acoes[i].referencia[0].valor,
+                                    alerta,
+                                    _reg
+                                );
                             }
 
                         } else if (alerta.acoes[i].acao == 'tol_min') {
@@ -838,6 +1632,13 @@ module.exports = (app, dbConnection) => {
                             if (itensLocal.length < alerta.acoes[i].referencia[0].valor) {
                                 _reg.alerta = alerta.acoes[i].acao
                                 console.log('alerta_tol_min')
+                                await enviarNotificacaoAlerta(
+                                    'tol_min',
+                                    itensLocal,
+                                    alerta.acoes[i].referencia[0].valor,
+                                    alerta,
+                                    _reg
+                                );
                             }
 
                         } else if (alerta.acoes[i].acao == 'itens_fixo') {
@@ -845,6 +1646,13 @@ module.exports = (app, dbConnection) => {
                             if (itensLocal.length != alerta.acoes[i].referencia.length) {
                                 _reg.alerta = alerta.acoes[i].acao
                                 console.log('alerta_itens_fixo')
+                                await enviarNotificacaoAlerta(
+                                    'itens_fixo',
+                                    itensLocal,
+                                    alerta.acoes[i].referencia.length,
+                                    alerta,
+                                    _reg
+                                );
                             }
                         }
 
@@ -882,11 +1690,63 @@ module.exports = (app, dbConnection) => {
         }
     };
 
+    cron.schedule('*/5 * * * * *', async () => {
+        await verificarItensSemLeituraGlobal();
+    });
+    // cron.schedule('2-59/5 * * * * *', async () => {
+    //     await verificarItensSemLeituraGlobal();
+    // });
+
+    async function verificarItensSemLeituraGlobal() {
+
+        const itens = await Item.find({ mov_tracking: 1 });
+        const agora = moment();
+
+        for (const item of itens) {
+
+            const dataUltima = item.registro_atual?.data_permanecia || item.updatedAt;
+            if (!dataUltima) continue;
+
+            const diffSegundos = agora.diff(moment(dataUltima), 'seconds');
+
+            if (diffSegundos > 5) {
+
+                if (item.status !== 'perda') {
+
+                    await Item.updateOne(
+                        { _id: item._id },
+                        {
+                            $set: {
+                                status: 'perda',
+                                id_nivel_loc1: null,
+                                id_nivel_loc2: null,
+                                id_nivel_loc3: null,
+                                id_nivel_loc4: null
+                            }
+                        }
+                    );
+
+                    console.log(`🚨 Item ${item.tag} sem leitura há ${diffSegundos}s`);
+
+                    // aqui você pode:
+                    // - disparar evento
+                    // - enviar webhook
+                    // - notificar IA
+                }
+            }
+        }
+    }
+
+
     console.log('schedule')
     cron.schedule('*/5 * * * * *', async () => { // */5 segundos
-        console.log('⏱️ Executando verificarAlertasSair() -', new Date().toLocaleTimeString());
+        // console.log('⏱️ Executando verificarAlertasSair() -', new Date().toLocaleTimeString());
         await verificarAlertasSair();
     });
+
+    // cron.schedule('*/5 * * * * *', async () => {
+    //     await verificarAlertasSair();
+    // });
 
 
     async function verificarAlertasSair() {
@@ -1265,8 +2125,9 @@ module.exports = (app, dbConnection) => {
         }
     });
 
+    
 
-    app.post('/_bd/importar-csv-itens', async (req, res) => {
+    const importarCsvItensHandler = async (req, res) => {
         try {
             const { id_conta, itens } = req.body; // o front envia { id_conta, itens: [...] }
 
@@ -1356,6 +2217,7 @@ module.exports = (app, dbConnection) => {
                     return loc._id;
                 }
 
+                
                 const id_loc1 = await getOrCreateLocal(loc_nivel1, 1, id_conta, null);
                 const id_loc2 = await getOrCreateLocal(loc_nivel2, 2, id_conta, id_loc1);
                 const id_loc3 = await getOrCreateLocal(loc_nivel3, 3, id_conta, id_loc2);
@@ -1379,7 +2241,9 @@ module.exports = (app, dbConnection) => {
                     id_nivel_loc1: id_loc1,
                     id_nivel_loc2: id_loc2,
                     id_nivel_loc3: id_loc3,
-                    id_nivel_loc4: id_loc4
+                    id_nivel_loc4: id_loc4,
+                    mov_livre: 0,
+                    mov_tracking: 0,
                 };
 
                 if (item) {
@@ -1397,6 +2261,185 @@ module.exports = (app, dbConnection) => {
         } catch (err) {
             console.error('Erro ao importar itens:', err);
             res.status(500).json({ success: false, error: err.message });
+        }
+    };
+
+    app.post('/_bd/importar-csv-itens', importarCsvItensHandler);
+    app.post('/register/skus', importarCsvItensHandler);
+
+    app.get('/_bd/item/preencher-inf-complementares', async (req, res) => {
+        try {
+            const { id_conta, id_item } = req.query;
+
+            if (!id_conta && !id_item) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Informe id_conta ou id_item'
+                });
+            }
+
+            const filtroItens = {
+                id_categoria: { $exists: true, $ne: null, $ne: '' }
+            };
+            if (id_conta) filtroItens.id_conta = id_conta;
+            if (id_item) filtroItens._id = id_item;
+
+            const itens = await Item.find(filtroItens)
+                .select('_id id_conta id_categoria inf_compl1 inf_compl2 inf_compl3 inf_compl4')
+                .lean();
+
+            if (!itens.length) {
+                return res.json({
+                    success: true,
+                    total_itens_lidos: 0,
+                    total_itens_atualizados: 0
+                });
+            }
+
+            const categoriaIds = [...new Set(itens.map((i) => i.id_categoria).filter(Boolean))];
+            const contasIds = [...new Set(itens.map((i) => i.id_conta).filter(Boolean))];
+
+            const filtroCategorias = {
+                _id: { $in: categoriaIds }
+            };
+            if (id_conta) {
+                filtroCategorias.id_conta = id_conta;
+            } else if (contasIds.length) {
+                filtroCategorias.id_conta = { $in: contasIds };
+            }
+
+            const categorias = await Categoria.find({
+                ...filtroCategorias
+            }).select('_id id_conta valor_labelInf1 valor_labelInf2 valor_labelInf3 valor_labelInf4').lean();
+
+            const categoriaByIdConta = new Map(
+                categorias.map((c) => [`${c._id}::${c.id_conta}`, c])
+            );
+
+            const isVazio = (valor) => valor === undefined || valor === null || String(valor).trim() === '';
+
+            const operacoes = [];
+            for (const item of itens) {
+                const categoria = categoriaByIdConta.get(`${item.id_categoria}::${item.id_conta}`);
+                if (!categoria) continue;
+
+                const set = {};
+                if (isVazio(item.inf_compl1) && !isVazio(categoria.valor_labelInf1)) set.inf_compl1 = categoria.valor_labelInf1;
+                if (isVazio(item.inf_compl2) && !isVazio(categoria.valor_labelInf2)) set.inf_compl2 = categoria.valor_labelInf2;
+                if (isVazio(item.inf_compl3) && !isVazio(categoria.valor_labelInf3)) set.inf_compl3 = categoria.valor_labelInf3;
+                if (isVazio(item.inf_compl4) && !isVazio(categoria.valor_labelInf4)) set.inf_compl4 = categoria.valor_labelInf4;
+
+                if (Object.keys(set).length > 0) {
+                    operacoes.push({
+                        updateOne: {
+                            filter: { _id: item._id },
+                            update: { $set: set }
+                        }
+                    });
+                }
+            }
+
+            if (!operacoes.length) {
+                return res.json({
+                    success: true,
+                    total_itens_lidos: itens.length,
+                    total_itens_atualizados: 0
+                });
+            }
+
+            const bulkResult = await Item.bulkWrite(operacoes, { ordered: false });
+
+            return res.json({
+                success: true,
+                total_itens_lidos: itens.length,
+                total_itens_atualizados: bulkResult.modifiedCount || 0
+            });
+        } catch (err) {
+            console.error('Erro ao preencher inf_compl com valores da categoria:', err);
+            return res.status(500).json({
+                success: false,
+                error: err.message
+            });
+        }
+    });
+
+    // Itens sem id_categoria_reg1 → copia id_nivel_cat1 da Categoria (SKU) vinculada
+    app.get('/_bd/item/alinhar-categoria-reg1', async (req, res) => {
+        try {
+            const { id_conta } = req.query;
+
+            if (!id_conta) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Informe id_conta'
+                });
+            }
+
+            const isVazio = (valor) =>
+                valor === undefined || valor === null || String(valor).trim() === '';
+
+            const itens = await Item.find({
+                id_conta,
+                id_categoria: { $exists: true, $nin: [null, ''] },
+                $or: [
+                    { id_categoria_reg1: { $exists: false } },
+                    { id_categoria_reg1: null },
+                    { id_categoria_reg1: '' }
+                ]
+            }).select('_id id_categoria id_categoria_reg1').lean();
+
+            if (!itens.length) {
+                return res.json({
+                    success: true,
+                    total_itens_lidos: 0,
+                    total_itens_atualizados: 0
+                });
+            }
+
+            const categoriaIds = [...new Set(itens.map((i) => i.id_categoria).filter(Boolean))];
+            const categorias = await Categoria.find({
+                id_conta,
+                _id: { $in: categoriaIds },
+                id_nivel_cat1: { $exists: true, $nin: [null, ''] }
+            }).select('_id id_nivel_cat1').lean();
+
+            const catById = new Map(categorias.map((c) => [c._id, c]));
+
+            const operacoes = [];
+            for (const it of itens) {
+                const cat = catById.get(it.id_categoria);
+                if (!cat || isVazio(cat.id_nivel_cat1)) continue;
+                if (!isVazio(it.id_categoria_reg1)) continue;
+
+                operacoes.push({
+                    updateOne: {
+                        filter: { _id: it._id },
+                        update: { $set: { id_categoria_reg1: cat.id_nivel_cat1 } }
+                    }
+                });
+            }
+
+            if (!operacoes.length) {
+                return res.json({
+                    success: true,
+                    total_itens_lidos: itens.length,
+                    total_itens_atualizados: 0
+                });
+            }
+
+            const bulkResult = await Item.bulkWrite(operacoes, { ordered: false });
+
+            return res.json({
+                success: true,
+                total_itens_lidos: itens.length,
+                total_itens_atualizados: bulkResult.modifiedCount || 0
+            });
+        } catch (err) {
+            console.error('Erro ao alinhar id_categoria_reg1 dos itens:', err);
+            return res.status(500).json({
+                success: false,
+                error: err.message
+            });
         }
     });
 
@@ -1702,6 +2745,9 @@ module.exports = (app, dbConnection) => {
         try {
             const result = await Posicao.aggregate([
 
+                // Guarda o array completo de itens da posição (antes do unwind)
+                { $addFields: { _itens_posicao: '$itens' } },
+
                 // Explode o array de itens
                 { $unwind: '$itens' },
 
@@ -1902,7 +2948,9 @@ module.exports = (app, dbConnection) => {
                         partida_data: 1,
                         previsao_chegada_data: 1,
                         status: 1,
-                        status_data: 1
+                        status_data: 1,
+                        // Array completo `itens` da collection posicao (não só a linha do unwind)
+                        itens: '$_itens_posicao'
                     }
                 }
             ]);
@@ -1947,6 +2995,11 @@ module.exports = (app, dbConnection) => {
                     labelInf3: item.labelInf3 || '',
                     labelInf4: item.labelInf4 || '',
                     labelInf5: item.labelInf5 || '',
+                    valor_labelInf1: item.valor_labelInf1 || '',
+                    valor_labelInf2: item.valor_labelInf2 || '',
+                    valor_labelInf3: item.valor_labelInf3 || '',
+                    valor_labelInf4: item.valor_labelInf4 || '',
+                    valor_labelInf5: item.valor_labelInf5 || '',
                     estoque_minimo: item.estoque_minimo || 0,
                     estoque_maximo: item.estoque_maximo || 0,
                     valor: item.valor || 0,
@@ -2202,162 +3255,192 @@ module.exports = (app, dbConnection) => {
     });
 
     // GET /_bd/posicao/gerar-ordem/:id_registro
-  // GET /_bd/posicao/gerar-ordem/:id_registro
-app.get('/_bd/posicao/gerar-ordem/:id_registro', async (req, res) => {
-    try {
-      const { id_registro } = req.params;
-  
-      const now = new Date();
-      const nowPlus30 = new Date(now.getTime() + 30 * 60 * 1000);
-  
-      // 1) Registro base
-      const registroBase = await Registro.findOne({ _id: String(id_registro) }).lean();
-      if (!registroBase) return res.status(404).json({ erro: 'Registro não encontrado' });
-  
-      // 2) Gateway -> origem
-      const gateway = await Gateway.findOne({ _id: String(registroBase.id_gateway), ativo: 1 }).lean();
-      if (!gateway) return res.status(400).json({ erro: 'Gateway do registro não encontrado/ativo' });
-  
-      const origem = {
-        id_nivel_loc1: gateway.id_nivel_loc1 || '',
-        id_nivel_loc2: gateway.id_nivel_loc2 || '',
-        id_nivel_loc3: gateway.id_nivel_loc3 || '',
-        id_nivel_loc4: gateway.id_nivel_loc4 || ''
-      };
-  
-      // 3) Categorias válidas vindas de associados
-      const associados = Array.isArray(registroBase.associados) ? registroBase.associados : [];
-  
-      const categoriasValidas = associados
-        .map(a => a?.id_categoria ? String(a.id_categoria) : '')
-        .filter(Boolean);
-  
-      const setCategoriasValidas = new Set(categoriasValidas);
-  
-      if (setCategoriasValidas.size === 0) {
-        return res.status(400).json({ erro: 'Registro não possui associados com id_categoria válido' });
-      }
-  
-      // 4) Buscar últimos registros por categoria, limitando por encontrado_categoria
-      const filtroBase = {
-        id_conta: registroBase.id_conta,
-        id_gateway: registroBase.id_gateway,
-        id_nivel_loc1: registroBase.id_nivel_loc1,
-        id_nivel_loc2: registroBase.id_nivel_loc2,
-        id_nivel_loc3: registroBase.id_nivel_loc3,
-        id_nivel_loc4: registroBase.id_nivel_loc4
-      };
-  
-      const registrosPorAssociado = await Promise.all(
-        associados.map(async (a) => {
-          const idCat = a?.id_categoria ? String(a.id_categoria) : '';
-          const qtd = Number(a?.encontrado_categoria) || 0;
-  
-          if (!idCat || qtd <= 0) return [];
-  
-          return Registro.find({ ...filtroBase, id_categoria: idCat })
-            .sort({ data_registro: -1 })
-            .limit(qtd)
-            .lean();
-        })
-      );
-  
-      // Flatten
-      const registros = registrosPorAssociado.flat();
-  
-      // 5) Filtra “garantido” (regra 1 do seu ajuste)
-      const registrosFiltrados = registros.filter(r => setCategoriasValidas.has(String(r.id_categoria)));
-  
-      // remove duplicados por _id
-      const mapById = new Map();
-      for (const r of registrosFiltrados) mapById.set(String(r._id), r);
-      const registrosUnicos = Array.from(mapById.values());
-  
-      if (registrosUnicos.length === 0) {
-        return res.status(400).json({ erro: 'Nenhum registro encontrado para as categorias dos associados' });
-      }
-  
-      // 6) Define categoria referência para destino (regra 2 do seu ajuste)
-      // prioridade: categoria do registroBase, se estiver no set. Senão: primeira categoria válida.
-      const categoriaRefDestino = setCategoriasValidas.has(String(registroBase.id_categoria))
-        ? String(registroBase.id_categoria)
-        : String(categoriasValidas[0]);
-  
-      const categoriaDestino = await Categoria.findOne({
-        _id: categoriaRefDestino,
-        id_conta: String(registroBase.id_conta),
-        ativo: 1
-      }).lean();
-  
-      if (!categoriaDestino) {
-        return res.status(400).json({ erro: 'Categoria de referência para destino não encontrada/ativa' });
-      }
-  
-      const destino = {
-        id_nivel_loc1_destino: categoriaDestino.id_nivel_loc1 || '',
-        id_nivel_loc2_destino: categoriaDestino.id_nivel_loc2 || '',
-        id_nivel_loc3_destino: categoriaDestino.id_nivel_loc3 || '',
-        id_nivel_loc4_destino: categoriaDestino.id_nivel_loc4 || ''
-      };
-  
-      // 7) Monta itens (status concluido / destino pendente)
-      const itens = registrosUnicos.map((r) => ({
-        id_item: r.id_item || null,
-        id_categoria: r.id_categoria || null,
-  
-        tag: r.tag || '',
-        ean: '',     // opcional enriquecer com Categoria.ean
-        rssi: r.rssi || '',
-  
-        quantidade: 1,
-        status: 'concluido',
-        status_data: now,
-  
-        id_gatweway: r.id_gateway || '',
-        id_colaborador: r.id_colaborador || registroBase.id_colaborador || '',
-  
-        status_destino: 'pendente',
-        status_destino_data: ''
-      }));
-  
-      // 8) Cria Posicao
-      const posicao = await Posicao.create({
-        id_conta: registroBase.id_conta,
-        id_colaborador: registroBase.id_colaborador || gateway.id_colaborador || '',
-  
-        ativo: '1',
-        id_doc: registroBase._id,
-        descricao: 'Ordem de Posição Esperada (Automática)',
-        icone: 'portal',
-  
-        partida_data: now,
-        tolerancia: 30,
-  
-        previsao_chegada_data: nowPlus30,
-        previsao_chegada_tolerancia: 30,
-  
-        status: 'aberta',
-        status_data: now,
-  
-        ...origem,
-        itens,
-        ...destino
-      });
-  
-      return res.json({
-        ok: true,
-        posicao_id: posicao._id,
-        categoria_destino: categoriaRefDestino,
-        total_itens: itens.length,
-        origem,
-        destino
-      });
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({ erro: 'Erro interno' });
-    }
-  });
-  
+    // GET /_bd/posicao/gerar-ordem/:id_registro
+    // app.get('/_bd/posicao/gerar-ordem/:id_registro', async (req, res) => {
+    async function _XgerarOrdem(id_registro) {
+
+        console.log('_gerarOrdem:1');
+        try {
+            // const { id_registro } = req.params;
+
+            const now = new Date();
+            const nowPlus30 = new Date(now.getTime() + 30 * 60 * 1000);
+
+            // 1) Registro base
+            const registroBase = await Registro.findOne({ _id: String(id_registro) }).lean();
+            // if (!registroBase) return res.status(404).json({ erro: 'Registro não encontrado' });
+            if (!registroBase) {
+                console.log('_gerarOrdem:1_registroBase not found');
+                return;
+            } else {
+                console.log('_gerarOrdem:1_registroBase found' + JSON.stringify(registroBase));
+            }
+
+            // 2) Gateway -> origem
+            const gateway = await Gateway.findOne({ _id: String(registroBase.id_gateway), ativo: 1, posicao_esperada_auto: 1 }).lean();
+            // if (!gateway) return res.status(400).json({ erro: 'Gateway do registro não encontrado/ativo' });
+            if (!gateway) {
+                console.log('_gerarOrdem:1_gateway not found');
+                return;
+            };
+
+            const origem = {
+                id_nivel_loc1: gateway.id_nivel_loc1 || '',
+                id_nivel_loc2: gateway.id_nivel_loc2 || '',
+                id_nivel_loc3: gateway.id_nivel_loc3 || '',
+                id_nivel_loc4: gateway.id_nivel_loc4 || ''
+            };
+
+            // 3) Categorias válidas vindas de associados
+            const associados = Array.isArray(registroBase.associados) ? registroBase.associados : [];
+
+            const categoriasValidas = associados
+                .map(a => a?.id_categoria ? String(a.id_categoria) : '')
+                .filter(Boolean);
+
+            const setCategoriasValidas = new Set(categoriasValidas);
+
+            if (setCategoriasValidas.size === 0) {
+                console.log('_gerarOrdem:1_setCategoriasValidas not found');
+                return;
+                // return res.status(400).json({ erro: 'Registro não possui associados com id_categoria válido' });
+            }
+
+            // 4) Buscar últimos registros por categoria, limitando por encontrado_categoria
+            const filtroBase = {
+                id_conta: registroBase.id_conta,
+                id_gateway: registroBase.id_gateway,
+                id_nivel_loc1: registroBase.id_nivel_loc1,
+                id_nivel_loc2: registroBase.id_nivel_loc2,
+                id_nivel_loc3: registroBase.id_nivel_loc3,
+                id_nivel_loc4: registroBase.id_nivel_loc4
+            };
+
+            const registrosPorAssociado = await Promise.all(
+                associados.map(async (a) => {
+                    const idCat = a?.id_categoria ? String(a.id_categoria) : '';
+                    const qtd = Number(a?.encontrado_categoria) || 0;
+
+                    if (!idCat || qtd <= 0) return [];
+
+                    return Registro.find({ ...filtroBase, id_categoria: idCat })
+                        .sort({ data_registro: -1 })
+                        .limit(qtd)
+                        .lean();
+                })
+            );
+
+            console.log('_gerarOrdem:1_checks');
+
+            // Flatten
+            const registros = registrosPorAssociado.flat();
+
+            // 5) Filtra “garantido” (regra 1 do seu ajuste)
+            const registrosFiltrados = registros.filter(r => setCategoriasValidas.has(String(r.id_categoria)));
+
+            // remove duplicados por _id
+            const mapById = new Map();
+            for (const r of registrosFiltrados) mapById.set(String(r._id), r);
+            const registrosUnicos = Array.from(mapById.values());
+
+            if (registrosUnicos.length === 0) {
+                console.log('_gerarOrdem:1_registrosUnicos not found');
+                return;
+                // return res.status(400).json({ erro: 'Nenhum registro encontrado para as categorias dos associados' });
+            }
+
+            // 6) Define categoria referência para destino (regra 2 do seu ajuste)
+            // prioridade: categoria do registroBase, se estiver no set. Senão: primeira categoria válida.
+            const categoriaRefDestino = setCategoriasValidas.has(String(registroBase.id_categoria))
+                ? String(registroBase.id_categoria)
+                : String(categoriasValidas[0]);
+
+            const categoriaDestino = await Categoria.findOne({
+                _id: categoriaRefDestino,
+                id_conta: String(registroBase.id_conta),
+                ativo: 1
+            }).lean();
+
+            if (!categoriaDestino) {
+                console.log('_gerarOrdem:1_categoriaDestino not found');
+                return;
+                // return res.status(400).json({ erro: 'Categoria de referência para destino não encontrada/ativa' });
+            }
+
+            const destino = {
+                id_nivel_loc1_destino: categoriaDestino.id_nivel_loc1 || '',
+                id_nivel_loc2_destino: categoriaDestino.id_nivel_loc2 || '',
+                id_nivel_loc3_destino: categoriaDestino.id_nivel_loc3 || '',
+                id_nivel_loc4_destino: categoriaDestino.id_nivel_loc4 || ''
+            };
+
+            // 7) Monta itens (status concluido / destino pendente)
+            const itens = registrosUnicos.map((r) => ({
+                id_item: r.id_item || null,
+                id_categoria: r.id_categoria || null,
+
+                tag: r.tag || '',
+                ean: '',     // opcional enriquecer com Categoria.ean
+                rssi: r.rssi || '',
+
+                quantidade: 1,
+                status: 'concluido',
+                status_data: now,
+
+                id_gatweway: r.id_gateway || '',
+                id_colaborador: r.id_colaborador || registroBase.id_colaborador || '',
+
+                status_destino: 'pendente',
+                status_destino_data: ''
+            }));
+
+            console.log('gerarOrdem:2' + JSON.stringify(itens));
+
+            // 8) Cria Posicao
+            const posicao = await Posicao.create({
+                id_conta: registroBase.id_conta,
+                id_colaborador: registroBase.id_colaborador || gateway.id_colaborador || '',
+
+                ativo: '1',
+                id_doc: registroBase._id,
+                descricao: 'Ordem de Posição Esperada (Automática)',
+                icone: 'portal',
+
+                partida_data: now,
+                tolerancia: 30,
+
+                previsao_chegada_data: nowPlus30,
+                previsao_chegada_tolerancia: 30,
+
+                status: 'aberta',
+                status_data: now,
+
+                ...origem,
+                itens,
+                ...destino
+            });
+
+            console.log('_gerarOrdem:1_posicao created');
+
+            // return res.json({
+            //     ok: true,
+            //     posicao_id: posicao._id,
+            //     categoria_destino: categoriaRefDestino,
+            //     total_itens: itens.length,
+            //     origem,
+            //     destino
+            // });
+        } catch (err) {
+            console.error(err);
+            console.log('_gerarOrdem:1_error: ' + err);
+            // return res.status(500).json({ erro: 'Erro interno' });
+        }
+    };
+
+
+    
+    
+
 
 
 }

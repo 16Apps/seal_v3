@@ -167,9 +167,24 @@ module.exports = (app, dbConnection) => {
             // Calcula o total geral
             const totalGeral = resultados.reduce((sum, loc) => sum + loc.total_itens, 0);
 
+            // Busca o último item cadastrado da conta (mais recente por createdAt)
+            const ultimoItemCadastrado = await item
+                .findOne({ id_conta })
+                .sort({ createdAt: -1 })
+                .lean();
+
             res.json({
                 total: totalGeral,
                 localizacoes: resultados,
+                ultimo_item_cadastrado: ultimoItemCadastrado
+                    ? {
+                        _id: ultimoItemCadastrado._id,
+                        descricao: ultimoItemCadastrado.descricao || '',
+                        tag: ultimoItemCadastrado.tag || '',
+                        id_categoria: ultimoItemCadastrado.id_categoria || null,
+                        createdAt: ultimoItemCadastrado.createdAt || null
+                    }
+                    : null,
                 filtros: {
                     nivel1: nivel1 || null,
                     nivel2: nivel2 || null,

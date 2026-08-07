@@ -3,7 +3,7 @@
         <h5 class="modal-title h4" id="exampleModalFullscreenLabel">
             {{ $ctrl._regConta.params_nomenclatura_itens.itens }}
         </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close" ng-click="$ctrl.fechar()" aria-label="Close"></button>
     </div>
     <div class="modal-body">
 
@@ -40,7 +40,7 @@
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link rounded-pill" id="categorias-c-tab" data-bs-toggle="pill"
                                     data-bs-target="#categorias-c" type="button" role="tab" aria-controls="categorias-c"
-                                    aria-selected="false">Itens</button>
+                                    aria-selected="false"> {{ $ctrl._regConta.params_nomenclatura_itens.sku }}s</button>
                             </li>
 
                         </ul>
@@ -101,12 +101,39 @@
                                                         </div>
                                                     </div>
 
+                                                    <div class="row gx-3 mb-3">
+                                                        <div class="col-sm-4">
+                                                            <label for="displayName" class="form-label">
+                                                                Categoria Padrão
+                                                            </label>
+                                                            <select ng-model="$ctrl._editCategoria.id_nivel_cat1"
+                                                                class="form-select flex-grow-1" id="basicSelect"
+                                                                aria-label="Basic select example">
+                                                                <option value="0">Nenhuma</option>
+                                                                <option ng-repeat="item in $ctrl._listCategoriasItem" value="{{ item._id }}">
+                                                                    {{ item.descricao }}
+                                                                </option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+
                                                     <div class="row gx-3 mb-3 mt-4">
                                                         <div class="col-sm-12 col-12">
                                                             <div
                                                                 class="bg-primary bg-opacity-10 text-primary p-2 rounded-2">
                                                                 <p class="m-0">
-                                                                    Informações adicionais sobre a categoria
+                                                                    Informações adicionais sobre o {{ $ctrl._regConta.params_nomenclatura_itens.itens }}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="row gx-3 mb-3 mt-2">
+                                                        <div class="col-sm-12 col-12">
+                                                            <div
+                                                                class="bg-light bg-opacity-10 text-light p-2 rounded-2">
+                                                                <p class="m-0">
+                                                                    Esses labels serão utilizados como nomes dos campos
+                                                                    exibidos no cadastro de {{ $ctrl._regConta.params_nomenclatura_itens.sku }}.
                                                                 </p>
                                                             </div>
                                                         </div>
@@ -143,17 +170,59 @@
                                                         </div>
                                                     </div>
 
+                                                    <div class="row gx-3 mb-3 mt-4">
+                                                        <div class="col-sm-12 col-12">
+                                                            <div
+                                                                class="bg-primary bg-opacity-10 text-primary p-2 rounded-2">
+                                                                <p class="m-0">
+                                                                    Valores Padrão para os labels	
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                     <div class="row gx-3 mb-3 mt-2">
                                                         <div class="col-sm-12 col-12">
                                                             <div
                                                                 class="bg-light bg-opacity-10 text-light p-2 rounded-2">
                                                                 <p class="m-0">
-                                                                    Esses labels serão utilizados como nomes dos campos
-                                                                    exibidos no cadastro de Itens.
+                                                                    São valores padrões que serão utilizados no cadastros de SKUs associados a esta {{ $ctrl._regConta.params_nomenclatura_itens.sku }}.
                                                                 </p>
                                                             </div>
                                                         </div>
                                                     </div>
+
+                                                    <div class="row gx-3 mb-3">
+                                                        <div class="col-sm-3">
+                                                            <label for="displayName" class="form-label">
+                                                                Valor 1
+                                                            </label>
+                                                            <input ng-model="$ctrl._editCategoria.valor_labelInf1" type="text"
+                                                                class="form-control">
+                                                        </div>
+                                                        <div class="col-sm-3">
+                                                            <label for="displayName" class="form-label">
+                                                                Valor 2
+                                                            </label>
+                                                            <input ng-model="$ctrl._editCategoria.valor_labelInf2" type="text"
+                                                                class="form-control">
+                                                        </div>
+                                                        <div class="col-sm-3">
+                                                            <label for="displayName" class="form-label">
+                                                                Valor 3
+                                                            </label>
+                                                            <input ng-model="$ctrl._editCategoria.valor_labelInf3" type="text"
+                                                                class="form-control">
+                                                        </div>
+                                                        <div class="col-sm-3">
+                                                            <label for="displayName" class="form-label">
+                                                                Valor 4
+                                                            </label>
+                                                            <input ng-model="$ctrl._editCategoria.valor_labelInf4" type="text"
+                                                                class="form-control">
+                                                        </div>
+                                                    </div>
+
+                                                    
 
                                                     <div class="row gx-3 mb-0">
                                                         <div class="col-sm-12">
@@ -316,7 +385,7 @@
                                                     <select ng-model="$ctrl._editAssocicao.cond_presenca"
                                                         class="form-select select2">
                                                         <option value="todos">
-                                                            Todos os itens associados
+                                                            Todos os  {{ $ctrl._regConta.params_nomenclatura_itens.sku }} associados
                                                         </option>
                                                         <option value="qualquer">
                                                             Qualquer item associado
@@ -332,12 +401,15 @@
                                                 </div>
                                                 <div>
                                                     <h6 class="mb-1">
-                                                        Identificação dos itens
+                                                        Identificação dos  {{ $ctrl._regConta.params_nomenclatura_itens.sku }}
                                                     </h6>
                                                 </div>
                                                 <div class="form-check form-switch m-0 ms-auto">
                                                     <select ng-model="$ctrl._regAddAssociacao.id_ref"
                                                         class="form-select select2">
+                                                        <option value="generico">
+                                                            Genérico
+                                                        </option>
                                                         <option value="item">
                                                             {{ $ctrl._regConta.params_nomenclatura_itens.sku }}
                                                         </option>
@@ -347,7 +419,7 @@
                                                     </select>
                                                 </div>
                                             </div>
-                                            <div class="list-group-item d-flex align-items-center gap-3">
+                                            <div  ng-show="$ctrl._regAddAssociacao.id_ref!='generico'" class="list-group-item d-flex align-items-center gap-3">
                                                 <div
                                                     class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
                                                     <i class="bi bi-envelope text-primary fs-6"></i>
@@ -372,7 +444,7 @@
                                                     </option>
                                                 </select>
                                             </div>
-                                            <div ng-show="$ctrl._regAddAssociacao.id_ref=='categoria' && $ctrl._regAddAssociacao.id_categoria !=''"
+                                            <div ng-show="$ctrl._regAddAssociacao.id_ref!='item'"
                                                 class="list-group-item d-flex align-items-center gap-3">
                                                 <div
                                                     class="icon-box md bg-primary bg-opacity-10 text-primary rounded-3">
@@ -401,7 +473,7 @@
                                                         <thead>
                                                             <tr>
                                                                 <th scope="col" class="w-20">
-                                                                    Identificação
+                                                                    Tag
                                                                 </th>
                                                                 <th scope="col" class="w-40">
                                                                     Descrição
@@ -437,6 +509,10 @@
                                                                         class="badge bg-success bg-opacity-10 text-success">
                                                                         Item
                                                                     </span>
+                                                                    <span ng-show="!item.id_item && !item.id_categoria"
+                                                                        class="badge bg-info bg-opacity-10 text-info">
+                                                                        Genérico
+                                                                    </span>
                                                                 </td>
 
                                                                 <td>
@@ -445,14 +521,14 @@
 
                                                                 <td>
                                                                     <div class="d-flex gap-1">
-                                                                        <button ng-click=" $ctrl.onEditarAcao(item)"
+                                                                        <button ng-click=" $ctrl.onEditarAssociacao(item._id)"
                                                                             type="button"
                                                                             class="btn btn-sm btn-outline-primary"
                                                                             data-bs-toggle="tooltip"
                                                                             title="Editar Associação">
                                                                             <i class="bi bi-pencil"></i>
                                                                         </button>
-                                                                        <button type="button"
+                                                                        <button ng-click=" $ctrl.onApagarAssociacao(item._id)" type="button"
                                                                             class="btn btn-sm btn-outline-primary"
                                                                             data-bs-toggle="tooltip"
                                                                             title="Apagar Associação">

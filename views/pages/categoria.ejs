@@ -1,5 +1,5 @@
 <%- contentFor('body') %>
-  <div ng-controller="categoriaCtrl" class="app-container">
+  <div ng-controller="categoriaCtrl" class="app-container" ng-cloak>
 
     <!-- App hero header starts -->
     <div class="app-hero-header d-flex align-items-center">
@@ -8,7 +8,7 @@
       <ol class="breadcrumb d-none d-lg-flex">
         <li class="breadcrumb-item">
           <i class="bi bi-house lh-1"></i>
-          <a class="text-decoration-none">Gestão de Itens</a>
+          <a class="text-decoration-none">Gestão de {{ _regConta.params_nomenclatura_itens.sku }}s</a>
         </li>
         <li class="breadcrumb-item" aria-current="page">{{ _regConta.params_nomenclatura_itens.itens }}s</li>
         <li class="breadcrumb-item text-info" aria-current="page">Total: {{ _listCategorias.length }}</li>
@@ -18,11 +18,16 @@
       <!-- Filter start -->
       <div class="ms-auto d-flex flex-row gap-1 ">
         <div class="search-container d-lg-flex d-none">
-          <input type="text" class="form-control" id="searchData" placeholder="Pesquisar">
+          <input ng-model="_pesquisa" ng-change="onPesquisa()" type="text" class="form-control" id="searchData"
+            placeholder="Pesquisar">
           <i class="bi bi-search"></i>
         </div>
         <button ng-click="onCategoria('add', undefined)" type="button"
           class="btn btn-warning btn-sm ms-3 text-dark">Novo</button>
+        <button ng-click="onExportarCSV()" type="button"
+          class="btn btn-success btn-sm ms-2" title="Exportar lista para CSV">
+          <i class="bi bi-file-earmark-arrow-down"></i>
+        </button>
         <button ng-click="onImportar()" type="button" class="btn btn-info btn-sm ms-3 text-white">
           Importar
         </button>
@@ -58,7 +63,7 @@
 
                         </th>
 
-                        <th class="w-90" class="sortable" ng-click="sortBy('descricao')">
+                        <th class="w-70" class="sortable" ng-click="sortBy('descricao')">
                           Descrição
                           <i class="bi" ng-class="{
             'bi-caret-up-fill': sortField=='descricao' && !sortReverse,
@@ -74,6 +79,7 @@
             'bi-caret-down-fill': sortField=='ean' && sortReverse
          }"></i>
                         </th>
+                        <th class="w-20">Labels e Valores</th>
 
                         <th>Ações</th>
                       </tr>
@@ -85,6 +91,13 @@
                         </td>
                         <td>{{ item.descricao }}</td>
                         <td>{{ item.ean }}</td>
+                        <td>
+                          <div ng-if="item.labelInf1">{{ item.labelInf1 }}: {{ item.valor_labelInf1 || '-' }}</div>
+                          <div ng-if="item.labelInf2">{{ item.labelInf2 }}: {{ item.valor_labelInf2 || '-' }}</div>
+                          <div ng-if="item.labelInf3">{{ item.labelInf3 }}: {{ item.valor_labelInf3 || '-' }}</div>
+                          <div ng-if="item.labelInf4">{{ item.labelInf4 }}: {{ item.valor_labelInf4 || '-' }}</div>
+                          <div ng-if="item.labelInf5">{{ item.labelInf5 }}: {{ item.valor_labelInf5 || '-' }}</div>
+                        </td>
                         <td>
                           <a class="btn btn-info btn-sm" ng-click="onCategoria('edit', item)">
                             <i class="bi bi-pencil"></i>
@@ -129,9 +142,10 @@
                         <thead>
                           <tr>
                             <th>Descrição</th>
-                            <th class="w-30"></th>
+                            <th class="w-20"></th>
                             <th class="w-40">EAN</th>
-                            <th class="w-30">Labels</th>    
+                            <th class="w-20">Labels</th>   
+                            <th class="w-20">Valores</th>    
                           </tr>
                         </thead>
                         <tbody>
@@ -147,6 +161,13 @@
                               {{ item.labelInf3 ? ' - ' + item.labelInf3 : '' }}
                               {{ item.labelInf4 ? ' - ' + item.labelInf4 : '' }}
                               {{ item.labelInf5 ? ' - ' + item.labelInf5 : '' }}
+                            </td>
+                            <td>
+                              {{ item.valor_labelInf1}}
+                              {{ item.valor_labelInf2 ? ' - ' + item.valor_labelInf2 : '' }}
+                              {{ item.valor_labelInf3 ? ' - ' + item.valor_labelInf3 : '' }}
+                              {{ item.valor_labelInf4 ? ' - ' + item.valor_labelInf4 : '' }}
+                              {{ item.valor_labelInf5 ? ' - ' + item.valor_labelInf5 : '' }}
                             </td>
                           </tr>
                         </tbody>

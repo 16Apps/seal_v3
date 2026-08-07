@@ -3,7 +3,7 @@ const shortid = require('shortid');
 
 const LocalizacaoSchema = new mongoose.Schema({
     _id: { type: String, default: shortid.generate },
-    id_nivel: { type: String, default: shortid.generate },
+    id_nivel: { type: String, default: null , ref: 'Localizacao' },
     id_conta: { type: String, ref: 'Conta' },
     ativo: { type: Number, enum: [0, 1], default: 1 },
     descricao: { type: String },
@@ -24,6 +24,10 @@ const LocalizacaoSchema = new mongoose.Schema({
     longitude: { type: String },
 
     processo_app: { type: String },
+    processo_app_destino: { type: String },
+
+    capacidade_maxima: { type: Number, default: 0 },    
+    capacidade_minima: { type: Number, default: 0 },
 
     observacao: { type: String },
 

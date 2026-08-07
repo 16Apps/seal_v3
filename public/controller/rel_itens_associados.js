@@ -24,7 +24,7 @@ app.controller('itensAssociadosCtrl', function ($scope, $http, params, uteisServ
 
     $scope.onCarregaRegistros = async function () {
 
-        let _url = '/registro/associacoes/' + $scope._regConta._id;
+        let _url = '/relatorio/associacao-reg/' + $scope._regConta._id;
 
         await uteisService.getBase(_url)
             .then((res) => {
@@ -99,9 +99,112 @@ app.controller('itensAssociadosCtrl', function ($scope, $http, params, uteisServ
         }
     };
 
+    $scope.onExportarCSV = function () {
+        const lista = Array.isArray($scope._listItens) ? $scope._listItens.slice() : [];
+        if (!lista.length) {
+            uteisService.onToast('Nenhum registro para exportar.', 'warning', 2500, 'top-end');
+            return;
+        }
+
+        const field = $scope.sortField;
+        const reverse = $scope.sortReverse ? -1 : 1;
+        const getCampo = (obj, path) => {
+            if (!obj || !path) return '';
+            const partes = String(path).split('.');
+            let cur = obj;
+            for (let i = 0; i < partes.length; i++) {
+                if (cur == null) return '';
+                cur = cur[partes[i]];
+            }
+            return cur == null ? '' : cur;
+        };
+        lista.sort((a, b) => {
+            const va = getCampo(a, field);
+            const vb = getCampo(b, field);
+            if (va === vb) return 0;
+            if (va === '' || va == null) return 1 * reverse;
+            if (vb === '' || vb == null) return -1 * reverse;
+            return (String(va).localeCompare(String(vb), 'pt-BR', { numeric: true })) * reverse;
+        });
+
+        const cabecalho = [
+            'Item',
+            'Tag',
+            'Data Registro',
+            'Status',
+            'Qtd Encontrada',
+            'Qtd Esperada',
+            'Coletor (Gateway)',
+            'Nivel 1',
+            'Nivel 2',
+            'Nivel 3',
+            'Nivel 4',
+            'Associados'
+        ];
+
+        const escapeCSV = (valor) => {
+            const v = valor == null ? '' : String(valor);
+            const precisaAspas = /[";\r\n]/.test(v);
+            const escapado = v.replace(/"/g, '""');
+            return precisaAspas ? `"${escapado}"` : escapado;
+        };
+
+        const fmtData = (d) => {
+            if (!d) return '';
+            try {
+                return moment(d).format('YYYY-MM-DD HH:mm:ss');
+            } catch (e) {
+                return String(d);
+            }
+        };
+
+        const linhas = lista.map((item) => {
+            const associados = Array.isArray(item.associados) ? item.associados : [];
+            const associadosTexto = associados
+                .map((a) => {
+                    const cat = a.id_categoria?.descricao || 'Categoria N/A';
+                    const tag = a.tag || 'Sem tag';
+                    const dt = a.data_leitura ? fmtData(a.data_leitura) : '';
+                    return cat + ' [' + tag + '] ' + dt;
+                })
+                .join(' | ');
+            return [
+                item.id_categoria?.descricao || 'Item N/A',
+                item.tag || '',
+                fmtData(item.data_registro),
+                item.status || '',
+                item.quantidade_encontrada != null ? item.quantidade_encontrada : '',
+                item.quantidade_esperada != null ? item.quantidade_esperada : '',
+                item.id_gateway?.descricao || '',
+                item.id_registro?.id_nivel_loc1?.descricao || '',
+                item.id_registro?.id_nivel_loc2?.descricao || '',
+                item.id_registro?.id_nivel_loc3?.descricao || '',
+                item.id_registro?.id_nivel_loc4?.descricao || '',
+                associadosTexto
+            ].map(escapeCSV).join(';');
+        });
+
+        const conteudo = [cabecalho.map(escapeCSV).join(';'), ...linhas].join('\r\n');
+        const blob = new Blob(['\uFEFF' + conteudo], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+
+        const stamp = moment().format('YYYYMMDD_HHmmss');
+        const nomeArquivo = 'itens_associados_' + stamp + '.csv';
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = nomeArquivo;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1500);
+
+        uteisService.onToast('Arquivo exportado: ' + nomeArquivo, 'success', 2500, 'top-end');
+    };
+
     $scope.formataDataHora = function (data) {
         const date = moment(data, 'YYYY-MM-DD HH:mm:ss')
-            .subtract(3, 'hours'); // Remove 3 horas
+            .add(params.timeAdd, 'hours'); // Remove 3 horas
     
         return date.format('DDMMM HH[h]mm:ss');
     };

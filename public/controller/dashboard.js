@@ -22,6 +22,8 @@ app.controller('dashboardCtrl', function ($scope, $http, params, uteisService, $
   let chartAlocacaoCategorias = null;
   let chartRegDia = null;
 
+  
+
   $scope.$watch('$viewContentLoaded', async function () {
     $scope._regConta = uteisService.getCookie('_conta');
     $scope._regConta['_logo'] = '../assets/images/logo_default.fw.png'
@@ -129,6 +131,7 @@ app.controller('dashboardCtrl', function ($scope, $http, params, uteisService, $
       return;
     }
 
+    
     let _url = '/itens/total/' + $scope._regConta._id;
 
     // Adiciona os parâmetros de filtro se existirem

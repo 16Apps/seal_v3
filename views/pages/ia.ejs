@@ -1,0 +1,238 @@
+<%- contentFor('body') %>
+<div ng-controller="iaCtrl" class="app-container py-3" ng-cloak>
+  <div class="row g-3">
+    <div class="col-12 col-xl-8">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header  border-0 pb-0">
+          <div class="d-flex align-items-start justify-content-between gap-3 flex-wrap">
+            <div>
+              <h4 class="mb-1">Assistente Seal RTI</h4>
+              <p class="text-muted mb-0">
+                Entende a necessidade do cliente, conduz a parametrização e pode consultar ou cadastrar dados do RTI com confirmação.
+              </p>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge text-bg-light border">Modo {{ chatMeta.mode }}</span>
+              <img ng-src="{{ _regConta._logo }}" alt="Logo" class="rounded border bg-white" style="height: 42px; width: auto; max-width: 120px; object-fit: contain;">
+            </div>
+          </div>
+        </div>
+
+        <div class="card-body d-flex flex-column" style="height: 76vh; min-height: 620px;">
+          <div class="mb-3">
+            <div class="d-flex flex-wrap gap-2">
+              <button type="button"
+                      class="btn btn-outline-secondary btn-sm"
+                      ng-repeat="prompt in quickPrompts track by $index"
+                      ng-click="usePrompt(prompt)"
+                      ng-disabled="loading">
+                {{ prompt }}
+              </button>
+            </div>
+          </div>
+
+          <div id="chatMessagesIA"
+               class="flex-grow-1 border rounded-4 p-3  overflow-auto">
+            <div ng-repeat="m in messages track by $index" class="mb-3">
+              <div ng-if="m.from === 'user'" class="d-flex justify-content-end">
+                <div class="text-end" style="max-width: 85%;">
+                  <div class="small text-muted mb-1">Você</div>
+                  <div class="bg-primary text-white rounded-4 px-3 py-2 shadow-sm fs-7" style="white-space: pre-wrap;">
+                    {{ m.text }}
+                  </div>
+                </div>
+              </div>
+
+              <div ng-if="m.from === 'bot'" class="d-flex justify-content-start gap-2 align-items-start">
+                <div class="ia-avatar" aria-hidden="true">
+                  <div class="ia-avatar-eyes">
+                    <span class="ia-avatar-eye ia-avatar-eye--left">
+                      <i class="ia-avatar-pupil"></i>
+                    </span>
+                    <span class="ia-avatar-eye ia-avatar-eye--right">
+                      <i class="ia-avatar-pupil"></i>
+                    </span>
+                  </div>
+                  <span class="ia-avatar-nose"></span>
+                  <span class="ia-avatar-smile"></span>
+                </div>
+                <div style="max-width: 92%;">
+                  <div class="small text-muted mb-1">Assistente</div>
+                  <div class="bg-dark border rounded-4 px-3 py-3 shadow-sm fs-7" style="white-space: pre-wrap;">
+                    {{ m.text }}
+                  </div>
+
+                  <div ng-if="m.meta && m.meta.awaiting_confirmation" class="mt-2 small text-warning-emphasis">
+                    Aguardando confirmação do usuário para executar a ação.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div ng-show="loading" class="mt-2 d-flex align-items-center gap-2 text-muted small">
+              <div class="spinner-border spinner-border-sm" role="status"></div>
+              <span>O assistente está analisando sua solicitação e verificando o contexto do RTI...</span>
+            </div>
+          </div>
+
+          <form ng-submit="sendMessage()" class="mt-3">
+            <div class="input-group input-group-lg">
+              <textarea id="chatInputIA"
+                        class="form-control"
+                        rows="2"
+                        placeholder="Descreva o que você precisa que o Seal RTI faça..."
+                        ng-model="userMessage"
+                        ng-disabled="loading"
+                        ng-keydown="($event.keyCode === 13) && onEnter($event)"
+                        style="resize: none; font-size: 14px;"></textarea>
+              <button class="btn btn-primary text-white px-4"
+                      type="submit"
+                      ng-disabled="!userMessage || userMessage.trim() === '' || loading">
+                <span ng-show="!loading">Enviar</span>
+                <span ng-show="loading">Enviando...</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-4">
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-dark">
+          <h6 class="mb-0">Como este assistente pode ajudar</h6>
+        </div>
+        <div class="card-body small">
+          <p class="mb-2">
+            Use este assistente para pedir ajuda com cadastros, consultas e ajustes do Seal RTI em linguagem natural.
+          </p>
+          <ul class="mb-0 ps-3">
+            <li>Orienta o cadastro de localizações, categorias, itens e gateways</li>
+            <li>Ajuda a localizar informações já cadastradas no sistema</li>
+            <li>Resume registros, movimentações e dados recentes</li>
+            <li>Pede confirmação antes de executar ações de cadastro</li>
+            <li>Conduz a conversa passo a passo quando faltar algum dado</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-dark">
+          <h6 class="mb-0">Sugestões de uso</h6>
+        </div>
+        <div class="card-body small">
+          <p class="mb-2">Você pode escrever como se estivesse falando com alguém da equipe:</p>
+          <ul class="ps-3 mb-0">
+            <li>Quero cadastrar uma nova localização chamada Produção &gt; Linha 1</li>
+            <li>Preciso criar uma categoria para carrinhos de abastecimento</li>
+            <li>Cadastre um item com a tag 123456 e descrição Carrinho Azul</li>
+            <li>Me mostre os itens que estão em determinada localização</li>
+            <li>Quero consultar os registros das últimas 24 horas</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-dark">
+          <h6 class="mb-0">Dicas para conversar melhor</h6>
+        </div>
+        <div class="card-body small">
+          <ul class="ps-3 mb-0">
+            <li>Informe nomes, tags, localizações ou períodos sempre que souber</li>
+            <li>Se quiser cadastrar algo, diga o que precisa criar e quais dados já tem</li>
+            <li>Se quiser consultar, descreva o que procura e o intervalo desejado</li>
+            <li>Quando faltar alguma informação, o assistente vai pedir os dados restantes</li>
+            <li>Antes de gravar um cadastro, a ação será apresentada para sua confirmação</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .ia-avatar {
+    width: 44px;
+    height: 42px;
+    border-radius: 12px 12px 10px 10px;
+    background: linear-gradient(180deg, #d068a8 0%, #b84794 52%, #9d327f 100%);
+    position: relative;
+    flex: 0 0 auto;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.28);
+  }
+
+  .ia-avatar-eyes {
+    position: absolute;
+    left: 50%;
+    top: 5px;
+    width: 40px;
+    transform: translateX(-50%);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .ia-avatar-eye {
+    width: 17px;
+    height: 17px;
+    border-radius: 50%;
+    position: relative;
+    display: block;
+  }
+
+  .ia-avatar-eye--left {
+    background: radial-gradient(circle at 30% 30%, #f6fff8 0%, #d8f2ea 56%, #b3ddd2 100%);
+  }
+
+  .ia-avatar-eye--right {
+    background: radial-gradient(circle at 30% 30%, #fff9fd 0%, #f1dfea 56%, #d7b4c8 100%);
+  }
+
+  .ia-avatar-pupil {
+    position: absolute;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #6e6a74 0%, #332d39 60%, #1f1a23 100%);
+    left: 50%;
+    top: 50%;
+    transform: translate(-42%, -28%);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+  }
+
+  .ia-avatar-pupil::after {
+    content: '';
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    border-radius: 50%;
+    background: #fff;
+    left: 2px;
+    top: 2px;
+  }
+
+  .ia-avatar-nose {
+    position: absolute;
+    left: 50%;
+    bottom: 10px;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 4px;
+    border-radius: 1px;
+    background: #ecfff7;
+  }
+
+  .ia-avatar-smile {
+    position: absolute;
+    left: 50%;
+    bottom: 4px;
+    transform: translateX(-50%);
+    width: 14px;
+    height: 7px;
+    border: 2px solid #8b2f74;
+    border-top: 0;
+    border-left-color: transparent;
+    border-right-color: transparent;
+    border-radius: 0 0 10px 10px;
+    opacity: 0.95;
+  }
+</style>

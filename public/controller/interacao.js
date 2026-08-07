@@ -26,6 +26,7 @@ app.controller('interacaoCtrl', function ($scope, $http, params, uteisService) {
         let _url = '/_bd?c=interacao&id_conta=' + $scope._regConta._id;
         _url += '&pop=id_nivel_loc1&pop=id_nivel_loc2&pop=id_nivel_loc3&pop=id_nivel_loc4';
 
+
         await uteisService.getBase(_url)
             .then((res) => {
 
@@ -41,7 +42,10 @@ app.controller('interacaoCtrl', function ($scope, $http, params, uteisService) {
 
 
                 $scope._listInteracoes = res
-                $scope.$apply();
+                setTimeout(() => {
+                    $scope._listInteracoes = res
+                    $scope.$apply();
+                }, 1000);
             })
             .catch((error) => {
                 uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
@@ -61,11 +65,15 @@ app.controller('interacaoCtrl', function ($scope, $http, params, uteisService) {
 
     $scope.onInteracao = async function (_acao, _edit) {
 
+
+
         if (modalInstance != undefined) {
             modalInstance.hide();
             modalInstance = undefined
 
-            $scope.onCarregaRegistros()
+
+            
+        $scope.onCarregaRegistros()
             $scope.funcaoLoc = '';
             $scope.editLoc = undefined;
 

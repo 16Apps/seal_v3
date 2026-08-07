@@ -24,9 +24,18 @@
   <link rel="stylesheet" href="../assets/css/main.min.css" />
   <link rel="stylesheet" href="../assets/css/extras.css" />
 
+  <style>
+    [ng-cloak],
+    [data-ng-cloak],
+    [x-ng-cloak],
+    .ng-cloak {
+      display: none !important;
+    }
+  </style>
+
 </head>
 
-<body ng-app="myApp" ng-controller="appCtrl">
+<body ng-app="myApp" ng-controller="appCtrl" ng-cloak>
 
   <!-- Page wrapper starts -->
   <%- body %>
@@ -35,16 +44,22 @@
 
     <script src="../assets/js/jquery.min.js"></script>
     <script src="../assets/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.5.1/dist/sweetalert2.all.min.js"></script>
 
+    <!-- <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.5.1/dist/sweetalert2.all.min.js"></script> -->
+    <script src="../assets/js/sweetalert2.all.min.js"></script>
     <!-- Angular-->
-    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script>
-    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular-sanitize.min.js"></script>
+    <!-- <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular-sanitize.min.js"></script> -->
+    <script src="../assets/js/angular.min.js"></script>
+    <script src="../assets/js/angular-sanitize.min.js"></script>
 
     <!-- Moment -->
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.9.0/moment.min.js"></script>
-    <script type="text/javascript"
-      src="https://cdnjs.cloudflare.com/ajax/libs/angular-moment/0.9.0/angular-moment.min.js"></script>
+    <!-- <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.9.0/moment.min.js"></script> -->
+    <script src="../assets/js/moment.min.js"></script>
+
+    <!-- <script type="text/javascript"
+      src="https://cdnjs.cloudflare.com/ajax/libs/angular-moment/0.9.0/angular-moment.min.js"></script> -->
+    <script src="../assets/js/angular-moment.min.js"></script>
 
     <script src="/plugins/ngMask.js"></script>
 

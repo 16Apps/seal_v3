@@ -1,0 +1,758 @@
+<%- contentFor('body') %>
+<div ng-controller="widgetCtrl" class="app-container" ng-cloak>
+
+  <div class="app-hero-header d-flex align-items-center justify-content-between">
+    <ol class="breadcrumb d-none d-lg-flex mb-0">
+      <li class="breadcrumb-item">
+        <i class="bi bi-house lh-1"></i>
+        <a class="text-decoration-none">Home</a>
+      </li>
+      <li class="breadcrumb-item">Painel Inteligente</li>
+    </ol>
+
+    <div>
+      <!-- <button class="btn btn-sm btn-primary" ng-click="addWidget('planta')">
+        <i class="bi bi-plus-circle"></i> Planta
+      </button>
+
+      <button class="btn btn-sm btn-primary" ng-click="abrirModalTotal(false)">
+        <i class="bi bi-plus-circle"></i> Total
+      </button>
+
+      <button class="btn btn-sm btn-primary" ng-click="abrirModalGrafico(false)">
+        <i class="bi bi-plus-circle"></i> Gráfico
+      </button> -->
+
+      <button class="btn btn-sm btn-outline-secondary" ng-click="abrirModalPlanta(true)" title="Sem borda, cabeçalho ou margem interna">
+        <i class="bi bi-plus-circle"></i> Planta / Mapa
+      </button>
+      <button class="btn btn-sm btn-outline-secondary" ng-click="abrirModalTotal(true)" title="Sem borda, cabeçalho ou margem interna">
+        <i class="bi bi-plus-circle"></i> Total 
+      </button>
+      <button class="btn btn-sm btn-outline-secondary" ng-click="abrirModalGrafico(true)" title="Sem borda, cabeçalho ou margem interna">
+        <i class="bi bi-plus-circle"></i> Gráfico 
+      </button>
+      <button class="btn btn-sm btn-outline-secondary" ng-click="abrirModalDeslocamento(true)" title="Sem borda, cabeçalho ou margem interna">
+        <i class="bi bi-plus-circle"></i> Processos 
+      </button>
+
+
+      <button class="btn btn-sm btn-success" ng-click="salvarLayout()">
+        <i class="bi bi-save"></i> Salvar
+      </button>
+
+      <button class="btn btn-sm btn-danger" ng-click="limparLayout()">
+        <i class="bi bi-trash"></i> Limpar
+      </button>
+    </div>
+  </div>
+
+  <div class="app-body">
+    <div class="widget-empty-state" ng-if="!temWidgets" ng-cloak>
+      <div class="widget-empty-state__glow" aria-hidden="true"></div>
+      <div class="widget-empty-state__panel">
+        <div class="widget-empty-state__copy">
+          <span class="widget-empty-state__eyebrow">Painel Inteligente</span>
+          <h2 class="widget-empty-state__title">Monte o dashboard do seu jeito</h2>
+          <p class="widget-empty-state__lead">
+            Os componentes deste painel são <strong>arraste e solte</strong>:
+            adicione KPIs, gráficos, planta, mapa e processos, reorganize a qualquer momento
+            e personalize o layout para o que realmente importa na operação.
+          </p>
+          <ul class="widget-empty-state__tips">
+            <li><i class="bi bi-plus-circle"></i> Use os botões acima para adicionar componentes</li>
+            <li><i class="bi bi-arrows-move"></i> Arraste e redimensione cada bloco no grid</li>
+            <li><i class="bi bi-save"></i> Salve o layout para manter sua personalização</li>
+          </ul>
+          <div class="widget-empty-state__actions">
+            <button type="button" class="btn btn-primary btn-sm" ng-click="abrirModalTotal(true)">
+              <i class="bi bi-plus-lg"></i> Adicionar Total
+            </button>
+            <button type="button" class="btn btn-outline-light btn-sm" ng-click="abrirModalPlanta(true)">
+              <i class="bi bi-map"></i> Planta / Mapa
+            </button>
+          </div>
+        </div>
+        <div class="widget-empty-state__visual">
+          <img src="../assets/images/dash.png" alt="Ilustração do dashboard personalizável" class="widget-empty-state__img">
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-stack" ng-class="{'grid-stack--empty': !temWidgets}"></div>
+  </div>
+
+  <div class="widget-modal-total-backdrop" ng-if="exibirModalTotal" ng-click="cancelarModalTotal()">
+    <div class="widget-modal-total-dialog" ng-click="$event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="widgetModalTotalTitulo">
+      <h5 id="widgetModalTotalTitulo" class="widget-modal-total-titulo mb-3">KPI de Total</h5>
+      <p class="widget-modal-total-lead small mb-3">Escolha o módulo:</p>
+      <div class="d-grid gap-2">
+        <button type="button" class="btn btn-outline-primary text-start widget-modal-total-opbtn" ng-repeat="op in kpiTotalOpcoes" ng-click="confirmarKpiTotal(op)">
+          <strong class="widget-modal-total-oplabel">{{op.label}}</strong>
+          <span class="widget-modal-total-opdesc d-block small">{{op.descricao}}</span>
+        </button>
+      </div>
+      <button type="button" class="btn btn-light w-100 mt-3" ng-click="cancelarModalTotal()">Cancelar</button>
+    </div>
+  </div>
+
+  <div class="widget-modal-total-backdrop" ng-if="exibirModalGrafico" ng-click="cancelarModalGrafico()">
+    <div class="widget-modal-total-dialog" ng-click="$event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="widgetModalGraficoTitulo">
+      <h5 id="widgetModalGraficoTitulo" class="widget-modal-total-titulo mb-3">Tipo de gráfico</h5>
+      <p class="widget-modal-total-lead small mb-3">Escolha o agrupamento dos dados:</p>
+      <div class="d-grid gap-2">
+        <button type="button" class="btn btn-outline-primary text-start widget-modal-total-opbtn" ng-repeat="op in graficoTipoOpcoes" ng-click="confirmarGraficoTipo(op)">
+          <strong class="widget-modal-total-oplabel">{{op.label}}</strong>
+          <span class="widget-modal-total-opdesc d-block small">{{op.descricao}}</span>
+        </button>
+      </div>
+      <button type="button" class="btn btn-light w-100 mt-3" ng-click="cancelarModalGrafico()">Cancelar</button>
+    </div>
+  </div>
+
+  <div class="widget-modal-total-backdrop" ng-if="exibirModalPlanta" ng-click="cancelarModalPlanta()">
+    <div class="widget-modal-total-dialog" ng-click="$event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="widgetModalPlantaTitulo">
+      <h5 id="widgetModalPlantaTitulo" class="widget-modal-total-titulo mb-3">
+        {{ modalLocContext === 'grafico' ? 'Local do gráfico (até 4 níveis)' : (_plantaVisualTipo ? 'Endereço da ' + (_plantaVisualTipo === 'mapa' ? 'mapa' : 'planta') : 'Tipo de visualização') }}
+      </h5>
+      <p class="widget-modal-total-lead small mb-3" ng-if="modalLocContext !== 'grafico' && !_plantaVisualTipo">
+        Escolha como deseja visualizar o local:
+      </p>
+      <p class="widget-modal-total-lead small mb-3" ng-if="modalLocContext !== 'grafico' && _plantaVisualTipo">
+        Escolha a localização de primeiro nível:
+      </p>
+      <p class="widget-modal-total-lead small mb-3" ng-if="modalLocContext === 'grafico'">Navegue pelos níveis como no emulador: toque para entrar em subníveis, use a barra para voltar ou <strong>Usar este nível</strong> para filtrar pela pasta atual.</p>
+
+      <div class="d-grid gap-2 mb-3" ng-if="modalLocContext !== 'grafico' && !_plantaVisualTipo">
+        <button type="button" class="btn btn-outline-primary text-start widget-modal-total-opbtn"
+          ng-click="selecionarPlantaVisualTipo('planta')">
+          <strong class="widget-modal-total-oplabel">Planta</strong>
+          <span class="widget-modal-total-opdesc d-block small">Planta baixa com áreas marcadas</span>
+        </button>
+        <button type="button" class="btn btn-outline-primary text-start widget-modal-total-opbtn"
+          ng-click="selecionarPlantaVisualTipo('mapa')">
+          <strong class="widget-modal-total-oplabel">Mapa</strong>
+          <span class="widget-modal-total-opdesc d-block small">Mapa Google com polígonos e itens</span>
+        </button>
+      </div>
+
+      <div class="mb-3" ng-if="_carregandoModalPlanta && (modalLocContext === 'grafico' || _plantaVisualTipo)">
+        <span class="text-muted small">Carregando localizacoes...</span>
+      </div>
+
+      <div class="alert alert-warning py-2 mb-3" ng-if="_erroModalPlanta && (modalLocContext === 'grafico' || _plantaVisualTipo)">
+        {{_erroModalPlanta}}
+      </div>
+
+      <!-- Planta/Mapa: só raiz -->
+      <div class="widget-modal-planta-list" ng-if="modalLocContext !== 'grafico' && _plantaVisualTipo && !_carregandoModalPlanta && !_erroModalPlanta">
+        <button type="button" class="btn btn-light btn-sm w-100 mb-2" ng-click="voltarEscolhaPlantaVisualTipo()">
+          ← Voltar (Planta / Mapa)
+        </button>
+        <div class="d-grid gap-2" ng-if="_localizacoesPlanta.length">
+          <button type="button" class="btn btn-outline-primary text-start widget-modal-total-opbtn" ng-repeat="op in _localizacoesPlanta" ng-click="confirmarModalLocalizacaoNivel1(op)">
+            <strong class="widget-modal-total-oplabel">{{op.descricao || op.tag || op._id}}</strong>
+            <span class="widget-modal-total-opdesc d-block small" ng-if="op.descricao && op.tag">{{op.tag}}</span>
+          </button>
+        </div>
+        <p class="text-muted small mb-0" ng-if="!_localizacoesPlanta.length">Nenhuma localizacao de primeiro nivel encontrada.</p>
+      </div>
+
+      <!-- Gráfico: drill 4 níveis (regra de filhos por id_nivel, como emulatorCtrl) -->
+      <div class="widget-grafico-loc" ng-if="modalLocContext === 'grafico' && !_carregandoModalPlanta && !_erroModalPlanta">
+        <button type="button" class="widget-grafico-loc-crumb" ng-click="widgetGraficoCrumbBarClick()"
+          ng-disabled="!_graficoLocDrill.chain.length"
+          ng-class="{ 'widget-grafico-loc-crumb--muted': !_graficoLocDrill.chain.length }">
+          <i class="bi bi-geo-alt" aria-hidden="true"></i>
+          <span>{{ widgetGraficoCrumbDisplay() }}</span>
+        </button>
+        <p class="text-muted small mb-2" ng-if="_graficoLocDrill.chain.length">Toque na barra acima para voltar um nível.</p>
+        <button type="button" class="btn btn-outline-secondary btn-sm w-100 mb-2" ng-click="widgetGraficoUseCurrentFolder()"
+          ng-show="_graficoLocDrill.chain.length">
+          Usar este nível
+        </button>
+        <input type="search" class="form-control form-control-sm mb-2" ng-model="_graficoLocDrill.search" placeholder="Buscar…" autocomplete="off" />
+        <ul class="list-unstyled widget-grafico-loc-list mb-0" role="listbox">
+          <li ng-repeat="loc in widgetGraficoListItems() track by loc._id" role="option"
+            class="widget-grafico-loc-row"
+            ng-class="{ 'widget-grafico-loc-row--sel': widgetGraficoRowIsSelected(loc) }"
+            ng-click="widgetGraficoRowClick(loc)">
+            <i class="bi bi-folder2" aria-hidden="true" ng-if="widgetGraficoLocHasChildren(loc)"></i>
+            <i class="bi bi-pin-map" aria-hidden="true" ng-if="!widgetGraficoLocHasChildren(loc)"></i>
+            <span class="widget-grafico-loc-row-label">{{ loc.descricao || loc._id }}</span>
+            <i class="bi bi-chevron-right ms-auto" aria-hidden="true"
+              ng-if="widgetGraficoLocHasChildren(loc) && _graficoLocDrill.chain.length < 3"></i>
+          </li>
+          <li class="text-muted small text-center py-3" ng-if="widgetGraficoListItems().length === 0">
+            Nenhum local neste nível.
+          </li>
+        </ul>
+        <div class="widget-grafico-loc-sel-hint small text-muted mt-2" ng-if="_graficoLocPicker.selectedIds[0]">
+          Selecionado: nível com filtro ativo (API usa o nível mais específico entre os preenchidos).
+        </div>
+      </div>
+
+      <div class="d-grid gap-2 mt-3" ng-if="modalLocContext === 'grafico' && !_carregandoModalPlanta && !_erroModalPlanta">
+        <button type="button" class="btn btn-primary" ng-click="confirmarLocalGrafico()"
+          ng-disabled="!_graficoLocPicker.selectedIds[0]">
+          Confirmar local
+        </button>
+        <button type="button" class="btn btn-light" ng-click="cancelarModalPlanta()">Cancelar</button>
+      </div>
+      <button type="button" class="btn btn-light w-100 mt-3" ng-click="cancelarModalPlanta()" ng-if="modalLocContext !== 'grafico'">Cancelar</button>
+    </div>
+  </div>
+
+  <div class="widget-modal-total-backdrop" ng-if="exibirModalTempo" ng-click="cancelarModalTempo()">
+    <div class="widget-modal-total-dialog" ng-click="$event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="widgetModalTempoTitulo">
+      <h5 id="widgetModalTempoTitulo" class="widget-modal-total-titulo mb-3">Tempo de permanência</h5>
+      <p class="widget-modal-total-lead small mb-3">
+        Informe o tempo de corte. Itens com permanência <strong>acima</strong> desse tempo serão contados em uma fatia, e <strong>abaixo</strong> em outra. Preencha apenas o que precisar.
+      </p>
+
+      <div class="row g-2 mb-2">
+        <div class="col-6 col-md-4">
+          <label class="form-label small mb-1">Anos</label>
+          <input type="number" min="0" class="form-control form-control-sm" ng-model="_tempoForm.anos" />
+        </div>
+        <div class="col-6 col-md-4">
+          <label class="form-label small mb-1">Meses</label>
+          <input type="number" min="0" class="form-control form-control-sm" ng-model="_tempoForm.meses" />
+        </div>
+        <div class="col-6 col-md-4">
+          <label class="form-label small mb-1">Semanas</label>
+          <input type="number" min="0" class="form-control form-control-sm" ng-model="_tempoForm.semanas" />
+        </div>
+        <div class="col-6 col-md-4">
+          <label class="form-label small mb-1">Dias</label>
+          <input type="number" min="0" class="form-control form-control-sm" ng-model="_tempoForm.dias" />
+        </div>
+        <div class="col-6 col-md-4">
+          <label class="form-label small mb-1">Horas</label>
+          <input type="number" min="0" class="form-control form-control-sm" ng-model="_tempoForm.horas" />
+        </div>
+        <div class="col-6 col-md-4">
+          <label class="form-label small mb-1">Minutos</label>
+          <input type="number" min="0" class="form-control form-control-sm" ng-model="_tempoForm.minutos" />
+        </div>
+      </div>
+
+      <div class="d-grid gap-2 mt-3">
+        <button type="button" class="btn btn-primary" ng-click="confirmarModalTempo()">Adicionar widget</button>
+        <button type="button" class="btn btn-light" ng-click="cancelarModalTempo()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="widget-modal-total-backdrop" ng-if="exibirModalDeslocamento" ng-click="cancelarModalDeslocamento()">
+    <div class="widget-modal-total-dialog" ng-click="$event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="widgetModalDeslocamentoTitulo">
+      <h5 id="widgetModalDeslocamentoTitulo" class="widget-modal-total-titulo mb-3">Filtros de processos</h5>
+      <p class="widget-modal-total-lead small mb-3">Escolha o tipo e, se quiser, filtre por localização.</p>
+
+      <div class="d-grid gap-2 mb-3">
+        <button type="button" class="btn text-start widget-modal-total-opbtn"
+          ng-class="_deslocamentoTipo === 'inventario' ? 'btn-primary' : 'btn-outline-primary'"
+          ng-click="selecionarDeslocamentoTipo('inventario')">
+          <strong class="widget-modal-total-oplabel">Inventário</strong>
+          <span class="widget-modal-total-opdesc d-block small">Processos de inventário (sem destino)</span>
+        </button>
+        <button type="button" class="btn text-start widget-modal-total-opbtn"
+          ng-class="_deslocamentoTipo === 'conferencia' ? 'btn-primary' : 'btn-outline-primary'"
+          ng-click="selecionarDeslocamentoTipo('conferencia')">
+          <strong class="widget-modal-total-oplabel">Conferência</strong>
+          <span class="widget-modal-total-opdesc d-block small">Processos de conferência (origem e destino)</span>
+        </button>
+      </div>
+
+      <div class="mb-3" ng-if="_deslocamentoTipo && _carregandoModalDeslocamento">
+        <span class="text-muted small">Carregando enderecos...</span>
+      </div>
+
+      <div class="alert alert-warning py-2 mb-3" ng-if="_deslocamentoTipo && _erroModalDeslocamento">
+        {{_erroModalDeslocamento}}
+      </div>
+
+      <div ng-if="_deslocamentoTipo && !_carregandoModalDeslocamento && !_erroModalDeslocamento">
+        <h6 class="mb-2">{{ _deslocamentoTipo === 'inventario' ? 'Localização (opcional)' : 'Origem (opcional)' }}</h6>
+        <button type="button" class="widget-grafico-loc-crumb" ng-click="widgetDeslocamentoCrumbBarClick('origem')"
+          ng-disabled="!_deslocamentoOrigemDrill.chain.length"
+          ng-class="{ 'widget-grafico-loc-crumb--muted': !_deslocamentoOrigemDrill.chain.length }">
+          <i class="bi bi-geo-alt" aria-hidden="true"></i>
+          <span>{{ widgetDeslocamentoCrumbDisplay('origem') }}</span>
+        </button>
+        <button type="button" class="btn btn-outline-secondary btn-sm w-100 mb-2" ng-click="widgetDeslocamentoUseCurrentFolder('origem')"
+          ng-show="_deslocamentoOrigemDrill.chain.length">
+          Usar este nível{{ _deslocamentoTipo === 'inventario' ? '' : ' como origem' }}
+        </button>
+        <input type="search" class="form-control form-control-sm mb-2" ng-model="_deslocamentoOrigemDrill.search"
+          placeholder="{{ _deslocamentoTipo === 'inventario' ? 'Buscar localização...' : 'Buscar origem...' }}" autocomplete="off" />
+        <ul class="list-unstyled widget-grafico-loc-list mb-2" role="listbox">
+          <li ng-repeat="loc in widgetDeslocamentoListItems('origem') track by loc._id" role="option"
+            class="widget-grafico-loc-row"
+            ng-class="{ 'widget-grafico-loc-row--sel': widgetDeslocamentoRowIsSelected('origem', loc) }"
+            ng-click="widgetDeslocamentoRowClick('origem', loc)">
+            <i class="bi bi-folder2" aria-hidden="true" ng-if="widgetDeslocamentoLocHasChildren('origem', loc)"></i>
+            <i class="bi bi-pin-map" aria-hidden="true" ng-if="!widgetDeslocamentoLocHasChildren('origem', loc)"></i>
+            <span class="widget-grafico-loc-row-label">{{ loc.descricao || loc._id }}</span>
+            <i class="bi bi-chevron-right ms-auto" aria-hidden="true"
+              ng-if="widgetDeslocamentoLocHasChildren('origem', loc) && _deslocamentoOrigemDrill.chain.length < 3"></i>
+          </li>
+          <li class="text-muted small text-center py-3" ng-if="widgetDeslocamentoListItems('origem').length === 0">
+            Nenhum local neste nível.
+          </li>
+        </ul>
+        <button type="button" class="btn btn-light btn-sm w-100 mb-3" ng-click="widgetDeslocamentoLimparFiltro('origem')">
+          {{ _deslocamentoTipo === 'inventario' ? 'Sem filtro de localização' : 'Sem filtro de origem' }}
+        </button>
+
+        <div ng-if="_deslocamentoTipo === 'conferencia'">
+          <h6 class="mb-2">Destino (opcional)</h6>
+          <button type="button" class="widget-grafico-loc-crumb" ng-click="widgetDeslocamentoCrumbBarClick('destino')"
+            ng-disabled="!_deslocamentoDestinoDrill.chain.length"
+            ng-class="{ 'widget-grafico-loc-crumb--muted': !_deslocamentoDestinoDrill.chain.length }">
+            <i class="bi bi-geo-alt" aria-hidden="true"></i>
+            <span>{{ widgetDeslocamentoCrumbDisplay('destino') }}</span>
+          </button>
+          <button type="button" class="btn btn-outline-secondary btn-sm w-100 mb-2" ng-click="widgetDeslocamentoUseCurrentFolder('destino')"
+            ng-show="_deslocamentoDestinoDrill.chain.length">
+            Usar este nível como destino
+          </button>
+          <input type="search" class="form-control form-control-sm mb-2" ng-model="_deslocamentoDestinoDrill.search" placeholder="Buscar destino..." autocomplete="off" />
+          <ul class="list-unstyled widget-grafico-loc-list mb-2" role="listbox">
+            <li ng-repeat="loc in widgetDeslocamentoListItems('destino') track by loc._id" role="option"
+              class="widget-grafico-loc-row"
+              ng-class="{ 'widget-grafico-loc-row--sel': widgetDeslocamentoRowIsSelected('destino', loc) }"
+              ng-click="widgetDeslocamentoRowClick('destino', loc)">
+              <i class="bi bi-folder2" aria-hidden="true" ng-if="widgetDeslocamentoLocHasChildren('destino', loc)"></i>
+              <i class="bi bi-pin-map" aria-hidden="true" ng-if="!widgetDeslocamentoLocHasChildren('destino', loc)"></i>
+              <span class="widget-grafico-loc-row-label">{{ loc.descricao || loc._id }}</span>
+              <i class="bi bi-chevron-right ms-auto" aria-hidden="true"
+                ng-if="widgetDeslocamentoLocHasChildren('destino', loc) && _deslocamentoDestinoDrill.chain.length < 3"></i>
+            </li>
+            <li class="text-muted small text-center py-3" ng-if="widgetDeslocamentoListItems('destino').length === 0">
+              Nenhum local neste nível.
+            </li>
+          </ul>
+          <button type="button" class="btn btn-light btn-sm w-100" ng-click="widgetDeslocamentoLimparFiltro('destino')">Sem filtro de destino</button>
+        </div>
+      </div>
+
+      <div class="d-grid gap-2 mt-3">
+        <button type="button" class="btn btn-primary" ng-click="confirmarModalDeslocamento()"
+          ng-disabled="!_deslocamentoTipo">Adicionar widget</button>
+        <button type="button" class="btn btn-light" ng-click="cancelarModalDeslocamento()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<style>
+  .grid-stack {
+    /* background: #1f2633; */
+    min-height: 720px;
+    border-radius: 16px;
+    padding: 10px;
+  }
+
+  .grid-stack--empty {
+    min-height: 0;
+    height: 0;
+    padding: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .widget-empty-state {
+    position: relative;
+    min-height: 560px;
+    border-radius: 20px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    background:
+      radial-gradient(ellipse 80% 60% at 15% 20%, rgba(32, 161, 208, 0.18), transparent 55%),
+      radial-gradient(ellipse 70% 50% at 90% 80%, rgba(4, 167, 119, 0.12), transparent 50%),
+      linear-gradient(160deg, #1a2030 0%, #12171f 45%, #0e131a 100%);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .widget-empty-state__glow {
+    position: absolute;
+    inset: auto -10% -30% auto;
+    width: 55%;
+    height: 70%;
+    background: radial-gradient(circle, rgba(23, 145, 189, 0.22), transparent 70%);
+    pointer-events: none;
+  }
+
+  .widget-empty-state__panel {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    gap: 1.5rem;
+    align-items: center;
+    padding: 2.25rem 2rem;
+    min-height: 560px;
+  }
+
+  .widget-empty-state__eyebrow {
+    display: inline-block;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #20a1d0;
+    font-weight: 600;
+    margin-bottom: 0.65rem;
+  }
+
+  .widget-empty-state__title {
+    font-size: clamp(1.55rem, 2.4vw, 2.15rem);
+    font-weight: 700;
+    color: #edf0f5;
+    line-height: 1.2;
+    margin: 0 0 0.85rem;
+  }
+
+  .widget-empty-state__lead {
+    color: #a5adbc;
+    font-size: 0.98rem;
+    line-height: 1.55;
+    margin: 0 0 1.25rem;
+    max-width: 36rem;
+  }
+
+  .widget-empty-state__lead strong {
+    color: #d7dce5;
+    font-weight: 600;
+  }
+
+  .widget-empty-state__tips {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.5rem;
+  }
+
+  .widget-empty-state__tips li {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    color: #bec5d1;
+    font-size: 0.88rem;
+    margin-bottom: 0.55rem;
+  }
+
+  .widget-empty-state__tips i {
+    color: #20a1d0;
+    font-size: 1rem;
+  }
+
+  .widget-empty-state__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+
+  .widget-empty-state__visual {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .widget-empty-state__img {
+    width: min(100%, 420px);
+    height: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.45));
+    animation: widget-empty-float 5.5s ease-in-out infinite;
+  }
+
+  @keyframes widget-empty-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+  @media (max-width: 991.98px) {
+    .widget-empty-state__panel {
+      grid-template-columns: 1fr;
+      padding: 1.75rem 1.25rem;
+      min-height: 0;
+      text-align: center;
+    }
+
+    .widget-empty-state__lead {
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .widget-empty-state__tips li {
+      justify-content: center;
+    }
+
+    .widget-empty-state__actions {
+      justify-content: center;
+    }
+
+    .widget-empty-state__img {
+      width: min(100%, 300px);
+    }
+  }
+
+  .grid-stack-item-content {
+    background: #ffffff;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0,0,0,.15);
+  }
+
+  .widget-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .widget-card--bare {
+    position: relative;
+    min-height: 0;
+  }
+
+  .widget-card--bare .widget-body {
+    flex: 1;
+    padding: 0;
+    min-height: 0;
+  }
+
+  .grid-stack-item:has([data-sem-moldura="true"]) .grid-stack-item-content {
+    background: transparent;
+    box-shadow: none;
+    border-radius: 0;
+  }
+
+  .widget-remove--floating {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    z-index: 20;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: rgba(47, 58, 74, 0.85);
+    color: #fff;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+
+  .widget-card--bare:hover .widget-remove--floating {
+    opacity: 1;
+  }
+
+  .widget-header {
+    height: 42px;
+    flex-shrink: 0;
+    background: #2f3a4a;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    font-weight: 600;
+  }
+
+  .widget-body {
+    flex: 1 1 auto;
+    padding: 8px;
+    overflow: hidden;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .widget-body > * {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  /* KPI gráfico / processos: preenche a célula do grid e alinha alturas */
+  .widget-body .kpi-widget-fill {
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+  }
+
+  .widget-body .kpi-widget-fill > .card-title,
+  .widget-body .kpi-widget-fill > .kpi-widget-meta,
+  .widget-body .kpi-widget-fill > h5 {
+    flex-shrink: 0;
+  }
+
+  .widget-body .kpi-widget-fill .kpi-widget-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .widget-body .kpi-widget-fill .kpi-widget-chart,
+  .widget-body .kpi-widget-fill .grafico-kpi-chart-area {
+    flex: 1 1 auto;
+    min-height: 220px;
+    position: relative;
+  }
+
+  .widget-body .kpi-widget-fill .grafico-kpi-mount,
+  .widget-body .kpi-widget-fill [data-deslocamento-chart] {
+    height: 100%;
+    min-height: 220px;
+  }
+
+  .widget-body .kpi-widget-fill .kpi-widget-row {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.75rem;
+  }
+
+  .widget-body .kpi-widget-fill .kpi-widget-row-chart {
+    flex: 1 1 70%;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .widget-body .kpi-widget-fill .kpi-widget-row-stats {
+    flex: 0 0 28%;
+    max-width: 280px;
+    min-width: 140px;
+    overflow: auto;
+  }
+
+  .widget-remove {
+    border: none;
+    background: transparent;
+    color: white;
+    font-size: 18px;
+  }
+
+  .widget-modal-total-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: rgba(15, 23, 42, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+
+  .widget-modal-total-dialog {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+    max-width: 420px;
+    width: 100%;
+    padding: 1.25rem 1.5rem;
+    color: #0f172a;
+  }
+
+  .widget-modal-total-titulo {
+    color: #0f172a;
+    font-weight: 600;
+  }
+
+  .widget-modal-total-lead {
+    color: #334155;
+    margin-bottom: 0;
+  }
+
+  .widget-modal-total-opbtn .widget-modal-total-oplabel {
+    color: #0f172a;
+  }
+
+  .widget-modal-total-opdesc {
+    color: #475569;
+  }
+
+  .widget-modal-planta-list {
+    max-height: min(60vh, 420px);
+    overflow-y: auto;
+  }
+
+  .widget-grafico-loc-crumb {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #f8fafc;
+    color: #0f172a;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-align: left;
+    margin-bottom: 8px;
+  }
+  .widget-grafico-loc-crumb:disabled,
+  .widget-grafico-loc-crumb--muted {
+    opacity: 0.55;
+    cursor: default;
+  }
+  .widget-grafico-loc-crumb:not(:disabled):hover {
+    background: #f1f5f9;
+  }
+  .widget-grafico-loc-list {
+    max-height: min(50vh, 320px);
+    overflow-y: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 8px;
+    background: #fff;
+  }
+  .widget-grafico-loc-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: background 0.12s ease, border-color 0.12s ease;
+  }
+  .widget-grafico-loc-row:last-child {
+    margin-bottom: 0;
+  }
+  .widget-grafico-loc-row:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+  }
+  .widget-grafico-loc-row--sel {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.08);
+    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2);
+  }
+  .widget-grafico-loc-row .bi-folder2,
+  .widget-grafico-loc-row .bi-pin-map {
+    flex-shrink: 0;
+    color: #64748b;
+  }
+  .widget-grafico-loc-row-label {
+    flex: 1;
+    min-width: 0;
+    font-weight: 600;
+    word-break: break-word;
+  }
+</style>
+
+  

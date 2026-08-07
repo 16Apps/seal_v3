@@ -1,0 +1,66 @@
+<div class="col-xxl-12 col-sm-12 col-12 p-3 rounded-3 kpi-widget-fill" style="background-color: #444957;">
+  <h5 class="card-title mb-2">{{$ctrl.titulo}}</h5>
+  <p class="small text-muted mb-2 kpi-widget-meta" ng-if="$ctrl.descricaoFiltroOrigem || $ctrl.descricaoFiltroDestino">
+    <span ng-if="$ctrl.descricaoFiltroOrigem">
+      {{ $ctrl.ehInventario() ? 'Localização' : 'Origem' }}: {{$ctrl.descricaoFiltroOrigem}}
+    </span>
+    <span ng-if="$ctrl.descricaoFiltroOrigem && $ctrl.descricaoFiltroDestino"> | </span>
+    <span ng-if="$ctrl.descricaoFiltroDestino">Destino: {{$ctrl.descricaoFiltroDestino}}</span>
+  </p>
+  <p class="small text-danger mb-2 kpi-widget-meta" ng-if="$ctrl.erro">{{$ctrl.erro}}</p>
+  <p class="small text-muted mb-2 kpi-widget-meta" ng-if="$ctrl.carregando">Carregando…</p>
+
+  <div class="kpi-widget-content">
+    <div class="kpi-widget-row">
+      <div class="kpi-widget-row-chart">
+        <div class="kpi-widget-chart overflow-hidden">
+          <div data-deslocamento-chart></div>
+        </div>
+      </div>
+
+      <div class="kpi-widget-row-stats">
+        <div class="d-grid gap-3 mt-1">
+          <div class="d-flex align-items-center gap-3">
+            <div class="icon-box md bg-success rounded-3 bg-opacity-10">
+              <i class="bi bi-clipboard-data fs-4 text-success"></i>
+            </div>
+            <div>
+              <h4 class="m-0 fw-bold">{{$ctrl.formatarNumero($ctrl.totalGeralRegistros)}}</h4>
+              <small class="text-muted">Total geral de registros</small>
+            </div>
+          </div>
+
+          <div class="d-flex align-items-center gap-3">
+            <div class="icon-box md bg-info rounded-3 bg-opacity-10">
+              <i class="bi bi-box-seam fs-4 text-info"></i>
+            </div>
+            <div>
+              <h4 class="m-0 fw-bold">{{$ctrl.formatarNumero($ctrl.totalItensMovimentados)}}</h4>
+              <small class="text-muted">Total de itens movimentados</small>
+            </div>
+          </div>
+
+          <div class="d-flex align-items-center gap-3" ng-repeat="s in $ctrl.totalPorStatus track by $index">
+            <div class="icon-box md bg-warning rounded-3 bg-opacity-10">
+              <i class="bi bi-arrow-repeat fs-4 text-warning"></i>
+            </div>
+            <div>
+              <h4 class="m-0 fw-bold">{{$ctrl.formatarNumero(s.total_registros)}}</h4>
+              <small class="text-muted text-capitalize">Status: {{s.status || 'sem_status'}}</small>
+            </div>
+          </div>
+
+          <div class="d-flex align-items-center gap-3" ng-if="!$ctrl.totalPorStatus.length">
+            <div class="icon-box md bg-danger rounded-3 bg-opacity-10">
+              <i class="bi bi-exclamation-circle fs-4 text-danger"></i>
+            </div>
+            <div>
+              <h4 class="m-0 fw-bold">0</h4>
+              <small class="text-muted">Sem dados de status</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

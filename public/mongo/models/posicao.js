@@ -10,6 +10,7 @@ const PosicaoSchema = new mongoose.Schema({
     id_doc: { type: String },
     descricao: { type: String },
     icone: { type: String },
+    tipo: { type: String, enum: ['conferencia', 'inventario'], default: 'conferencia' },
 
     partida_data: { type: Date },
     tolerancia: { type: Number },
@@ -17,7 +18,11 @@ const PosicaoSchema = new mongoose.Schema({
     previsao_chegada_data: { type: Date },
     previsao_chegada_tolerancia: { type: Number },
 
-    status: { type: String },
+    status: { 
+        type: String,
+        enum: ['pendente','aberta','parcial','concluido','partida'],
+        default: 'pendente'
+      },
     status_data: { type: Date },
 
     id_nivel_loc1: { type: String, ref: 'Localizacao' },
@@ -34,13 +39,19 @@ const PosicaoSchema = new mongoose.Schema({
         ean: { type: String },
         rssi: { type: String },
 
+        inf_compl_1: { type: String },
+        inf_compl_2: { type: String },
+        inf_compl_3: { type: String },
+        inf_compl_4: { type: String },
+        inf_compl_5: { type: String },
+
         quantidade: { type: Number },
-        status: { type: String },
+        status: { type: String, enum: ['pendente',  'concluido', 'excedente', 'nao_encontrado'	], default: 'pendente' },
         status_data: { type: Date },
         id_gatweway: { type: String, ref: 'Gateway' },
         id_colaborador: { type: String, ref: 'Colaborador' },
 
-        status_destino: { type: String },
+        status_destino: { type: String, enum: ['pendente',  'concluido'	], default: 'pendente' },
         status_destino_data: { type: Date },
     }],
 
@@ -49,6 +60,7 @@ const PosicaoSchema = new mongoose.Schema({
     id_nivel_loc3_destino: { type: String, ref: 'Localizacao' },
     id_nivel_loc4_destino: { type: String, ref: 'Localizacao' },
 
+    retorno_api:  { type: String },
     // caso tenha mais um processo, replica do registro com nivel_destino como origem
 
 }, {

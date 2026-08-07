@@ -1,0 +1,851 @@
+<%- contentFor('body') %>
+
+<style>
+  .portal-page-header {
+    margin-bottom: 1.25rem;
+  }
+
+  .portal-page-header h4 {
+    margin-bottom: 0.25rem;
+  }
+
+  .portal-stat-card .icon-box {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .portal-stat-card h3 {
+    line-height: 1;
+    margin-bottom: 0;
+  }
+
+  .portal-coletor-card {
+    border: 0;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  }
+
+  .portal-coletor-card .card-header {
+    background: transparent;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+    padding: 1rem 1.25rem;
+  }
+
+  /* Barra colorida à esquerda + tinta do cabeçalho e do thead conforme a cor do coletor */
+  .portal-coletor-card.border-accent-success { border-left: 4px solid var(--bs-success) !important; }
+  .portal-coletor-card.border-accent-primary { border-left: 4px solid var(--bs-primary) !important; }
+  .portal-coletor-card.border-accent-purple  { border-left: 4px solid #8b5cf6 !important; }
+  .portal-coletor-card.border-accent-warning { border-left: 4px solid var(--bs-warning) !important; }
+  .portal-coletor-card.border-accent-danger  { border-left: 4px solid var(--bs-danger) !important; }
+  .portal-coletor-card.border-accent-info    { border-left: 4px solid var(--bs-info) !important; }
+
+  .portal-coletor-card.border-accent-success .card-header { background: rgba(25, 135, 84, 0.08); }
+  .portal-coletor-card.border-accent-primary .card-header { background: rgba(13, 110, 253, 0.08); }
+  .portal-coletor-card.border-accent-purple  .card-header { background: rgba(139, 92, 246, 0.10); }
+  .portal-coletor-card.border-accent-warning .card-header { background: rgba(255, 193, 7, 0.09); }
+  .portal-coletor-card.border-accent-danger  .card-header { background: rgba(220, 53, 69, 0.08); }
+  .portal-coletor-card.border-accent-info    .card-header { background: rgba(13, 202, 240, 0.09); }
+
+  .portal-coletor-card.border-accent-success .portal-tags-table thead th { background: rgba(25, 135, 84, 0.10); }
+  .portal-coletor-card.border-accent-primary .portal-tags-table thead th { background: rgba(13, 110, 253, 0.10); }
+  .portal-coletor-card.border-accent-purple  .portal-tags-table thead th { background: rgba(139, 92, 246, 0.12); }
+  .portal-coletor-card.border-accent-warning .portal-tags-table thead th { background: rgba(255, 193, 7, 0.11); }
+  .portal-coletor-card.border-accent-danger  .portal-tags-table thead th { background: rgba(220, 53, 69, 0.10); }
+  .portal-coletor-card.border-accent-info    .portal-tags-table thead th { background: rgba(13, 202, 240, 0.11); }
+
+  /* Alertas do modal Registrar — contraste legível no tema escuro */
+  .portal-reg-alerta {
+    border: 0;
+    border-radius: 0.5rem;
+    font-weight: 500;
+  }
+  .portal-reg-alerta--info {
+    background: #cfe2ff !important;
+    color: #084298 !important;
+  }
+  .portal-reg-alerta--info strong {
+    color: #052c65 !important;
+  }
+  .portal-reg-alerta--warning {
+    background: #fff3cd !important;
+    color: #664d03 !important;
+  }
+  .portal-reg-alerta--danger {
+    background: #dc3545 !important;
+    color: #fff !important;
+  }
+  .portal-reg-alerta--danger strong {
+    color: #fff !important;
+  }
+
+  .portal-coletor-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 0.65rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(13, 110, 253, 0.08);
+    color: var(--bs-primary);
+    flex-shrink: 0;
+  }
+
+  /* Ícone tingido conforme a cor do coletor */
+  .portal-coletor-icon.accent-success { background: rgba(25, 135, 84, 0.10); color: var(--bs-success); }
+  .portal-coletor-icon.accent-primary { background: rgba(13, 110, 253, 0.10); color: var(--bs-primary); }
+  .portal-coletor-icon.accent-purple  { background: rgba(111, 66, 193, 0.10); color: #6f42c1; }
+  .portal-coletor-icon.accent-warning { background: rgba(255, 193, 7, 0.12); color: #b8860b; }
+  .portal-coletor-icon.accent-danger  { background: rgba(220, 53, 69, 0.10); color: var(--bs-danger); }
+  .portal-coletor-icon.accent-info    { background: rgba(13, 202, 240, 0.12); color: var(--bs-info); }
+
+  .portal-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 0.35rem;
+  }
+
+  .portal-status-dot.dot-purple { background: #6f42c1; }
+
+  .portal-metric-label {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-bottom: 0.15rem;
+  }
+
+  .portal-metric-value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: inherit;
+  }
+
+  .portal-tags-table thead th {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #cbd5e1;
+    white-space: nowrap;
+    border-bottom-width: 1px;
+  }
+
+  .portal-tags-table tbody td {
+    font-size: 0.84rem;
+    vertical-align: middle;
+  }
+
+  .portal-tags-table .epc-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.8rem;
+    color: #e2e8f0;
+    background: rgba(148, 163, 184, 0.14);
+    padding: 0.15rem 0.45rem;
+    border-radius: 0.35rem;
+    letter-spacing: 0.02em;
+  }
+
+  .portal-card-footer-link {
+    display: block;
+    text-align: center;
+    padding: 0.85rem 1rem;
+    border-top: 1px solid rgba(148, 163, 184, 0.12);
+    color: var(--bs-primary);
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  .portal-card-footer-link:hover {
+    background: rgba(148, 163, 184, 0.08);
+    color: var(--bs-primary);
+  }
+
+  .portal-coletor-toggle {
+    color: #64748b;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 0.5rem;
+  }
+
+  .portal-coletor-toggle:hover {
+    background: rgba(148, 163, 184, 0.12);
+    color: #e2e8f0;
+  }
+
+  .portal-coletor-toggle[aria-expanded="true"] .bi-chevron-down {
+    transform: rotate(180deg);
+  }
+
+  .portal-coletor-toggle .bi-chevron-down {
+    transition: transform 0.2s ease;
+  }
+
+  .portal-empty-state {
+    padding: 2.25rem 1rem;
+    text-align: center;
+    color: #94a3b8;
+  }
+</style>
+
+<div ng-controller="portalMovimentacaoCtrl" ng-cloak class="app-container">
+
+  <!-- App hero header -->
+  <div class="app-hero-header d-flex align-items-center">
+    <ol class="breadcrumb d-none d-lg-flex mb-0">
+      <li class="breadcrumb-item">
+        <i class="bi bi-house lh-1"></i>
+        <a class="text-decoration-none">Portal</a>
+      </li>
+      <li class="breadcrumb-item" aria-current="page">Movimentações</li>
+    </ol>
+
+    <div class="ms-auto d-flex flex-wrap align-items-center gap-2">
+      <button type="button" ng-click="onAbrirConfigPosto()" class="btn btn-outline-primary btn-sm">
+        <i class="bi bi-pc-display me-1"></i>Coletores deste PC
+      </button>
+      <button type="button" ng-click="onCarregaGateways()" class="btn btn-link btn-sm text-primary text-decoration-none px-2">
+        <i class="bi bi-arrow-clockwise me-1"></i>Atualizar
+      </button>
+      <div class="dropdown">
+        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+          <i class="bi bi-calendar3 me-1"></i>Últimos 5 minutos
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><a class="dropdown-item active" href="#">Últimos 5 minutos</a></li>
+          <li><a class="dropdown-item" href="#">Últimos 15 minutos</a></li>
+          <li><a class="dropdown-item" href="#">Última hora</a></li>
+          <li><a class="dropdown-item" href="#">Hoje</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- App body -->
+  <div class="app-body">
+
+    <!-- Cabeçalho da página -->
+    <div class="portal-page-header d-flex flex-wrap align-items-start justify-content-between gap-3">
+      <div>
+        <h4 class="fw-semibold">Leituras RFID por {{ _regConta.params_nomenclatura_itens.coletores }}</h4>
+        <p class="text-muted mb-0">Visualize as tags RFID lidas, agrupadas por {{ _regConta.params_nomenclatura_itens.coletores }}.</p>
+      </div>
+      <button type="button" class="btn btn-outline-secondary btn-sm" ng-click="onAbrirPortalLog()">
+        <i class="bi bi-terminal me-1"></i>Log
+        <span class="badge bg-secondary ms-1" ng-show="_portalLog.length">{{ _portalLog.length }}</span>
+      </button>
+    </div>
+
+    <!-- Cards de resumo -->
+    <div class="row gx-3 mb-4">
+      <div class="col-sm-6 col-lg-4 col-xxl-3">
+        <div class="card mb-3 portal-stat-card">
+          <div class="card-body d-flex align-items-center gap-3">
+            <div class="icon-box border border-primary bg-primary bg-opacity-10 rounded-3">
+              <i class="bi bi-broadcast-pin fs-5 text-primary"></i>
+            </div>
+            <div>
+              <h3 class="text-primary">{{ _listGateways.length }}</h3>
+              <span class="text-muted small">Coletores ativos</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-6 col-lg-4 col-xxl-3">
+        <div class="card mb-3 portal-stat-card">
+          <div class="card-body d-flex align-items-center gap-3">
+            <div class="icon-box border border-success bg-success bg-opacity-10 rounded-3">
+              <i class="bi bi-tags fs-5 text-success"></i>
+            </div>
+            <div>
+              <h3 class="text-success">{{ totalTagsLidas() }}</h3>
+              <span class="text-muted small">Tags lidas</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Estado vazio (sem coletores neste PC) -->
+    <div ng-show="_listGateways.length == 0" class="card portal-coletor-card mb-3">
+      <div class="portal-empty-state">
+        <i class="bi bi-broadcast d-block fs-1 mb-2"></i>
+        <div ng-if="_postoSemConfig">
+          Configure quais coletores este computador irá operar.
+          <div class="mt-3">
+            <button type="button" class="btn btn-primary btn-sm" ng-click="onAbrirConfigPosto()">
+              <i class="bi bi-pc-display me-1"></i>Coletores deste PC
+            </button>
+          </div>
+        </div>
+        <div ng-if="!_postoSemConfig && _listGatewaysTodos.length == 0">
+          Nenhum coletor cadastrado ainda.
+        </div>
+        <div ng-if="!_postoSemConfig && _listGatewaysTodos.length > 0">
+          Nenhum coletor selecionado para este computador.
+          <div class="mt-3">
+            <button type="button" class="btn btn-outline-primary btn-sm" ng-click="onAbrirConfigPosto()">
+              <i class="bi bi-pc-display me-1"></i>Configurar posto
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lista de coletores/gateways -->
+    <div ng-repeat="item in _listGateways"
+      class="card portal-coletor-card mb-3"
+      ng-class="'border-accent-' + corBarraColetor(item, $index)">
+
+      <div class="card-header">
+        <div class="row g-3 align-items-center">
+          <div class="col-lg-4 d-flex align-items-center gap-3">
+            <div class="portal-coletor-icon" ng-class="'accent-' + corBarraColetor(item, $index)">
+              <i class="bi bi-upc-scan fs-5"></i>
+            </div>
+            <div>
+              <div class="d-flex align-items-center mb-1">
+                <span class="portal-status-dot"
+                  ng-class="item._alertaExcedente ? 'bg-danger' : (corDoColetor($index) == 'purple' ? 'dot-purple bg-success' : 'bg-success')"></span>
+                <span class="fw-semibold">{{ item.descricao }}</span>
+              </div>
+              <small class="text-muted">
+                {{ item.tokem || 'Sem token' }}
+                <span ng-show="item.modo"> · {{ item.modo == 'fixo' ? 'Fixo' : 'Móvel' }}</span>
+              </small>
+            </div>
+          </div>
+
+          <div class="col-6 col-lg-2">
+            <div class="portal-metric-label">Última leitura</div>
+            <div class="portal-metric-value">{{ item._ultima_leitura || '—' }}</div>
+          </div>
+
+          <div class="col-6 col-lg-2">
+            <div class="portal-metric-label">Tags lidas</div>
+            <div class="portal-metric-value">{{ (item.tags || []).length }}</div>
+          </div>
+
+          <div class="col-lg-4 d-flex align-items-center justify-content-lg-end gap-2">
+            <button type="button" class="btn btn-outline-info btn-sm" ng-click="onAbrirChecar(item)">
+              <i class="bi bi-clipboard-check me-1"></i>Checar
+            </button>
+            <button type="button" class="btn btn-primary btn-sm" ng-click="onAbrirRegistrar(item)">
+              <i class="bi bi-box-arrow-in-down me-1"></i>Registrar
+            </button>
+            <a class="portal-coletor-toggle" data-bs-toggle="collapse" href="#coletorDetalhes{{ $index }}" role="button" aria-expanded="false" aria-controls="coletorDetalhes{{ $index }}">
+              <i class="bi bi-chevron-down"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Faixa de checagem ativa -->
+      <div ng-show="item.checagem.ativa" class="px-3 py-2 d-flex flex-wrap align-items-center gap-2 border-top"
+        style="border-color: rgba(148,163,184,0.12) !important;">
+        <span class="badge bg-info bg-opacity-10 text-info">
+          <i class="bi bi-clipboard-check me-1"></i>
+          Checagem: {{ item.checagem.origem == 'posicao' ? ('Doc ' + item.checagem.id_doc) : 'Inventário por localização' }}
+        </span>
+        <span class="badge bg-secondary bg-opacity-10 text-secondary">
+          <i class="bi bi-hourglass-split me-1"></i>Pendentes: {{ contaStatus(item, 'pendente') }}
+        </span>
+        <span class="badge bg-success bg-opacity-10 text-success">
+          <i class="bi bi-check-circle me-1"></i>Encontrados: {{ contaStatus(item, 'encontrado') }}
+        </span>
+        <span class="badge bg-danger bg-opacity-10 text-danger">
+          <i class="bi bi-plus-circle me-1"></i>Excedentes: {{ contaStatus(item, 'excedente') }}
+        </span>
+        <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" ng-click="onCancelarChecagem(item)">
+          <i class="bi bi-x-lg me-1"></i>Cancelar checagem
+        </button>
+      </div>
+
+      <div class="collapse" id="coletorDetalhes{{ $index }}">
+        <div class="card-body pt-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle portal-tags-table m-0">
+              <thead>
+                <tr>
+                  <th style="width: 36px;">
+                    <input class="form-check-input" type="checkbox" aria-label="Selecionar todas">
+                  </th>
+                  <th>EPC</th>
+                  <th>Descrição (opcional)</th>
+                  <th>Primeira leitura</th>
+                  <th>Última leitura</th>
+                  <th>Contagem</th>
+                  <th class="text-end">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr ng-repeat="tag in item.tags">
+                  <td><input class="form-check-input" type="checkbox" aria-label="Selecionar tag"></td>
+                  <td>
+                    <span class="epc-code">{{ tag.tag }}</span>
+                    <!-- Status da checagem -->
+                    <span ng-show="tag.status == 'pendente'" class="badge bg-secondary bg-opacity-10 text-secondary ms-2">
+                      <i class="bi bi-hourglass-split me-1"></i>Pendente
+                    </span>
+                    <span ng-show="tag.status == 'encontrado'" class="badge bg-success bg-opacity-10 text-success ms-2">
+                      <i class="bi bi-check-circle me-1"></i>Encontrado
+                    </span>
+                    <span ng-show="tag.status == 'excedente'" class="badge bg-danger bg-opacity-10 text-danger ms-2">
+                      <i class="bi bi-plus-circle me-1"></i>Excedente
+                    </span>
+                    <!-- Cadastro -->
+                    <span ng-show="!tag.cadastrada" class="badge bg-warning bg-opacity-10 text-warning ms-2">
+                      <i class="bi bi-exclamation-triangle me-1"></i>Não cadastrada
+                    </span>
+                  </td>
+                  <td>
+                    <!-- Item cadastrado: descrição da categoria + categoria_item + inf. complementares -->
+                    <div ng-show="tag.cadastrada">
+                      <div class="fw-semibold">{{ tag.item_descricao || '—' }}</div>
+                      <div ng-show="tag.categoria_descricao" class="text-muted small">
+                        <i class="bi bi-tag me-1"></i>{{ tag.categoria_descricao }}
+                      </div>
+                      <div ng-show="tag.labels.length" class="mt-1 d-flex flex-wrap gap-1">
+                        <span ng-repeat="lbl in tag.labels" class="badge bg-secondary bg-opacity-10 text-secondary">
+                          {{ lbl.label }}: <span class="text-light">{{ lbl.valor || '—' }}</span>
+                        </span>
+                      </div>
+                    </div>
+                    <!-- Não cadastrada -->
+                    <span ng-show="!tag.cadastrada" class="text-muted">
+                      {{ tag.descricao || '...' }}
+                    </span>
+                  </td>
+                  <td>{{ tag.primeira_leitura || '—' }}</td>
+                  <td>{{ tag.ultima_leitura || '—' }}</td>
+                  <td>{{ tag.contagem }}</td>
+                  <td class="text-end">
+                    <button type="button" class="btn btn-sm"
+                      ng-class="tag.cadastrada ? 'btn-outline-secondary' : 'btn-outline-primary'"
+                      ng-click="onAbrirAssociar(tag)">
+                      <i class="bi bi-link-45deg me-1"></i>{{ tag.cadastrada ? 'Editar' : 'Associar' }}
+                    </button>
+                  </td>
+                </tr>
+                <tr ng-show="!item.tags || item.tags.length == 0">
+                  <td colspan="7">
+                    <div class="portal-empty-state">
+                      <i class="bi bi-inbox d-block fs-3 mb-2"></i>
+                      Nenhuma leitura recente para este coletor.
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <a href="#" class="portal-card-footer-link" data-bs-toggle="collapse" data-bs-target="#coletorDetalhes{{ $index }}" aria-expanded="false" aria-controls="coletorDetalhes{{ $index }}">
+        Ver detalhes das tags <i class="bi bi-chevron-down ms-1"></i>
+      </a>
+    </div>
+
+  </div>
+
+  <!-- Modal: Associar tag a um item / categoria -->
+  <div class="modal fade" id="modalAssociarTag" tabindex="-1" aria-labelledby="modalAssociarTagLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalAssociarTagLabel">
+            <i class="bi bi-link-45deg me-2"></i>Associar Tag
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+
+        <div class="modal-body">
+
+          <div class="mb-3">
+            <label class="form-label text-muted small mb-1">Tag (EPC)</label>
+            <div><span class="epc-code">{{ _assoc.tag.tag }}</span></div>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Item</label>
+              <select class="form-select" ng-model="_assoc.id_item" ng-change="onSelecionaItem()">
+                <option value="">Selecione um item...</option>
+                <option ng-repeat="i in _listItens track by i._id" value="{{ i._id }}">{{ i.descricao }}</option>
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Categoria</label>
+              <select class="form-select" ng-model="_assoc.id_categoria">
+                <option value="">Selecione uma categoria...</option>
+                <option ng-repeat="c in _listCategoriasItem track by c._id" value="{{ c._id }}">{{ c.descricao }}</option>
+              </select>
+            </div>
+          </div>
+
+          <hr class="my-4">
+
+          <h6 class="mb-3">
+            <i class="bi bi-card-list me-2"></i>Informações complementares
+          </h6>
+
+          <div ng-show="!_assoc.labels || _assoc.labels.length == 0" class="text-muted small">
+            Selecione um item com labels cadastrados para preencher as informações complementares.
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-6" ng-repeat="lbl in _assoc.labels track by $index">
+              <label class="form-label">{{ lbl.label }}</label>
+              <input type="text" class="form-control" ng-model="lbl.valor" placeholder="{{ lbl.label }}">
+            </div>
+          </div>
+
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" ng-click="onSalvarAssociacao()">
+            <i class="bi bi-check2 me-1"></i>Salvar associação
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Registrar posição (por coletor) -->
+  <div class="modal fade" id="modalRegistrarPosicao" tabindex="-1" aria-labelledby="modalRegistrarPosicaoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalRegistrarPosicaoLabel">
+            <i class="bi bi-box-arrow-in-down me-2"></i>Registrar Processo
+            <span ng-show="_regGatewaySel"> · {{ _regGatewaySel.descricao }}</span>
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+
+        <div class="modal-body">
+
+          <div ng-show="_reg._modo == 'atualizar'"
+            class="alert py-2 px-3 small d-flex align-items-center portal-reg-alerta"
+            ng-class="temAlertaRegistro() ? 'portal-reg-alerta--danger' : 'portal-reg-alerta--info'">
+            <i class="bi me-2" ng-class="temAlertaRegistro() ? 'bi-exclamation-triangle-fill' : 'bi-arrow-repeat'"></i>
+            <span ng-if="!temAlertaRegistro()">
+              Atualizando a posição do documento <strong class="ms-1">{{ _reg.id_doc }}</strong>.
+            </span>
+            <span ng-if="temAlertaRegistro()">
+              Atualizando <strong class="mx-1">{{ _reg.id_doc }}</strong> —
+              <span ng-if="contaStatus(_regGatewaySel, 'pendente') > 0">
+                {{ contaStatus(_regGatewaySel, 'pendente') }} pendente(s)
+              </span>
+              <span ng-if="contaStatus(_regGatewaySel, 'pendente') > 0 && contaStatus(_regGatewaySel, 'excedente') > 0"> · </span>
+              <span ng-if="contaStatus(_regGatewaySel, 'excedente') > 0">
+                {{ contaStatus(_regGatewaySel, 'excedente') }} excedente(s)
+              </span>
+            </span>
+          </div>
+
+          <div ng-show="_reg._modo == 'inventario'"
+            class="alert py-2 px-3 small d-flex align-items-center portal-reg-alerta"
+            ng-class="temAlertaRegistro() ? 'portal-reg-alerta--danger' : 'portal-reg-alerta--warning'">
+            <i class="bi me-2" ng-class="temAlertaRegistro() ? 'bi-exclamation-triangle-fill' : 'bi-clipboard-data'"></i>
+            <span ng-if="!temAlertaRegistro()">
+              Inventário por localização — informe um idDoc para gerar o novo registro.
+            </span>
+            <span ng-if="temAlertaRegistro()">
+              Inventário com pendências —
+              <span ng-if="contaStatus(_regGatewaySel, 'pendente') > 0">
+                {{ contaStatus(_regGatewaySel, 'pendente') }} pendente(s)
+              </span>
+              <span ng-if="contaStatus(_regGatewaySel, 'pendente') > 0 && contaStatus(_regGatewaySel, 'excedente') > 0"> · </span>
+              <span ng-if="contaStatus(_regGatewaySel, 'excedente') > 0">
+                {{ contaStatus(_regGatewaySel, 'excedente') }} excedente(s)
+              </span>
+            </span>
+          </div>
+
+
+          <div class="mb-3">
+            <label class="form-label">idDoc</label>
+            <input type="text" class="form-control" ng-model="_reg.id_doc" placeholder="Identificador do documento"
+              ng-readonly="_reg._bloqueado">
+          </div>
+
+          <div ng-show="_regGatewaySel.modo == 'fixo' && _reg._modo == 'novo'" class="alert alert-info py-2 px-3 small d-flex align-items-center">
+            <i class="bi bi-pin-map me-2"></i>
+            Coletor fixo — localização pré-configurada carregada.
+          </div>
+
+          <label class="form-label">Localização</label>
+          <div class="row g-3">
+            <div class="col-md-6 col-lg-3">
+              <select class="form-select" ng-model="_reg.id_nivel_loc1" ng-change="onMudaNivelPos(1)" ng-disabled="_reg._bloqueado">
+                <option value="">Nível 1</option>
+                <option ng-repeat="n in _listPosNivel1 track by n._id" value="{{ n._id }}">{{ n.descricao }}</option>
+              </select>
+            </div>
+            <div class="col-md-6 col-lg-3">
+              <select class="form-select" ng-model="_reg.id_nivel_loc2" ng-change="onMudaNivelPos(2)" ng-disabled="_reg._bloqueado || !_reg.id_nivel_loc1">
+                <option value="">Nível 2</option>
+                <option ng-repeat="n in _listPosNivel2 track by n._id" value="{{ n._id }}">{{ n.descricao }}</option>
+              </select>
+            </div>
+            <div class="col-md-6 col-lg-3">
+              <select class="form-select" ng-model="_reg.id_nivel_loc3" ng-change="onMudaNivelPos(3)" ng-disabled="_reg._bloqueado || !_reg.id_nivel_loc2">
+                <option value="">Nível 3</option>
+                <option ng-repeat="n in _listPosNivel3 track by n._id" value="{{ n._id }}">{{ n.descricao }}</option>
+              </select>
+            </div>
+            <div class="col-md-6 col-lg-3">
+              <select class="form-select" ng-model="_reg.id_nivel_loc4" ng-disabled="_reg._bloqueado || !_reg.id_nivel_loc3">
+                <option value="">Nível 4</option>
+                <option ng-repeat="n in _listPosNivel4 track by n._id" value="{{ n._id }}">{{ n.descricao }}</option>
+              </select>
+            </div>
+          </div>
+
+          <hr class="my-4">
+
+          <div class="d-flex align-items-center">
+            <i class="bi bi-tags me-2"></i>
+            <span>
+              Serão registradas
+              <strong>{{ qtdTagsRegistraveis() }}</strong>
+              tag(s) deste coletor.
+            </span>
+          </div>
+
+          <div class="alert alert-info d-flex align-items-center mt-3 mb-0 py-2" ng-if="_reg._salvando">
+            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            <span>Salvando e processando integração. Aguarde, isso pode demorar alguns instantes...</span>
+          </div>
+
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"
+            ng-disabled="_reg._salvando">Cancelar</button>
+          <button type="button" class="btn btn-primary" ng-click="onRegistrarPosicao()"
+            ng-disabled="_reg._salvando || !qtdTagsRegistraveis()">
+            <span ng-if="!_reg._salvando">
+              <i class="bi bi-check2 me-1"></i>Registrar
+            </span>
+            <span ng-if="_reg._salvando">
+              <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+              Registrando...
+            </span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Checar (documento ou localização) -->
+  <div class="modal fade" id="modalChecarPosicao" tabindex="-1" aria-labelledby="modalChecarPosicaoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalChecarPosicaoLabel">
+            <i class="bi bi-clipboard-check me-2"></i>Checar itens
+            <span ng-show="_chkGateway"> · {{ _chkGateway.descricao }}</span>
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+
+        <div class="modal-body">
+
+          <ul class="nav nav-pills mb-3">
+            <li class="nav-item">
+              <a class="nav-link" ng-class="{ active: _chk.origem == 'documento' }" href="#"
+                ng-click="_chk.origem = 'documento'; $event.preventDefault()">
+                <i class="bi bi-file-earmark-text me-1"></i>Por Documento
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" ng-class="{ active: _chk.origem == 'localizacao' }" href="#"
+                ng-click="_chk.origem = 'localizacao'; $event.preventDefault()">
+                <i class="bi bi-geo-alt me-1"></i>Por Localização
+              </a>
+            </li>
+          </ul>
+
+          <!-- Por Documento -->
+          <div ng-show="_chk.origem == 'documento'">
+            <label class="form-label">idDoc da posição</label>
+            <input type="text" class="form-control" ng-model="_chk.id_doc" placeholder="Informe o idDoc do documento">
+            <div class="form-text">Os itens do documento serão listados como pendentes para conferência.</div>
+          </div>
+
+          <!-- Por Localização -->
+          <div ng-show="_chk.origem == 'localizacao'">
+            <label class="form-label">Localização</label>
+            <div class="row g-3">
+              <div class="col-md-6 col-lg-3">
+                <select class="form-select" ng-model="_chk.id_nivel_loc1" ng-change="onMudaNivelChk(1)">
+                  <option value="">Nível 1</option>
+                  <option ng-repeat="n in _listChkNivel1 track by n._id" value="{{ n._id }}">{{ n.descricao }}</option>
+                </select>
+              </div>
+              <div class="col-md-6 col-lg-3">
+                <select class="form-select" ng-model="_chk.id_nivel_loc2" ng-change="onMudaNivelChk(2)" ng-disabled="!_chk.id_nivel_loc1">
+                  <option value="">Nível 2</option>
+                  <option ng-repeat="n in _listChkNivel2 track by n._id" value="{{ n._id }}">{{ n.descricao }}</option>
+                </select>
+              </div>
+              <div class="col-md-6 col-lg-3">
+                <select class="form-select" ng-model="_chk.id_nivel_loc3" ng-change="onMudaNivelChk(3)" ng-disabled="!_chk.id_nivel_loc2">
+                  <option value="">Nível 3</option>
+                  <option ng-repeat="n in _listChkNivel3 track by n._id" value="{{ n._id }}">{{ n.descricao }}</option>
+                </select>
+              </div>
+              <div class="col-md-6 col-lg-3">
+                <select class="form-select" ng-model="_chk.id_nivel_loc4" ng-disabled="!_chk.id_nivel_loc3">
+                  <option value="">Nível 4</option>
+                  <option ng-repeat="n in _listChkNivel4 track by n._id" value="{{ n._id }}">{{ n.descricao }}</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-text">Os itens cadastrados na localização serão listados como pendentes (inventário).</div>
+          </div>
+
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-info text-white" ng-click="onIniciarChecagem()">
+            <i class="bi bi-search me-1"></i>Buscar e checar
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Coletores deste computador (posto) -->
+  <div class="modal fade" id="modalConfigPosto" tabindex="-1" aria-labelledby="modalConfigPostoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalConfigPostoLabel">
+            <i class="bi bi-pc-display me-2"></i>Coletores deste computador
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small mb-3">
+            Selecione apenas os coletores que este PC irá operar. A escolha fica salva neste navegador
+            e evita conflito de leituras quando outro computador abre o mesmo portal.
+          </p>
+
+          <div class="d-flex gap-2 mb-3">
+            <button type="button" class="btn btn-outline-secondary btn-sm" ng-click="onTogglePostoTodos(true)">
+              Marcar todos
+            </button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" ng-click="onTogglePostoTodos(false)">
+              Desmarcar todos
+            </button>
+          </div>
+
+          <div ng-show="_listGatewaysTodos.length == 0" class="text-muted small">
+            Nenhum coletor cadastrado na conta.
+          </div>
+
+          <div class="list-group" ng-show="_listGatewaysTodos.length > 0">
+            <label class="list-group-item list-group-item-action d-flex align-items-center gap-3"
+              ng-repeat="g in _listGatewaysTodos track by g._id"
+              style="cursor: pointer;">
+              <input class="form-check-input flex-shrink-0 m-0" type="checkbox" ng-model="g._postoSel">
+              <div class="flex-grow-1 min-w-0">
+                <div class="fw-semibold">{{ g.descricao }}</div>
+                <small class="text-muted">
+                  {{ g.tokem || 'Sem token' }}
+                  <span ng-show="g.modo"> · {{ g.modo == 'fixo' ? 'Fixo' : 'Móvel' }}</span>
+                </small>
+              </div>
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" ng-click="onSalvarConfigPosto()">
+            <i class="bi bi-check2 me-1"></i>Salvar neste PC
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Log ao vivo (Naturgy → gateways deste PC) -->
+  <div class="modal fade" id="modalPortalLog" tabindex="-1" aria-labelledby="modalPortalLogLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalPortalLogLabel">
+            <i class="bi bi-terminal me-2"></i>Log de leituras
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <!-- <p class="text-muted small mb-3">
+            Tudo que chega em <code>/x_naturgy/registro/portal</code> para os coletores ativos neste computador.
+          </p> -->
+
+          <div ng-show="_portalLog.length == 0" class="text-muted text-center py-4">
+            Nenhuma leitura recebida ainda.
+          </div>
+
+          <div class="table-responsive" ng-show="_portalLog.length > 0">
+            <table class="table table-sm table-hover align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Data / hora</th>
+                  <th>Tag / evento</th>
+                  <th>RSSI</th>
+                  <th>Status sensor</th>
+                  <th>Porta</th>
+                  <th>Device</th>
+                  <th>Tokem</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr ng-repeat="l in _portalLog track by $index">
+                  <td class="text-nowrap">{{ l.data_hora }}</td>
+                  <td><code class="small">{{ l.tag }}</code></td>
+                  <td>{{ l.rssi || '—' }}</td>
+                  <td>
+                    <span class="badge"
+                      ng-class="{
+                        'bg-secondary': l.status_raw == 'pre_sensor' || l.status_raw == 'sensor_descartado' || l.status_raw == 'sensor_expirado' || l.status_raw == 'sensor_ignorado',
+                        'bg-warning text-dark': l.status_raw == 'aguardando' || l.status_raw == 'sensor_1',
+                        'bg-success': l.status_raw == 'entrada' || l.status_raw == 'sensor_entrada',
+                        'bg-info text-dark': l.status_raw == 'saida' || l.status_raw == 'sensor_saida'
+                      }">{{ l.status_sensor }}</span>
+                  </td>
+                  <td>{{ l.antena || '—' }}</td>
+                  <td>{{ l.device || '—' }}</td>
+                  <td class="small text-muted">{{ l.tokem || '—' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" ng-click="onLimparPortalLog()" ng-disabled="!_portalLog.length">
+            <i class="bi bi-trash me-1"></i>Limpar
+          </button>
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

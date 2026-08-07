@@ -56,11 +56,24 @@ app.get('/start', (req, res) => {
   res.render('pages/start', { layout: 'layout' });
 });
 
+app.get('/ia', (req, res) => {
+  res.render('pages/ia', { layout: 'layout' });
+});
+app.get('/emulator', (req, res) => {
+  res.render('pages/emulator', { layout: 'layout' });
+});
 app.get('/dashboard', (req, res) => {
   res.render('pages/dashboard', { layout: 'layout' });
 });
+app.get('/tracking', (req, res) => {
+  res.render('pages/tracking', { layout: 'layout' });
+});
+app.get('/widget', (req, res) => {
+  res.render('pages/widget', { layout: 'layout' });
+});
 
-app.get('/posicao', (req, res) => {
+
+app.get('/processo', (req, res) => {
   res.render('pages/posicao', { layout: 'layout' });
 });
 app.get('/alerta', (req, res) => {
@@ -69,6 +82,11 @@ app.get('/alerta', (req, res) => {
 app.get('/interacao', (req, res) => {
   res.render('pages/interacao', { layout: 'layout' });
 });
+
+app.get('/portal_movimentacao', (req, res) => {
+  res.render('pages/portal_movimentacao', { layout: 'layout' });
+});
+
 
 
 app.get('/rel_itens_associados', (req, res) => {
@@ -108,7 +126,7 @@ app.get('/profile', (req, res) => {
 });
 
 server.listen(port, () => {
-    console.log(`16Apps Modelo > http://localhost:${port}`);
+    console.log(`Seal RTI Modelo > http://localhost:${port}`);
 });
 
 app.get('/site', (req, res) => {
@@ -123,6 +141,16 @@ require('./public/mongo/routes/messages')(app, dbMongo);
 require('./public/mongo/routes/sepioo')(app, dbMongo);
 require('./public/mongo/routes/relatorios')(app, dbMongo);
 require('./public/mongo/routes/dashboard')(app, dbMongo);
+require('./public/mongo/routes/kpi')(app, dbMongo);
+require('./public/mongo/routes/x_naturgy')(app, dbMongo);
+require('./public/mongo/routes/x_oracle')(app, dbMongo);
+require('./public/mongo/routes/x_dsv')(app, dbMongo);
+require('./public/mongo/routes/x_vw')(app, dbMongo);
+// require('./public/mongo/routes/mqtt')(app, dbMongo);
+// require('./public/mongo/routes/mqtt')(app, dbMongo, server);
+// require('./public/mongo/routes/ble')(app, dbMongo);
+const iaRoute = require('./public/mongo/routes/ia.route');
+iaRoute(app);
 
 
 

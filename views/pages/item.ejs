@@ -1,5 +1,5 @@
 <%- contentFor('body') %>
-  <div ng-controller="itemCtrl" class="app-container">
+  <div ng-controller="itemCtrl" class="app-container" ng-cloak>
 
     <!-- App hero header starts -->
     <div class="app-hero-header d-flex align-items-center">
@@ -8,7 +8,7 @@
       <ol class="breadcrumb d-none d-lg-flex">
         <li class="breadcrumb-item">
           <i class="bi bi-house lh-1"></i>
-          <a class="text-decoration-none">Gestão de Itens</a>
+          <a class="text-decoration-none">Gestão de {{ _regConta.params_nomenclatura_itens.sku }}s</a>
         </li>
         <li class="breadcrumb-item" aria-current="page">{{ _regConta.params_nomenclatura_itens.sku }}s</li>
         <li class="breadcrumb-item text-info" aria-current="page">Total: {{ _listItens.length }}</li>
@@ -22,8 +22,74 @@
             placeholder="Pesquisar">
           <i class="bi bi-search"></i>
         </div>
+
+        <div class="search-container d-lg-flex d-none">
+          <select ng-model="_filtroLocalizacao.agrupado" ng-change="onAgrupadoChange()" class="form-control">
+            <option value="">Agrupar..</option>
+            <option value="sku">{{ _regConta.params_nomenclatura_itens.itens }}</option>
+            <option value="tipo">{{ _regConta.params_nomenclatura_itens.categorias }}</option>
+            <option value="inf1" ng-show="_labelInf1">{{ _labelInf1 || 'Inf. 1' }}</option>
+            <option value="status">Status</option>
+            <option value="ocupacao">Ocupação</option>
+            <option value="permanencia">Permanência</option>
+          </select>
+          <i class="bi" ng-class="{
+            'bi-percent': _filtroLocalizacao.agrupado === 'ocupacao',
+            'bi-clock-history': _filtroLocalizacao.agrupado === 'permanencia',
+            'bi-collection': _filtroLocalizacao.agrupado !== 'ocupacao' && _filtroLocalizacao.agrupado !== 'permanencia'
+          }"></i>
+        </div>
+
+        <div class="search-container d-lg-flex d-none">
+          <select ng-model="_filtroLocalizacao.status" ng-change="onFiltroStatusChange()" class="form-control">
+            <option value="">Status..</option>
+            <option value="ativo">Ativo</option>
+            <option value="inativo">Inativo</option>
+            <option value="perda">Ausente</option>
+            <option value="emtransporte">Em Transporte</option>
+            <option value="descartado">Descartado</option>
+          </select>
+          <i class="bi bi-funnel"></i>
+        </div>
+
+        <div class="search-container d-lg-flex d-none">
+          <select ng-model="_filtroLocalizacao.id_nivel_loc1" ng-change="onFiltroLocalizacaoChange(1)" class="form-control"
+            id="filtroNivel1">
+            <option value="">Nível 1</option>
+            <option ng-repeat="nivel in _listNivel1Filtro track by nivel._id" value="{{ nivel._id }}">{{ nivel.descricao }}</option>
+          </select>
+          <i class="bi bi-geo-alt"></i>
+        </div>
+        <div class="search-container d-lg-flex d-none">
+          <select ng-model="_filtroLocalizacao.id_nivel_loc2" ng-change="onFiltroLocalizacaoChange(2)" class="form-control"
+            id="filtroNivel2" ng-disabled="!_filtroLocalizacao.id_nivel_loc1">
+            <option value="">Nível 2</option>
+            <option ng-repeat="nivel in _listNivel2Filtro track by nivel._id" value="{{ nivel._id }}">{{ nivel.descricao }}</option>
+          </select>
+          <i class="bi bi-geo-alt"></i>
+        </div>
+        <div class="search-container d-lg-flex d-none">
+          <select ng-model="_filtroLocalizacao.id_nivel_loc3" ng-change="onFiltroLocalizacaoChange(3)" class="form-control"
+            id="filtroNivel3" ng-disabled="!_filtroLocalizacao.id_nivel_loc2">
+            <option value="">Nível 3</option>
+            <option ng-repeat="nivel in _listNivel3Filtro track by nivel._id" value="{{ nivel._id }}">{{ nivel.descricao }}</option>
+          </select>
+          <i class="bi bi-geo-alt"></i>
+        </div>
+        <div class="search-container d-lg-flex d-none">
+          <select ng-model="_filtroLocalizacao.id_nivel_loc4" ng-change="onFiltroLocalizacaoChange(4)" class="form-control"
+            id="filtroNivel4" ng-disabled="!_filtroLocalizacao.id_nivel_loc3">
+            <option value="">Nível 4</option>
+            <option ng-repeat="nivel in _listNivel4Filtro track by nivel._id" value="{{ nivel._id }}">{{ nivel.descricao }}</option>
+          </select>
+          <i class="bi bi-geo-alt"></i>
+        </div>
         <button ng-click="onItem('add', undefined)" type="button"
           class="btn btn-warning btn-sm ms-3 text-dark">Novo</button>
+        <button ng-click="onExportarCSV()" type="button"
+          class="btn btn-success btn-sm ms-2" title="Exportar lista para CSV">
+          <i class="bi bi-file-earmark-arrow-down"></i>
+        </button>
         <button ng-click="onCarregaRegistros()" type="button"
           class="btn btn-secondary btn-sm ms-2" title="Atualizar lista">
           <i class="bi bi-arrow-clockwise"></i>
@@ -45,7 +111,279 @@
       </div>
 
       <div class="row gx-3">
-        <div class="col-xxl-12">
+        <div class="col-xxl-4" ng-if="mostrarColunaLateral()">
+
+          <!-- Painel ocupação por endereço -->
+          <div class="item-grupo-painel mb-3" ng-if="ehModoOcupacao()">
+            <div class="item-grupo-filtro-destaque item-grupo-filtro-destaque--ocupacao">
+              <div class="item-grupo-filtro-destaque__top">
+                <i class="bi bi-percent"></i>
+                <div class="item-grupo-filtro-destaque__texto">
+                  <span class="item-grupo-filtro-destaque__rotulo">Visualização</span>
+                  <strong class="item-grupo-filtro-destaque__valor">Ocupação por endereço</strong>
+                </div>
+                <span class="badge item-grupo-filtro-destaque__badge">{{ _listOcupacaoLocais.length }} endereços</span>
+              </div>
+              <div class="item-grupo-filtro-destaque__locais" ng-if="getFiltrosLocalizacaoAtivos().length">
+                <span class="item-grupo-filtro-destaque__locais-label">Filtros:</span>
+                <span class="item-grupo-filtro-chip"
+                  ng-repeat="loc in getFiltrosLocalizacaoAtivos() track by loc.nivel">
+                  Nível {{ loc.nivel }}: {{ loc.descricao }}
+                </span>
+              </div>
+            </div>
+            <div class="item-grupo-totais" ng-if="modoOcupacaoAtivo()">
+              <div class="item-grupo-total-card item-grupo-total-card--total">
+                <div class="item-grupo-total-card__num">{{ _totaisAgrupamento.total }}</div>
+                <div class="item-grupo-total-card__label">Total {{ _regConta.params_nomenclatura_itens.sku }}s</div>
+              </div>
+              <div class="item-grupo-total-card item-grupo-total-card--ativo">
+                <div class="item-grupo-total-card__num">{{ _totaisAgrupamento.ativo }}</div>
+                <div class="item-grupo-total-card__label">Ativos</div>
+              </div>
+              <div class="item-grupo-total-card item-grupo-total-card--transporte">
+                <div class="item-grupo-total-card__num">{{ _totaisAgrupamento.emtransporte }}</div>
+                <div class="item-grupo-total-card__label">Em transporte</div>
+              </div>
+              <div class="item-grupo-total-card item-grupo-total-card--perda">
+                <div class="item-grupo-total-card__num">{{ _totaisAgrupamento.perda }}</div>
+                <div class="item-grupo-total-card__label">Ausentes</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="item-grupo-list" ng-if="ehModoOcupacao()">
+            <div class="item-grupo-empty text-muted small" ng-if="!modoOcupacaoAtivo()">
+              Selecione um nível de localização (1 a 4) para visualizar a ocupação dos endereços.
+            </div>
+            <div class="text-muted small py-3 text-center" ng-if="_carregandoOcupacao && modoOcupacaoAtivo()">
+              Carregando ocupação...
+            </div>
+            <div class="item-grupo-card item-grupo-card--ocupacao"
+              ng-class="{ 'item-grupo-card--active': _ocupacaoSelecionada === local.chave }"
+              ng-repeat="local in _listOcupacaoLocais track by local.chave"
+              ng-if="modoOcupacaoAtivo() && !_carregandoOcupacao">
+              <div class="item-grupo-card__info item-grupo-card__info--ocupacao">
+                <div class="item-grupo-card__titulo text-truncate" title="{{ local.descricao }}">
+                  <i class="bi bi-geo-alt me-1"></i>{{ local.descricao }}
+                </div>
+                <div class="item-grupo-card__subtitulo" ng-if="local.tag">{{ local.tag }}</div>
+                <div class="item-ocupacao-bar">
+                  <div class="item-ocupacao-bar__fill"
+                    ng-class="getClasseBarraOcupacao(local)"
+                    ng-style="{ width: getLarguraBarraOcupacao(local) + '%' }"></div>
+                </div>
+                <div class="item-ocupacao-capacidade small text-muted">
+                  <span>{{ local.total }} / {{ local.capacidade_maxima > 0 ? local.capacidade_maxima : '—' }}</span>
+                  <span ng-if="local.capacidade_minima > 0"> · mín. {{ local.capacidade_minima }}</span>
+                </div>
+              </div>
+              <div class="item-grupo-card__total">
+                <div class="item-grupo-card__total-num item-grupo-card__total-num--pct">
+                  {{ local.percentual != null ? (local.percentual + '%') : '—' }}
+                </div>
+                <div class="item-grupo-card__total-label">ocupação</div>
+              </div>
+              <div class="item-grupo-card__actions item-grupo-card__actions--ocupacao">
+                <span class="badge rounded-pill"
+                  ng-class="{
+                    'bg-danger': local.excede,
+                    'bg-warning text-dark': !local.excede && local.abaixoMin,
+                    'bg-success': !local.excede && !local.abaixoMin && local.percentual != null
+                  }">
+                  {{ local.excede ? 'Excedido' : (local.abaixoMin ? 'Abaixo mín.' : (local.vagas_livres != null ? local.vagas_livres + ' livre(s)' : '—')) }}
+                </span>
+                <button type="button" class="btn btn-sm item-grupo-card__btn"
+                  ng-click="onVerLocalOcupacao(local)">
+                  Ver {{ _regConta.params_nomenclatura_itens.sku }}s
+                  <i class="bi bi-chevron-right ms-1"></i>
+                </button>
+              </div>
+            </div>
+            <div ng-if="modoOcupacaoAtivo() && !_carregandoOcupacao && !_listOcupacaoLocais.length"
+              class="item-grupo-empty text-muted small">
+              Nenhum endereço encontrado para os filtros atuais.
+            </div>
+          </div>
+
+          <!-- Painel permanência -->
+          <div class="item-grupo-painel mb-3" ng-if="ehModoPermanencia()">
+            <div class="item-grupo-filtro-destaque item-grupo-filtro-destaque--permanencia">
+              <div class="item-grupo-filtro-destaque__top">
+                <i class="bi bi-clock-history"></i>
+                <div class="item-grupo-filtro-destaque__texto">
+                  <span class="item-grupo-filtro-destaque__rotulo">Agrupado por</span>
+                  <strong class="item-grupo-filtro-destaque__valor">Permanência no local</strong>
+                </div>
+                <span class="badge item-grupo-filtro-destaque__badge">{{ _listItensAgrupados.length }} locais</span>
+              </div>
+              <div class="item-grupo-filtro-destaque__locais" ng-if="getFiltrosLocalizacaoAtivos().length">
+                <span class="item-grupo-filtro-destaque__locais-label">Filtros:</span>
+                <span class="item-grupo-filtro-chip"
+                  ng-repeat="loc in getFiltrosLocalizacaoAtivos() track by loc.nivel">
+                  Nível {{ loc.nivel }}: {{ loc.descricao }}
+                </span>
+              </div>
+              <div class="item-grupo-filtro-destaque__pesquisa">
+                <strong>{{ getResumoFiltroPermanencia() }}</strong>
+              </div>
+            </div>
+
+            <div class="item-filtro-permanencia">
+              <span class="item-filtro-permanencia__label">Tempo mínimo no local</span>
+              <div class="item-filtro-permanencia__campos">
+                <div class="item-filtro-permanencia__campo">
+                  <label>Dias</label>
+                  <input type="number" min="0" class="form-control form-control-sm"
+                    ng-model="_filtroPermanencia.dias" ng-change="onPermanenciaFiltroChange()" />
+                </div>
+                <div class="item-filtro-permanencia__campo">
+                  <label>Horas</label>
+                  <input type="number" min="0" max="23" class="form-control form-control-sm"
+                    ng-model="_filtroPermanencia.horas" ng-change="onPermanenciaFiltroChange()" />
+                </div>
+                <div class="item-filtro-permanencia__campo">
+                  <label>Minutos</label>
+                  <input type="number" min="0" max="59" class="form-control form-control-sm"
+                    ng-model="_filtroPermanencia.minutos" ng-change="onPermanenciaFiltroChange()" />
+                </div>
+              </div>
+            </div>
+
+            <div class="item-grupo-totais">
+              <div class="item-grupo-total-card item-grupo-total-card--total">
+                <div class="item-grupo-total-card__num">{{ _totaisAgrupamento.total }}</div>
+                <div class="item-grupo-total-card__label">Total {{ _regConta.params_nomenclatura_itens.sku }}s</div>
+              </div>
+              <div class="item-grupo-total-card item-grupo-total-card--ativo">
+                <div class="item-grupo-total-card__num">{{ _totaisAgrupamento.ativo }}</div>
+                <div class="item-grupo-total-card__label">Ativos</div>
+              </div>
+              <div class="item-grupo-total-card item-grupo-total-card--transporte">
+                <div class="item-grupo-total-card__num">{{ _totaisAgrupamento.emtransporte }}</div>
+                <div class="item-grupo-total-card__label">Em transporte</div>
+              </div>
+              <div class="item-grupo-total-card item-grupo-total-card--perda">
+                <div class="item-grupo-total-card__num">{{ _totaisAgrupamento.perda }}</div>
+                <div class="item-grupo-total-card__label">Ausentes</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="item-grupo-list" ng-if="ehModoPermanencia()">
+            <div class="item-grupo-card"
+              ng-class="{ 'item-grupo-card--active': _agrupadoSelecionado === grupo.chave }"
+              ng-repeat="grupo in _listItensAgrupados track by grupo.chave">
+              <div class="item-grupo-card__info">
+                <div class="item-grupo-card__titulo text-truncate" title="{{ grupo.descricao }}">
+                  <i class="bi bi-geo-alt me-1"></i>{{ grupo.descricao }}
+                </div>
+                <div class="item-grupo-card__subtitulo text-truncate" ng-if="grupo.subtitulo" title="{{ grupo.subtitulo }}">
+                  {{ grupo.subtitulo }}
+                </div>
+              </div>
+              <div class="item-grupo-card__total">
+                <div class="item-grupo-card__total-num">{{ grupo.total }}</div>
+                <div class="item-grupo-card__total-label">{{ getLabelTotalAgrupamento() }}</div>
+              </div>
+              <div class="item-grupo-card__status">
+                <span class="item-grupo-card__status-item text-success" title="Ativos">{{ grupo.totalAtivo }}</span>
+                <span class="item-grupo-card__status-item text-warning" title="Em transporte / manutenção">{{ grupo.totalAlerta }}</span>
+                <span class="item-grupo-card__status-item text-danger" title="Outros status">{{ grupo.totalProblema }}</span>
+              </div>
+              <div class="item-grupo-card__actions">
+                <button type="button" class="btn btn-sm item-grupo-card__btn"
+                  ng-click="onVerGrupo(grupo)">
+                  Ver {{ _regConta.params_nomenclatura_itens.sku }}s
+                  <i class="bi bi-chevron-right ms-1"></i>
+                </button>
+              </div>
+            </div>
+            <div ng-if="!_listItensAgrupados.length" class="item-grupo-empty text-muted small">
+              Nenhum item com permanência acima do tempo definido.
+            </div>
+          </div>
+
+          <!-- Painel agrupamento -->
+          <div class="item-grupo-painel mb-3" ng-if="ehAgrupamentoClassico()">
+            <div class="item-grupo-filtro-destaque">
+              <div class="item-grupo-filtro-destaque__top">
+                <i class="bi bi-collection"></i>
+                <div class="item-grupo-filtro-destaque__texto">
+                  <span class="item-grupo-filtro-destaque__rotulo">Agrupado por</span>
+                  <strong class="item-grupo-filtro-destaque__valor">{{ getLabelAgrupamento() }}</strong>
+                </div>
+                <span class="badge item-grupo-filtro-destaque__badge" style="font-size: 1.0rem;">{{ _listItensAgrupados.length }} grupos</span>
+              </div>
+              <div class="item-grupo-filtro-destaque__locais" ng-if="getFiltrosLocalizacaoAtivos().length">
+                <span class="item-grupo-filtro-destaque__locais-label">Filtros:</span>
+                <span class="item-grupo-filtro-chip"
+                  ng-repeat="loc in getFiltrosLocalizacaoAtivos() track by loc.nivel">
+                  Nível {{ loc.nivel }}: {{ loc.descricao }}
+                </span>
+              </div>
+              <div class="item-grupo-filtro-destaque__pesquisa text-truncate" ng-if="_pesquisa" title="{{ _pesquisa }}">
+                Pesquisa: <strong>{{ _pesquisa }}</strong>
+              </div>
+            </div>
+            <div class="item-grupo-totais">
+              <div class="item-grupo-total-card item-grupo-total-card--total">
+                <div class="item-grupo-total-card__num">{{ _totaisAgrupamento.total }}</div>
+                <div class="item-grupo-total-card__label">Total {{ _regConta.params_nomenclatura_itens.sku }}s</div>
+              </div>
+              <div class="item-grupo-total-card item-grupo-total-card--ativo">
+                <div class="item-grupo-total-card__num">{{ _totaisAgrupamento.ativo }}</div>
+                <div class="item-grupo-total-card__label">Ativos</div>
+              </div>
+              <div class="item-grupo-total-card item-grupo-total-card--transporte">
+                <div class="item-grupo-total-card__num">{{ _totaisAgrupamento.emtransporte }}</div>
+                <div class="item-grupo-total-card__label">Em transporte</div>
+              </div>
+              <div class="item-grupo-total-card item-grupo-total-card--perda">
+                <div class="item-grupo-total-card__num">{{ _totaisAgrupamento.perda }}</div>
+                <div class="item-grupo-total-card__label">Ausentes</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="item-grupo-list" ng-if="ehAgrupamentoClassico()">
+            <div class="item-grupo-card"
+              ng-class="{ 'item-grupo-card--active': _agrupadoSelecionado === grupo.chave }"
+              ng-repeat="grupo in _listItensAgrupados track by grupo.chave">
+              <!-- <div class="item-grupo-card__ident">
+                <img class="item-grupo-card__foto rounded-circle" ng-src="{{ grupo.foto }}" alt="" />
+                <span class="item-grupo-card__codigo" ng-if="grupo.codigo">{{ grupo.descricao }}</span>
+              </div> -->
+              <div class="item-grupo-card__info">
+                <div class="item-grupo-card__titulo text-truncate" title="{{ grupo.descricao }}">{{ grupo.descricao }}</div>
+                <!-- <div class="item-grupo-card__subtitulo text-truncate" ng-if="grupo.subtitulo" title="{{ grupo.subtitulo }}">
+                  {{ grupo.subtitulo }}
+                </div> -->
+              </div>
+              <div class="item-grupo-card__total">
+                <div class="item-grupo-card__total-num">{{ grupo.total }}</div>
+                <div class="item-grupo-card__total-label">{{ getLabelTotalAgrupamento() }}</div>
+              </div>
+              <div class="item-grupo-card__status">
+                <span class="item-grupo-card__status-item text-success" title="Ativos">{{ grupo.totalAtivo }}</span>
+                <span class="item-grupo-card__status-item text-warning" title="Em transporte / manutenção">{{ grupo.totalAlerta }}</span>
+                <span class="item-grupo-card__status-item text-danger" title="Outros status">{{ grupo.totalProblema }}</span>
+              </div>
+              <div class="item-grupo-card__actions">
+                <span class="item-grupo-card__data">{{ formataDataGrupo(grupo.ultimaData) }}</span>
+                <button type="button" class="btn btn-sm item-grupo-card__btn"
+                  ng-click="onVerGrupo(grupo)">
+                  Ver {{ _regConta.params_nomenclatura_itens.sku }}s
+                  <i class="bi bi-chevron-right ms-1"></i>
+                </button>
+              </div>
+            </div>
+            <div ng-if="!_listItensAgrupados.length" class="item-grupo-empty text-muted small">
+              Nenhum grupo encontrado com os filtros atuais.
+            </div>
+          </div>
+        </div>
+        <div ng-class="mostrarColunaLateral() ? 'col-xxl-8' : 'col-12'">
           <div class="card mb-3">
             <div class="card-body">
               <div class="table-responsive">
@@ -57,6 +395,14 @@
 
                         </th>
 
+                        <th class="w-10" ng-click="sortBy('status')" class="sortable">
+                          Status
+                          <i class="bi" ng-class="{
+              'bi-caret-up-fill': sortField=='status' && !sortReverse,
+              'bi-caret-down-fill': sortField=='status' && sortReverse
+        }"></i>
+                        </th>
+
                         <th class="w-20" ng-click="sortBy('id_categoria.descricao')" class="sortable">
                           {{ _regConta.params_nomenclatura_itens.itens }}
                           <i class="bi" ng-class="{
@@ -65,7 +411,7 @@
         }"></i>
                         </th>
 
-                        <th class="w-10 sortable" ng-click="sortBy('id_categoria_reg1.descricao')">
+                        <th class="w-30 sortable" ng-click="sortBy('id_categoria_reg1.descricao')">
                           {{ _regConta.params_nomenclatura_itens.categorias }}
                           <i class="bi" ng-class="{
               'bi-caret-up-fill': sortField=='id_categoria_reg1.descricao' && !sortReverse,
@@ -73,7 +419,7 @@
         }"></i>
                         </th>
 
-                        <th class="w-10 sortable" ng-click="sortBy('id_externo')">
+                        <!-- <th class="w-10 sortable" ng-click="sortBy('id_externo')">
                           Inf. 1
                           <i class="bi" ng-class="{
               'bi-caret-up-fill': sortField=='id_externo' && !sortReverse,
@@ -87,7 +433,7 @@
               'bi-caret-up-fill': sortField=='tag' && !sortReverse,
               'bi-caret-down-fill': sortField=='tag' && sortReverse
         }"></i>
-                        </th>
+                        </th> -->
 
                         <th class="w-20 sortable" ng-click="sortBy('localizacao')">
                           Localização
@@ -109,30 +455,45 @@
                       </tr>
                     </thead>
                     <tbody>
-                      <tr ng-repeat="item in _listItens | orderBy:sortField:sortReverse"">
+                      <tr ng-repeat="item in _listItens | orderBy:sortField:sortReverse">
                       <td>
                           <img class=" rounded-circle img-3x me-2" src="{{ item._foto }}" alt="Wrapmarket" />
                       </td>
 
                       <td>
-                        {{ item.id_categoria.descricao ? item.id_categoria.descricao : 'Sem Associação' }}
-                        <br>
+    
                         <span ng-show="item.status!='ativo'"
                           class="badge bg-danger bg-opacity-10 text-danger text-uppercase">
-                          <i class="bi bi-exclamation-triangle me-1 "></i>{{ item.status }}
+                          <i class="bi bi-exclamation-triangle me-1 "></i>{{ item.status == 'perda' ? 'Ausente' : item.status }}
                         </span>
                         <span ng-show="item.status=='ativo'"
                           class="badge bg-success bg-opacity-10 text-success text-uppercase">
                           <i class="bi bi-check me-1 "></i>{{ item.status }}
                         </span>
                       </td>
-                      <td>{{ item.id_categoria_reg1.descricao }}</td>
-                      <td>{{ item.id_externo }}</td>
 
+                      <td>
+                        {{ item.id_categoria.descricao ? item.id_categoria.descricao : 'Sem Associação' }}
+                        <br>
+                        {{ item.id_externo ? item.id_externo : item.inf_compl1 }}
+                        {{ item.inf_compl2 ? ' | ' + item.inf_compl2 : '' }}
+                        {{ item.inf_compl3 ? ' | ' + item.inf_compl3 : '' }}
+                        {{ item.inf_compl4 ? ' | ' + item.inf_compl4 : '' }}
+                      </td>
 
+                      <td>
+                        {{ item.id_categoria_reg1.descricao }}
+                      </td>
 
-                      <td>{{ item.tag}}</td>
+                      <!-- <td>
+                        {{ item.id_externo ? item.id_externo : item.inf_compl1 }}
+                        <br><span ng-show="item.inf_compl1 && item.id_categoria.labelInf1 " 
+                        class="badge bg-light bg-opacity-10 text-light text-uppercase">
+                        {{ item.id_categoria.labelInf1 }}
+                      </span>
+                      </td>
 
+                      <td>{{ item.tag}}</td> -->
 
                       <td>
                         {{ item.id_nivel_loc1 ? item.id_nivel_loc1.descricao : 'Em Transporte' }}
@@ -146,11 +507,11 @@
                       </td>
 
                       <td>
-                        {{ item.registro_atual.data_permanecia ? formataDataHora(item.registro_atual.data_permanecia) :'' }}
+                        {{ item.registro_atual.data_permanecia ? formataTempoDesdePermanencia(item.registro_atual.data_permanecia) : '' }}
                         <br><span 
                           class="badge bg-light bg-opacity-10 text-light text-uppercase">
                           <i class="bi bi-play-circle-fill me-1 "></i>
-                          {{ item.registro_atual.data_registro ? formataDataHora(item.registro_atual.data_registro) : 'Sem Movimentação' }}
+                          {{ item.registro_atual.data_permanecia ? formataDataHora(item.registro_atual.data_permanecia) : 'Sem Movimentação' }}
                         </span>
                       </td>
 

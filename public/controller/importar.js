@@ -40,6 +40,9 @@ app.controller('importarCtrl', function ($scope, $http, params, uteisService) {
             const csv = e.target.result;
             const linhas = csv.split(/\r?\n/).filter(l => l.trim() !== '');
 
+            const importTs = Date.now();
+            let contadorTag = 0;
+
             linhas.map((item, index,) => {
                 if (index > 0) {
                     let coluna = item.split(';')
@@ -57,19 +60,26 @@ app.controller('importarCtrl', function ($scope, $http, params, uteisService) {
                         }
                     } else {
                         // Modo Completo: todas as colunas (A-Q)
-                        if( coluna[1]){
-                            let _tag = coluna[1].replace('"', '').replace('"', '').trim()
-                            if (!_tag.includes(':')) {
-        
-                                _tag = $scope.gerarSGTIN96({
-                                    companyPrefix: '7891260',
-                                    itemReference: String(_tag).slice(-6),
-                                    serial: index,
-                                    filter: coluna[16]
-                                });
-        
+                        if (coluna[0]) {
+                            contadorTag++;
+
+                            let _tag;
+                            const tagColuna = coluna[1] ? coluna[1].replace('"', '').replace('"', '').trim() : '';
+
+                            if (tagColuna) {
+                                _tag = tagColuna;
+                                if (!_tag.includes(':')) {
+                                    _tag = $scope.gerarSGTIN96({
+                                        companyPrefix: '7891260',
+                                        itemReference: String(_tag).slice(-6),
+                                        serial: index,
+                                        filter: coluna[16]
+                                    });
+                                }
+                            } else {
+                                _tag = $scope.gerarTagHex24(importTs, contadorTag);
                             }
-        
+
                             dados.itens.push({
                                 "id_interno": coluna[0],
                                 "tag": _tag,
@@ -188,6 +198,13 @@ app.controller('importarCtrl', function ($scope, $http, params, uteisService) {
         }
 
         return epcHex.toUpperCase();
-    }
+    };
+
+    $scope.gerarTagHex24 = function (importTs, seq) {
+        const tsHex = importTs.toString(16).toUpperCase().padStart(11, '0');
+        const seqHex = seq.toString(16).toUpperCase().padStart(6, '0');
+        const extra = Math.floor(Math.random() * 0xFFFFFF).toString(16).toUpperCase().padStart(7, '0');
+        return (tsHex + seqHex + extra).slice(0, 24).padStart(24, '0');
+    };
 
 });

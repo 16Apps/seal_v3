@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const shortid = require('shortid');
 
+
 const GatewaySchema = new mongoose.Schema({
     _id: { type: String, default: shortid.generate },
     id_conta: { type: String, ref: 'Conta' },
@@ -17,6 +18,7 @@ const GatewaySchema = new mongoose.Schema({
     modo: { type: String, enum: ['fixo', 'movel', 'fluxo'], default: 'fixo' },
     id_colaborador: { type: String, ref: 'Colaborador' },
     id_maquina: { type: String, ref: 'Maquinas' },
+    id_colaborador_gateway: { type: String },
 
     intervalo_ausencia: { type: Number, default: 0 },
     intervalo_reg_gps: { type: Number, default: 0 },
@@ -28,7 +30,11 @@ const GatewaySchema = new mongoose.Schema({
     id_nivel_loc3: { type: String, ref: 'Localizacao' },
     id_nivel_loc4: { type: String, ref: 'Localizacao' },
 
-    
+    id_nivel_loc1_destino: { type: String, ref: 'Localizacao' },
+    id_nivel_loc2_destino: { type: String, ref: 'Localizacao' },
+    id_nivel_loc3_destino: { type: String, ref: 'Localizacao' },
+    id_nivel_loc4_destino: { type: String, ref: 'Localizacao' },
+
     leitor: { type: String },
     leitor_mac: { type: String },
     leitor_potencia: { type: String },
@@ -45,7 +51,16 @@ const GatewaySchema = new mongoose.Schema({
     api_rest: { type: String },
 
     registro_leitura: { type: Date },
-    foto: { type: String }
+    foto: { type: String },
+
+    
+    dados: [{
+        _id: { type: String, default: shortid.generate },
+        data: { type: Date },
+        descricao: { type: String, default: '' ,enum: ['bateria', 'wifi', 'temperatura']},
+        valor: { type: String },
+    }],
+
 
 }, {
     versionKey: false,

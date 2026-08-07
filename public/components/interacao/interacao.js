@@ -333,9 +333,28 @@ app.component('interacao', {
 
     };
 
+    $ctrl.onExcluir = function () {
+
+      uteisService.onQuestion("Atenção!", "Deseja realmente excluir esse Registro?")
+        .then(async (res) => {
+          if (res) {
+            uteisService.delBase('interacao/_id/' + $ctrl._editInteracao._id).then(() => {
+              uteisService.onToast('Registrado excuido!', 'success', 3000, 'top-end');
+              $ctrl.fechar();
+            });
+          }
+        })
+    }
+
 
     $ctrl.fechar = function () {
       // dispara o callback do pai
+
+      $ctrl._listNivel1 = [];
+      $ctrl._listNivel2 = [];
+      $ctrl._listNivel3 = [];
+      $ctrl._listNivel4 = [];
+
       $ctrl.onFechar();
     };
 

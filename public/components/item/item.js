@@ -20,6 +20,8 @@ app.component('item', {
     $ctrl._listNivel2 = [];
     $ctrl._listNivel3 = [];
     $ctrl._listNivel4 = [];
+    $ctrl.sortFieldPosicao = 'partida_data';
+    $ctrl.sortReversePosicao = false;
 
     $ctrl._regAddAssociacao = {
       id_ref: 'item',
@@ -57,7 +59,7 @@ app.component('item', {
 
     };
 
-    
+
     $ctrl.onEditar = async function (reg) {
 
       await $ctrl.onCarregaCategorias();
@@ -144,10 +146,7 @@ app.component('item', {
 
         }, 10)
 
-
       };
-
-
 
     };
 
@@ -156,6 +155,23 @@ app.component('item', {
       $timeout(async () => {
         let iFind = $ctrl._listCategorias.findIndex((item) => item._id == $ctrl._editItem.id_categoria)
         $ctrl._labelsCategoria = $ctrl._listCategorias[iFind]
+
+  
+        if(!$ctrl._editItem.inf_compl1) {
+          $ctrl._editItem.inf_compl1 = $ctrl._labelsCategoria.valor_labelInf1
+        }
+        if(!$ctrl._editItem.inf_compl2) {
+          $ctrl._editItem.inf_compl2 = $ctrl._labelsCategoria.valor_labelInf2
+        }
+        if(!$ctrl._editItem.inf_compl3) {
+          $ctrl._editItem.inf_compl3 = $ctrl._labelsCategoria.valor_labelInf3
+        }
+        if(!$ctrl._editItem.inf_compl4) {
+          $ctrl._editItem.inf_compl4 = $ctrl._labelsCategoria.valor_labelInf4
+        }
+        if(!$ctrl._editItem.inf_compl5) {
+          $ctrl._editItem.inf_compl5 = $ctrl._labelsCategoria.valor_labelInf5
+        }
       }, 10)
 
 
@@ -226,6 +242,20 @@ app.component('item', {
         .then((res) => {
 
           $timeout(() => {
+
+            res.map((item) => {
+
+              item['_previsao_chegada_data'] = item.previsao_chegada_data
+
+              let _chegadaReal = item.itens.find(item => item.status_destino_data);
+              if (_chegadaReal) {
+
+                item['_previsao_chegada_data'] = _chegadaReal.status_destino_data;
+              }
+
+            });
+
+
             $ctrl._listPosicoes = res
           }, 10);
 
@@ -433,8 +463,8 @@ app.component('item', {
 
     $ctrl.onRemoveAssociacao = async function (item) {
       $timeout(async () => {
-      $ctrl._editAssocicao.associados = $ctrl._editAssocicao.associados.filter((assoc) => assoc._id != item._id);
-      }, 10)	
+        $ctrl._editAssocicao.associados = $ctrl._editAssocicao.associados.filter((assoc) => assoc._id != item._id);
+      }, 10)
     }
 
 
@@ -495,6 +525,12 @@ app.component('item', {
       };
     };
 
+    $ctrl.onRemoveVinculoDevice = async function (item) {
+      $timeout(async () => {
+        $ctrl._editItem.vinculos_device = $ctrl._editItem.vinculos_device.filter((vinc) => vinc._id != item._id);
+      }, 10)
+    };
+
     // Final Vinculo Device
 
     $ctrl.onSalvar = function () {
@@ -508,11 +544,11 @@ app.component('item', {
         uteisService.onToast('O campo Tag é obrigatório.', 'warning', 3000, 'top-end');
         return;
       };
-      
+
       uteisService.patchBase('/item', $ctrl._editItem)
         .then((res) => {
 
-          if($ctrl._editAssocicao.associados.length > 0){
+          if ($ctrl._editAssocicao.associados.length > 0) {
             uteisService.patchBase('/associacao', $ctrl._editAssocicao)
           } else {
             uteisService.delBase('associacao/id_item/' + $ctrl._editItem._id)
@@ -555,6 +591,15 @@ app.component('item', {
         .subtract(3, 'hours'); // Remove 3 horas
 
       return date.format('DDMMM HH[h]mm');
+    };
+
+    $ctrl.sortByPosicao = function (field) {
+      if ($ctrl.sortFieldPosicao === field) {
+        $ctrl.sortReversePosicao = !$ctrl.sortReversePosicao;
+      } else {
+        $ctrl.sortFieldPosicao = field;
+        $ctrl.sortReversePosicao = false;
+      }
     };
 
 

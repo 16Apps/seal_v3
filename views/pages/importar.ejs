@@ -1,5 +1,5 @@
 <%- contentFor('body') %>
-  <div ng-controller="importarCtrl" class="app-container">
+  <div ng-controller="importarCtrl" class="app-container" ng-cloak>
 
     <!-- App hero header starts -->
     <div class="app-hero-header d-flex align-items-center">
@@ -8,7 +8,7 @@
       <ol class="breadcrumb d-none d-lg-flex">
         <li class="breadcrumb-item">
           <i class="bi bi-house lh-1"></i>
-          <a class="text-decoration-none">Gestão de Itens</a>
+          <a class="text-decoration-none">Gestão de {{ _regConta.params_nomenclatura_itens.sku }}s</a>
         </li>
         <li class="breadcrumb-item" aria-current="page">Importação</li>
       </ol>
@@ -21,7 +21,7 @@
             <input type="radio" class="btn-check" name="tipoImportacao" id="skuCompleto" ng-model="tipoImportacao"
               value="completo" ng-init="tipoImportacao='completo'" checked>
             <label class="btn btn-outline-primary" for="skuCompleto">
-              <i class="bi bi-box-seam me-1"></i>SKU Completo
+              <i class="bi bi-box-seam me-1"></i>{{ _regConta.params_nomenclatura_itens.sku }} Completo
             </label>
 
             <input type="radio" class="btn-check" name="tipoImportacao" id="skuSecundario" ng-model="tipoImportacao"
@@ -59,7 +59,7 @@
       <div class="offcanvas-header border-bottom">
         <h5 class="offcanvas-title" id="offcanvasBottomLabel">
           <i class="bi bi-info-circle me-2 text-primary"></i>Instruções de Importação - Mapeamento de Colunas
-          <span ng-if="tipoImportacao === 'completo'" class="badge bg-primary ms-2">SKU Completo</span>
+          <span ng-if="tipoImportacao === 'completo'" class="badge bg-primary ms-2">{{ _regConta.params_nomenclatura_itens.sku }} Completo</span>
           <span ng-if="tipoImportacao === 'secundario'" class="badge bg-secondary ms-2">Secundários</span>
         </h5>
         <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
@@ -375,7 +375,7 @@
                         <th class="w-10">{{ _regConta.params_nomenclatura_itens.itens }}</th>
                         <th class="w-10">{{ _regConta.params_nomenclatura_itens.categorias }}</th>
                         <th class="w-50">Tag / EPC</th>
-                        <th class="w-25">Endereço</th>
+                        <th class="w-25">{{ _regConta.params_nomenclatura_itens.enderecos }}</th>
                       </tr>
                     </thead>
                     <tbody>

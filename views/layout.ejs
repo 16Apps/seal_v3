@@ -37,9 +37,47 @@
   <!-- Scrollbar CSS -->
   <link rel="stylesheet" href="../assets/vendor/overlay-scroll/OverlayScrollbars.min.css" />
 
+  <style>
+    [ng-cloak],
+    [data-ng-cloak],
+    [x-ng-cloak],
+    .ng-cloak {
+      display: none !important;
+    }
+
+    .ble-floating-panel {
+      position: fixed;
+      left: 18px;
+      bottom: 18px;
+      width: 320px;
+      z-index: 999999;
+      background: #0f172a;
+      color: #fff;
+      border-radius: 14px;
+      box-shadow: 0 12px 35px rgba(0, 0, 0, .28);
+      overflow: hidden;
+    }
+
+    .ble-floating-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      background: #162033;
+      border-bottom: 1px solid rgba(255, 255, 255, .08);
+      cursor: default;
+    }
+
+    .ble-floating-body {
+      padding: 14px;
+    }
+  </style>
+
+  <%- defineContent('emulatorStyles') %>
+
 </head>
 
-<body ng-app="myApp" ng-controller="appCtrl">
+<body ng-app="myApp" ng-controller="appCtrl" ng-cloak>
   <!-- Page wrapper start -->
   <div class="page-wrapper">
 
@@ -137,7 +175,7 @@
             </div>
           </div> -->
 
-<!-- 
+          <!-- 
           <div class="dropdown">
             <a class="dropdown-toggle action-icon" href="#!" role="button" data-bs-toggle="dropdown"
               aria-expanded="false">
@@ -206,7 +244,8 @@
 
         <!-- Sidebar profile starts -->
         <div class="sidebar-profile">
-          <img src="{{ _regConta._logo }}" class="img-3x me-3 rounded-5" alt="Dark Admin Dashboard" />
+          <img src="{{ _regConta._logo }}" class="img-3x me-3 rounded-5" alt="{{ _regConta.razao_social }}"
+            style="object-fit: contain; object-position: center;" />
           <div class="m-0 text-nowrap">
             <p class="m-0">Olá &#128075;</p>
             <h6 class="m-0 text-truncate">{{ _regColaborador.nome }}</h6>
@@ -218,52 +257,91 @@
         <div class="sidebarMenuScroll">
           <ul class="sidebar-menu">
 
-            <li ng-class="{'active current-page': isActive('start')}">
+            <!-- <li ng-class="{'active current-page': isActive('start')}">
               <a href="/start">
                 <i class="bi bi-lightning-charge-fill"></i>
                 <span class="menu-text">Start</span>
               </a>
-            </li>
+            </li> -->
 
-            <li ng-class="{'active current-page': isActive('dashboard')}">
-              <a href="/dashboard">
-                <i class="bi bi-bar-chart"></i>
-                <span class="menu-text">Dashboard</span>
+            <li ng-class="{'active current-page': isActive('ia')}">
+              <a href="/ia">
+                <i class="bi bi-robot"></i>
+                <span class="menu-text">IA Assistente</span>
               </a>
             </li>
 
-            <li ng-show="_regConta.plano_monitoramento.posicao_esperada > 0 || _regConta.plano_monitoramento.painel_alertas > 0 || _regConta.plano_monitoramento.interacao > 0" class="treeview"
-              ng-class="{'active current-page': isActive('alerta') || isActive('posicao') || isActive('interacao') || isActive('associacao') }">
+            <li ng-class="{'active current-page': isActive('widget')}">
+              <a href="/widget">
+                <i class="bi bi-bar-chart"></i>
+                <span class="menu-text">Painel Inteligente</span>
+              </a>
+            </li>
+
+            <!-- <li class="treeview"
+            ng-class="{'active current-page': isActive('dashboard')}">
+            <a href="#!">
+              <i class="bi bi-bar-chart"></i>
+              <span class="menu-text">Dashboard</span>
+            </a>
+            <ul class="treeview-menu">
+              <li><a href="/dashboard">Movimentações</a></li>
+              <li><a href="/tracking">Tracking</a></li>
+            </ul>
+          </li> -->
+
+
+            <li
+              ng-show="_regConta.plano_monitoramento.posicao_esperada > 0 || _regConta.plano_monitoramento.painel_alertas > 0 || _regConta.plano_monitoramento.interacao > 0"
+              class="treeview"
+              ng-class="{'active current-page': isActive('alerta') || isActive('processo?inventario') ||  isActive('processo?conferencia') || isActive('interacao') || isActive('associacao') }">
               <a href="#!">
                 <i class="bi bi-eye"></i>
-                <span class="menu-text">Monitoramento</span>
+                <span class="menu-text">Processos</span>
               </a>
               <ul class="treeview-menu">
-                <li ng-show="_regConta.plano_monitoramento.posicao_esperada > 0"><a href="/posicao">Posições Esperadas</a></li>
+                <li ng-show="_regConta.plano_monitoramento.posicao_esperada > 0"><a href="/processo?conferencia">Conferências</a></li>
+                <li ng-show="_regConta.plano_monitoramento.posicao_esperada > 0"><a href="/processo?inventario">Inventários</a></li>
                 <li ng-show="_regConta.plano_monitoramento.painel_alertas > 0"><a href="/alerta">Painel de Alertas</a></li>
                 <li ng-show="_regConta.plano_monitoramento.interacao > 0"><a href="/interacao">Interação nos Locais</a></li>
                 <!-- <li><a href="/associacao">Associação</a></li> -->
               </ul>
             </li>
 
-            <li class="treeview"
-            ng-class="{'active current-page': isActive('rel_itens_associados') || isActive('rel_registros') }">
+            <li
+            class="treeview"
+            ng-show="_regConta.plano_monitoramento.portal > 0"
+            ng-class="{'active current-page': isActive('portal') || isActive('portal_movimentacao') || isActive('portal_inventario') }">
             <a href="#!">
-              <i class="bi bi-printer"></i>
-              <span class="menu-text">Relatórios</span>
+              <i class="bi bi-door-open"></i>
+              <span class="menu-text">Portal</span>
             </a>
             <ul class="treeview-menu">
-              <li><a href="/rel_itens_associados">Itens Associados</a></li>
-              <li><a href="/rel_registros">Registros de Leitura</a></li>
+              <li ><a href="/portal_movimentacao">DashBoard</a></li>
+              <li ><a href="/portal_movimentacao">Movimentações</a></li>
+              <!-- <li ><a href="/portal_inventario">Inventário</a></li> -->
+              <!-- <li><a href="/associacao">Associação</a></li> -->
             </ul>
           </li>
+
+            <li class="treeview"
+              ng-class="{'active current-page': isActive('rel_itens_associados') || isActive('rel_registros') }">
+              <a href="#!">
+                <i class="bi bi-printer"></i>
+                <span class="menu-text">Relatórios</span>
+              </a>
+              <ul class="treeview-menu">
+                <li ng-show="_regConta.plano_monitoramento.regs_associados > 0"><a href="/rel_itens_associados">Itens Associados</a></li>
+                <li><a href="/rel_registros">Registros de Leitura</a></li>
+              </ul>
+            </li>
 
             <li
               ng-class="{'active current-page': isActive('categoria') || isActive('item') || isActive('importar') || isActive('categoria_item')}"
               class="treeview">
               <a href="#!">
                 <i class="bi bi-ui-checks-grid"></i>
-                <span class="menu-text">Gestão de Itens</span>
+                <span class="menu-text">Gestão de {{ _regConta.params_nomenclatura_itens.sku }}s</span>
               </a>
               <ul class="treeview-menu">
                 <li>
@@ -292,14 +370,20 @@
               class="treeview">
               <a href="#!">
                 <i class="bi bi-code-square"></i>
-                <span class="menu-text">Extras</span>
+                <span class="menu-text">Administração</span>
               </a>
               <ul class="treeview-menu">
                 <li>
-                  <a href="/localizacao">Endereços</a>
+                  <a href="/localizacao">{{ _regConta.params_nomenclatura_itens.enderecos || 'Site' }}s</a>
                 </li>
                 <li>
-                  <a href="/gateway">Coletores</a>
+                  <a href="/gateway">{{ _regConta.params_nomenclatura_itens.coletores || 'Dispositivo' }}s</a>
+                </li>
+                <!-- <li>
+                  <a href="/ia">Assisten IA (Beta)</a>
+                </li> -->
+                <li>
+                  <a href="/emulator">Emulador</a>
                 </li>
                 <!-- <li>
                   <a href="/equipamento">Equipamentos</a>
@@ -355,6 +439,66 @@
       </div>
       <!-- App container ends -->
 
+      <div ng-show="false" id="bleFloatingPanel" class="ble-floating-panel"
+        ng-init="bleWidget = { minimizado: false, status: 'Parado', ultimaTag: '-', total: 0 }">
+        <div class="ble-floating-header">
+          <div>
+            <strong>Scanner BLE</strong>
+            <div class="small opacity-75" ng-show="!bleWidget.minimizado || bleWidget.status=='Parado'">{{ bleWidget.status }}</div>
+            <div class="small opacity-75" ng-show="bleWidget.minimizado && bleWidget.status=='Ativo'">
+              <span class="badge bg-info">{{ bleWidget.ultimaData ? bleWidget.ultimaData : '-' }}</span>
+              <span class="badge bg-warning text-dark">{{ bleWidget.ultimaTag ? bleWidget.ultimaTag.substring(0, 12) :
+                '-' }}</span>
+
+              <span class="badge" ng-class="{
+                'bg-success': bleWidget.ultimaRssi> -60,
+                'bg-warning text-dark': bleWidget.ultimaRssi >= -80 && bleWidget.ultimaRssi <= -60,
+                'bg-danger': bleWidget.ultimaRssi < -80
+              }">
+              {{ bleWidget.ultimaRssi }} dBm
+            </span>
+            </div>
+          </div>
+
+          <div class="d-flex gap-1">
+            <button class="btn btn-sm btn-light" ng-click="bleWidget.minimizado = !bleWidget.minimizado">
+              <i class="bi" ng-class="bleWidget.minimizado ? 'bi-plus-lg' : 'bi-dash-lg'"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="ble-floating-body" ng-show="!bleWidget.minimizado">
+          <div class="mb-2">
+            <select class="form-select mb-2" ng-model="bleWidget.gateway">
+              <option value="">Selecione um gateway</option>
+              <option ng-repeat="g in _listRegsGateways" value="{{ g._id }}">{{ g.descricao || g._id }}</option>
+            </select>
+
+            <span class="badge bg-info">{{ bleWidget.ultimaData ? bleWidget.ultimaData : '-' }}</span>
+            <span class="badge bg-warning text-dark">{{ bleWidget.ultimaTag ? bleWidget.ultimaTag.substring(0, 12) : '-'
+              }}</span>
+
+            <span class="badge" ng-class="{
+              'bg-success': bleWidget.ultimaRssi> -60,
+              'bg-warning text-dark': bleWidget.ultimaRssi >= -80 && bleWidget.ultimaRssi <= -60,
+              'bg-danger': bleWidget.ultimaRssi < -80
+            }">
+              {{ bleWidget.ultimaRssi }} dBm
+            </span>
+
+
+          </div>
+
+          <div class="d-flex gap-2 mt-4">
+            <button ng-show="bleWidget.status == 'Parado'" class="btn btn-outline-primary btn-sm"
+              ng-click="onLogs()">Iniciar</button>
+            <button ng-show="bleWidget.status == 'Ativo'" class="btn btn-outline-danger btn-sm"
+              ng-click="pararBleWidget()">Parar</button>
+          </div>
+        </div>
+      </div>
+
+
     </div>
     <!-- Main container end -->
 
@@ -382,20 +526,27 @@
   <script type="text/javascript"
     src="https://cdnjs.cloudflare.com/ajax/libs/angular-moment/0.9.0/angular-moment.min.js"></script> -->
 
-    <script src="../assets/js/moment.min.js""></script>
-    <script src="../assets/js/angular-moment.min.js"></script>
+  <script src="../assets/js/moment.min.js"></script>
+  <script src="../assets/js/angular-moment.min.js"></script>
 
 
   <script src="/plugins/ngMask.js"></script>
 
   <script src="/controller/app.js"></script>
   <script src="/services/uteis.js"></script>
+  <script src="/services/logs.js"></script>
   <script src="/controller/conta.js"></script>
   <script src="/controller/start.js"></script>
   <script src="/controller/dashboard.js"></script>
+  <script src="/controller/tracking.js"></script>
+  <script src="/controller/widget.js"></script>
   <script src="/controller/posicao.js"></script>
   <script src="/controller/alerta.js"></script>
   <script src="/controller/interacao.js"></script>
+  <script src="/controller/ia.js"></script>
+  <%- defineContent('emulatorExtraScripts') %>
+  <script src="/controller/emulator.js"></script>
+  <script src="/controller/portal_movimentacao.js"></script>
 
   <script src="/controller/rel_itens_associados.js"></script>
   <script src="/controller/rel_registros.js"></script>
@@ -417,6 +568,11 @@
   <script src="/components/alerta/alerta.js"></script>
   <script src="/components/interacao/interacao.js"></script>
 
+  <script src="/components/kpis/total/total.js"></script>
+  <script src="/components/kpis/total-status/total-status.js"></script>
+  <script src="/components/kpis/grafico/grafico.js"></script>
+  <script src="/components/kpis/pizza/pizza.js"></script>
+  <script src="/components/kpis/deslocamento/deslocamento.js"></script>
 
 
   <script src="/components/categoria/categoria.js"></script>
@@ -430,7 +586,7 @@
 		************* -->
 
   <script
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC5xaaH3BEUOSN_piHUEtAunpzLNB1f5TY&libraries=drawing,geometry"></script>
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC5xaaH3BEUOSN_piHUEtAunpzLNB1f5TY&libraries=geometry"></script>
 
 
   <!-- Overlay Scroll JS -->
@@ -462,6 +618,9 @@
   <script src="../assets/js/custom.js"></script>
 
   <script src="/socket.io/socket.io.js"></script>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gridstack@10.3.1/dist/gridstack.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/gridstack@10.3.1/dist/gridstack-all.js"></script>
 
 </body>
 

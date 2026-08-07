@@ -20,7 +20,7 @@
           <!-- Authbox starts -->
           <div class="auth-box">
 
-            <h4 class="mb-4">Bem vindo,</h4>
+            <h4 class="mb-4">Bem vindo!</h4>
 
             <div class="mb-3">
               <label class="form-label" for="email">Email <span class="text-danger">*</span></label>
@@ -41,8 +41,8 @@
                 </span>
                 <input ng-model="_regConta.senha" type="password" id="password" class="form-control"
                   placeholder="Senha">
-                <button class="btn btn-outline-secondary" type="button">
-                  <i class="bi bi-eye"></i>
+                <button id="togglePassword" class="btn btn-outline-secondary" type="button" aria-label="Mostrar senha">
+                  <i id="togglePasswordIcon" class="bi bi-eye"></i>
                 </button>
               </div>
             </div>
@@ -74,3 +74,20 @@
     <!-- Auth container ends -->
 
   </div>
+
+  <script>
+    (function () {
+      const passwordInput = document.getElementById('password');
+      const toggleButton = document.getElementById('togglePassword');
+      const toggleIcon = document.getElementById('togglePasswordIcon');
+
+      if (!passwordInput || !toggleButton || !toggleIcon) return;
+
+      toggleButton.addEventListener('click', function () {
+        const isPassword = passwordInput.type === 'password';
+        passwordInput.type = isPassword ? 'text' : 'password';
+        toggleIcon.className = isPassword ? 'bi bi-eye-slash' : 'bi bi-eye';
+        toggleButton.setAttribute('aria-label', isPassword ? 'Ocultar senha' : 'Mostrar senha');
+      });
+    })();
+  </script>

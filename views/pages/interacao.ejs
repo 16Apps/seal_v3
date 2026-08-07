@@ -1,5 +1,5 @@
 <%- contentFor('body') %>
-  <div ng-controller="interacaoCtrl" class="app-container">
+  <div ng-controller="interacaoCtrl" class="app-container" ng-cloak>
 
     <!-- App hero header starts -->
     <div class="app-hero-header d-flex align-items-center">
@@ -23,6 +23,10 @@
         </div>
         <button ng-click="onInteracao('add', undefined)" type="button"
           class="btn btn-warning btn-sm ms-3 text-dark">Novo</button>
+          <button ng-click="onCarregaRegistros()" type="button"
+          class="btn btn-secondary btn-sm ms-2" title="Atualizar lista">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
       </div>
       <!-- Filter end -->
 

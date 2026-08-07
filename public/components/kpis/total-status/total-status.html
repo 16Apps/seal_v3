@@ -1,0 +1,37 @@
+<div class="col-xxl-12 col-sm-12 col-12">
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="d-flex align-items-center gap-3 flex-wrap">
+        <div class="flex-shrink-0 text-center me-2">
+          <div
+            class="icon-box md rounded-5 mx-auto"
+            ng-style="{
+              border: '1px solid ' + $ctrl.corLilas,
+              backgroundColor: 'rgba(155, 126, 189, 0.12)',
+              color: $ctrl.corLilas
+            }">
+            <i class="fs-4 {{$ctrl.icon}}" ng-style="{ color: $ctrl.corLilas }"></i>
+          </div>
+          <h6 class="m-0 mt-2" ng-style="{ color: $ctrl.corLilas }">{{$ctrl.titulo || 'Status'}}</h6>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-around flex-grow-1 gap-3 flex-wrap"
+          ng-if="!$ctrl.carregando && !$ctrl.erroKpi">
+          <div class="text-center px-2"
+            ng-repeat="s in $ctrl.statusResumo track by s.status">
+            <h3 class="display-5 mb-0" ng-class="'text-' + s.cor">{{s.total}}</h3>
+            <span class="fw-semibold" ng-class="'text-' + s.cor">{{s.label}}</span>
+          </div>
+          <div class="text-muted small" ng-if="!$ctrl.statusResumo.length">
+            Nenhum item encontrado.
+          </div>
+        </div>
+
+        <div class="flex-grow-1 text-end" ng-if="$ctrl.carregando">
+          <span class="fs-4 text-muted">…</span>
+        </div>
+      </div>
+      <p class="m-0 mt-2 small text-danger" ng-if="$ctrl.erroKpi">{{$ctrl.erroKpi}}</p>
+    </div>
+  </div>
+</div>

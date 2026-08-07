@@ -200,6 +200,7 @@ module.exports = (app, dbConnection) => {
     }
   });
 
+  
   app.get('/sepioo/object/:id', async (req, res) => {
     try {
       const { id } = req.params;
@@ -345,6 +346,9 @@ module.exports = (app, dbConnection) => {
           // Cria registro na collection posicao quando tudo estiver localizado
           // 1. se STATUS = 'DESINICIO
           // 2. se STATUS = 'DESPRODUCAO'
+
+
+          // Deve checado outras guias
 
           if (itemEncontrado && localizacaoEncontrada && ultimoRegistro) {
 

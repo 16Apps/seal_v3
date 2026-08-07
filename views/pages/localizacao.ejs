@@ -1,5 +1,5 @@
 <%- contentFor('body') %>
-  <div ng-controller="localizacaoCtrl" class="app-container">
+  <div ng-controller="localizacaoCtrl" class="app-container" ng-cloak>
 
     <!-- App hero header starts -->
     <div class="app-hero-header d-flex align-items-center">
@@ -10,7 +10,7 @@
           <i class="bi bi-house lh-1"></i>
           <a class="text-decoration-none">Extras</a>
         </li>
-        <li class="breadcrumb-item" aria-current="page">Endereços</li>
+        <li class="breadcrumb-item" aria-current="page">{{ _regConta.params_nomenclatura_itens.enderecos }}s</li>
       </ol>
       <!-- Breadcrumb end -->
 
@@ -63,7 +63,7 @@
 
                         <!-- Localização -->
                         <th class="w-30 sortable" ng-click="sortBy('localizacao')">
-                          Localização
+                          Endereço
                           <i class="bi" ng-class="{
             'bi-caret-up-fill': sortField=='localizacao' && !sortReverse,
             'bi-caret-down-fill': sortField=='localizacao' && sortReverse

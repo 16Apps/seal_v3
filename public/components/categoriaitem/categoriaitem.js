@@ -132,10 +132,11 @@ app.component('categoriaitem', {
     }
 
     $ctrl.fechar = function () {
-      // dispara o callback do pai
+
       $ctrl.onFechar();
     };
 
   },
   templateUrl: 'components/categoriaitem/categoriaitem.html'
+
 });

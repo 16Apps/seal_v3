@@ -1,5 +1,6 @@
 <div class="row gx-3">
-    <div class="col-xxl-12 col-sm-6">
+    <h5 class="card-title">{{$ctrl.descricaoNivel || 'Planta'}}</h5>
+    <div class="col-xxl-12 col-sm-6 mt-2">
         <!-- <img src="{{ $ctrl._editNivel._planta_baixa }}"
                                             class="d-block w-100 img-fluid rounded-5"
                                             alt="Admin Templates & Dashboards"> -->
@@ -10,7 +11,7 @@
                 #viewport {
                     position: relative;
                     width: 100%;
-                    height: 45vh;
+                    height: 400px;;
                     overflow: hidden;
                     background: #353C48;
                     border-radius: 5px;
@@ -65,14 +66,14 @@
                         ng-attr-viewBox="0 0 {{$ctrl.imgW}} {{$ctrl.imgH}}">
 
                         <!-- polígonos já salvos -->
-                        <polygon ng-repeat="area in $ctrl.areas" ng-attr-points="{{$ctrl.polyToAttr(area.points)}}"
+                        <polygon ng-if="$ctrl._mostrarMarcacaoArea" ng-repeat="area in $ctrl.areas" ng-attr-points="{{$ctrl.polyToAttr(area.points)}}"
                             ng-attr-fill="{{area.fillColor}}" ng-attr-stroke="{{area.strokeColor}}" stroke-width="2"
                             ng-click="$ctrl.onSelectArea(area, $event)"></polygon>
 
                         <!-- Nome da área -->
-                        <text ng-repeat="area in $ctrl.areas" ng-attr-x="{{$ctrl.centroide(area.points).x}}"
+                        <text ng-if="$ctrl._mostrarLegendaDescricao" ng-repeat="area in $ctrl.areas" ng-attr-x="{{$ctrl.centroide(area.points).x}}"
                             ng-attr-y="{{$ctrl.centroide(area.points).y - 5}}" text-anchor="middle"
-                            alignment-baseline="middle" ng-attr-fill="{{area.textColor}}" font-size="14"
+                            alignment-baseline="middle" ng-attr-fill="{{area.textColor}}" ng-attr-font-size="{{$ctrl._tamanhoFonteLegenda}}"
                             font-weight="bold" pointer-events="none">
                             {{ area.nome }}
                         </text>
@@ -80,7 +81,7 @@
                         <!-- Ícone + valor (logo abaixo do nome) -->
                         <text ng-repeat="area in $ctrl.areas" ng-attr-x="{{$ctrl.centroide(area.points).x}}"
                             ng-attr-y="{{$ctrl.centroide(area.points).y + 22}}" text-anchor="middle"
-                            alignment-baseline="middle" fill="#432818" font-size="20" font-weight="bold"
+                            alignment-baseline="middle" fill="#432818" ng-attr-font-size="{{$ctrl._tamanhoFonteLegenda}}" font-weight="bold"
                             pointer-events="none">
                             <!-- usa emoji ou símbolo textual, SVG não renderiza <i> -->
                             📦 {{ area.valor }}

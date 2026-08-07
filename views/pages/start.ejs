@@ -1,5 +1,5 @@
 <%- contentFor('body') %>
-  <div ng-controller="startCtrl" class="app-container">
+  <div ng-controller="startCtrl" ng-cloak class="app-container">
 
     <!-- App hero header starts -->
     <div class="app-hero-header d-flex align-items-center">
@@ -83,8 +83,8 @@
 
                       <div class="d-flex justify-content-end gap-2 mt-3">
                         <button ng-repeat="item in _regLocalizacao | limitTo:2" ng-click="onLocalizacao('edit', item)"
-                          type="button" class="btn btn-outline-primary btn-sm">
-                          {{ item.descricao.length > 15 ? (item.descricao.substring(0,15) + '...') : item.descricao }}
+                          type="button" class="btn btn-outline-primary btn-sm"
+                          ng-bind="item.descricao.length > 15 ? (item.descricao.substring(0,15) + '...') : item.descricao">
                         </button>
                         <button ng-click="onLocalizacao('add', undefined)" type="button"
                           class="btn btn-primary btn-sm ms-auto">
@@ -126,9 +126,8 @@
 
                       <div class="d-flex justify-content-end gap-2 mt-3">
                         <button ng-repeat="item in _regItem | limitTo:2" ng-click="onItem('edit', item)" type="button"
-                          class="btn btn-outline-danger btn-sm">
-                          {{ item.tag.length > 15 ? (item.tag.slice(-15) + '...') : item.tag }}
-
+                          class="btn btn-outline-danger btn-sm"
+                          ng-bind="item.tag.length > 15 ? (item.tag.slice(-15) + '...') : item.tag">
                         </button>
                         <button ng-click="onItem('add', undefined)" type="button" class="btn btn-danger btn-sm ms-auto">
                           Incluir
@@ -167,8 +166,8 @@
                       </div>
                       <div class="d-flex justify-content-end gap-2 mt-3">
                         <button ng-repeat="item in _regGateway | limitTo:2" ng-click="onGateway('edit', item)"
-                          type="button" class="btn btn-outline-success btn-sm">
-                          {{ item.descricao.length > 15 ? (item.descricao.substring(0,15) + '...') : item.descricao }}
+                          type="button" class="btn btn-outline-success btn-sm"
+                          ng-bind="item.descricao.length > 15 ? (item.descricao.substring(0,15) + '...') : item.descricao">
                         </button>
                         <button ng-click="onGateway('add', undefined)" type="button"
                           class="btn btn-success btn-sm ms-auto">
@@ -209,8 +208,8 @@
 
                       <div class="d-flex justify-content-end gap-2 mt-3">
                         <button ng-repeat="item in _regAlerta | limitTo:2" ng-click="onAlerta('edit', item)"
-                          type="button" class="btn btn-outline-warning btn-sm">
-                           {{ item.descricao.length > 15 ? (item.descricao.substring(0,15) + '...') : item.descricao }}
+                          type="button" class="btn btn-outline-warning btn-sm"
+                          ng-bind="item.descricao.length > 15 ? (item.descricao.substring(0,15) + '...') : item.descricao">
                         </button>
                         <button ng-click="onAlerta('add', undefined)" type="button"
                           class="btn btn-warning btn-sm ms-auto">
@@ -294,7 +293,7 @@
                     <h1 class="display-5">
                       Pronto para começar?
                     </h1>
-                    
+
                     <p class="lead mb-4">
                       Configure suas áreas, registre seus itens e conecte seus dispositivos.
                       Em poucos minutos, você verá tudo se movimentando em tempo real — utilizando até mesmo o
@@ -302,11 +301,17 @@
                       implantação.
                     </p>
                     <div class="d-grid gap-2 d-md-flex justify-content-md-start">
-                      <button type="button" class="btn btn-warning btn-lg" data-bs-toggle="offcanvas"
+                      <!-- <button type="button" class="btn btn-warning btn-lg" data-bs-toggle="offcanvas"
                         data-bs-target="#offcanvasSuporte" aria-controls="offcanvasSuporte">
                         <i class="bi bi-headset  lh-1"></i>
                         Suporte
-                      </button>
+                      </button> -->
+
+                      <a href="/ia" class="btn btn-warning btn-lg" role="button">
+                        <i class="bi bi-robot lh-1"></i>
+                        Suporte IA
+                      </a>
+
 
                       <div class="offcanvas offcanvas-bottom" tabindex="-1" id="offcanvasSuporte"
                         aria-labelledby="offcanvasBottomLabel" style="height: 350px !important;">
@@ -319,8 +324,141 @@
 
                           <div class="row gx-3">
 
+                            <!-- Área de conversa simulada com Bot de Suporte -->
+                            <div class="col-12 col-lg-7 mb-3">
+                              <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-header bg-light d-flex align-items-center">
+                                  <div class="icon-box sm bg-warning text-white rounded-circle me-2">
+                                    <i class="bi bi-robot"></i>
+                                  </div>
+                                  <div class="me-auto">
+                                    <h6 class="mb-0">Assistente Connect Bot</h6>
+                                    <small class="text-muted">Versão beta · conversa simulada</small>
+                                  </div>
+                                  <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                    Online
+                                  </span>
+                                </div>
+                                <div class="card-body d-flex flex-column" style="max-height: 220px; overflow-y: auto;">
+
+                                  <!-- Mensagens da conversa (simulação) -->
+                                  <div class="mb-3">
+                                    <small class="text-muted d-block text-center mb-2">
+                                      Hoje · 09:15
+                                    </small>
+                                    <div class="d-flex mb-2">
+                                      <div class="icon-box sm bg-warning text-white rounded-circle me-2">
+                                        <i class="bi bi-robot"></i>
+                                      </div>
+                                      <div class="bg-light rounded-3 p-2 px-3">
+                                        <small class="fw-semibold d-block mb-1">Connect Bot</small>
+                                        <p class="mb-1 small">
+                                          Olá, <span class="fw-semibold" ng-bind="_userLogged.nome || 'usuário'"></span>!
+                                          👋<br />
+                                          Sou o assistente virtual da plataforma. Posso te ajudar a configurar seus
+                                          endereços, itens e coletores.
+                                        </p>
+                                        <small class="text-muted small">Vendo sua tela inicial agora…</small>
+                                      </div>
+                                    </div>
+
+                                    <div class="d-flex justify-content-end mb-2">
+                                      <div class="bg-primary text-white rounded-3 p-2 px-3 text-end">
+                                        <small class="fw-semibold d-block mb-1">Você</small>
+                                        <p class="mb-1 small">
+                                          Quero começar a usar o sistema. O que preciso fazer primeiro?
+                                        </p>
+                                        <small class="text-white-50 small">09:16</small>
+                                      </div>
+                                    </div>
+
+                                    <div class="d-flex mb-2">
+                                      <div class="icon-box sm bg-warning text-white rounded-circle me-2">
+                                        <i class="bi bi-robot"></i>
+                                      </div>
+                                      <div class="bg-light rounded-3 p-2 px-3">
+                                        <small class="fw-semibold d-block mb-1">Connect Bot</small>
+                                        <p class="mb-1 small">
+                                          Perfeito! Vamos por partes:
+                                        </p>
+                                        <ul class="mb-1 small ps-3">
+                                          <li>Defina seus <strong>endereços</strong> físicos.</li>
+                                          <li>Cadastre os <strong>itens/SKUs</strong> que serão rastreados.</li>
+                                          <li>Conecte pelo menos um <strong>gateway</strong> ou leitor.</li>
+                                          <li>Configure <strong>alertas</strong> para acompanhar desvios.</li>
+                                        </ul>
+                                        <small class="text-muted small">Posso te guiar em cada etapa acima.</small>
+                                      </div>
+                                    </div>
+
+                                    <div class="d-flex justify-content-end">
+                                      <div class="bg-primary text-white rounded-3 p-2 px-3 text-end">
+                                        <small class="fw-semibold d-block mb-1">Você</small>
+                                        <p class="mb-1 small">
+                                          Me mostre como configurar os endereços primeiro.
+                                        </p>
+                                        <small class="text-white-50 small">09:18</small>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <!-- Campo de entrada apenas ilustrativo (não funcional ainda) -->
+                                  <div class="mt-auto pt-2 border-top">
+                                    <div class="input-group input-group-sm">
+                                      <span class="input-group-text bg-transparent border-0 ps-0">
+                                        <i class="bi bi-chat-dots text-muted"></i>
+                                      </span>
+                                      <input type="text" class="form-control border-0"
+                                        placeholder="Em breve você poderá conversar com o assistente em tempo real…"
+                                        disabled>
+                                      <button class="btn btn-outline-secondary btn-sm" type="button" disabled>
+                                        Enviar
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <!-- Ações rápidas relacionadas ao contexto do Bot -->
+                            <div class="col-12 col-lg-5 mb-3">
+                              <div class="card h-100 border-0 bg-light-subtle">
+                                <div class="card-body">
+                                  <h6 class="fw-bold mb-2">
+                                    Sugestões rápidas
+                                  </h6>
+                                  <p class="small text-muted mb-3">
+                                    A partir da conversa simulada acima, escolha um atalho para ir direto ao ponto:
+                                  </p>
+
+                                  <div class="d-grid gap-2 mb-3">
+                                    <button type="button" class="btn btn-outline-primary btn-sm text-start"
+                                      ng-click="onLocalizacao('add', undefined)">
+                                      <i class="bi bi-geo-alt me-2"></i>
+                                      Configurar primeiros endereços
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger btn-sm text-start"
+                                      ng-click="onItem('add', undefined)">
+                                      <i class="bi bi-box-seam me-2"></i>
+                                      Cadastrar itens para rastrear
+                                    </button>
+                                    <button type="button" class="btn btn-outline-success btn-sm text-start"
+                                      ng-click="onGateway('add', undefined)">
+                                      <i class="bi bi-broadcast-pin me-2"></i>
+                                      Conectar novo gateway/leitor
+                                    </button>
+                                  </div>
+
+                                  <small class="text-muted d-block">
+                                    Esta área é apenas uma prévia visual. Em versões futuras, o assistente será
+                                    conectado de fato à sua base de dados e processos.
+                                  </small>
+                                </div>
+                              </div>
+                            </div>
+
                             <!-- Suporte por E-mail -->
-                            <div class="col-6 col-md-3">
+                            <!-- <div class="col-6 col-md-3">
                               <div class="list-group">
                                 <a href="#" class="list-group-item list-group-item-action d-flex align-items-center">
                                   <div class="icon-box lg bg-primary text-white rounded-circle me-3">
@@ -335,10 +473,10 @@
                                   </div>
                                 </a>
                               </div>
-                            </div>
+                            </div> -->
 
                             <!-- Suporte por WhatsApp -->
-                            <div class="col-6 col-md-3">
+                            <!-- <div class="col-6 col-md-3">
                               <div class="list-group">
                                 <a href="#" class="list-group-item list-group-item-action d-flex align-items-center">
                                   <div class="icon-box lg bg-success text-white rounded-circle me-3">
@@ -352,10 +490,10 @@
                                   </div>
                                 </a>
                               </div>
-                            </div>
+                            </div> -->
 
                             <!-- Suporte via Bot -->
-                            <div class="col-6 col-md-3">
+                            <!-- <div class="col-6 col-md-3">
                               <div class="list-group">
                                 <a href="#" class="list-group-item list-group-item-action d-flex align-items-center">
                                   <div class="icon-box lg bg-warning text-white rounded-circle me-3">
@@ -369,7 +507,7 @@
                                   </div>
                                 </a>
                               </div>
-                            </div>
+                            </div> -->
 
                           </div>
 

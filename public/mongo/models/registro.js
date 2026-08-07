@@ -28,8 +28,8 @@ const RegistroSchema = new mongoose.Schema({
                 id_item: { type: String, ref: 'Item' },
                 id_categoria: { type: String, ref: 'Categoria' },
                 quantidade: { type: Number },
-                encontrado: { type: Date }  ,
-                encontrado_categoria: { type: Number }   
+                encontrado: { type: Date },
+                encontrado_categoria: { type: Number }
             }
         ],
         default: []
@@ -54,6 +54,14 @@ const RegistroSchema = new mongoose.Schema({
 
     id_colaborador_retirada: { type: String, ref: 'Colaborador' },
     id_registro_colaborador: { type: String, ref: 'RegistroColaborador' },
+
+    interacoes: [{
+        _id: { type: String, default: shortid.generate },
+        interacao_id: { type: String }, // tokem, mac , seria do dispositivo que interagiu
+        interacao_status: { type: String },
+        interacao_envio: { type: String },
+        interacao_retorno: { type: String },
+    }]
 
 }, {
     versionKey: false,

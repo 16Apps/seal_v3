@@ -1,5 +1,5 @@
 <%- contentFor('body') %>
-  <div ng-controller="categoriaItemCtrl" class="app-container">
+  <div ng-controller="categoriaItemCtrl" class="app-container" ng-cloak>
 
     <!-- App hero header starts -->
     <div class="app-hero-header d-flex align-items-center">
@@ -8,7 +8,7 @@
       <ol class="breadcrumb d-none d-lg-flex">
         <li class="breadcrumb-item">
           <i class="bi bi-house lh-1"></i>
-          <a class="text-decoration-none">Gestão de Itens</a>
+          <a class="text-decoration-none">Gestão de {{ _regConta.params_nomenclatura_itens.sku }}s</a>
         </li>
         <li class="breadcrumb-item" aria-current="page">{{ _regConta.params_nomenclatura_itens.categorias }}s</li>
       </ol>
@@ -22,6 +22,10 @@
         </div>
         <button ng-click="onCategoriaItem('add', undefined)" type="button"
           class="btn btn-warning btn-sm ms-3 text-dark">Novo</button>
+        <button ng-click="onExportarCSV()" type="button"
+          class="btn btn-success btn-sm ms-2" title="Exportar lista para CSV">
+          <i class="bi bi-file-earmark-arrow-down"></i>
+        </button>
       </div>
       <!-- Filter end -->
 

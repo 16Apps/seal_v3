@@ -1,9 +1,9 @@
 <div class="modal-content">
     <div class="modal-header">
         <h5 class="modal-title h4" id="exampleModalFullscreenLabel">
-            Endereço
+            {{ $ctrl._regConta.params_nomenclatura_itens.enderecos }}
         </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close" ng-click="$ctrl.fechar()" aria-label="Close"></button>
     </div>
     <div class="modal-body">
 
@@ -71,7 +71,7 @@
                             <li class="nav-item" role="presentation">
                                 <button ng-click="$ctrl.onCarregaNiveisAp('02')" class="nav-link rounded-pill"
                                     id="pills-d-tab" data-bs-toggle="pill" data-bs-target="#pills-d" type="button"
-                                    role="tab" aria-controls="pills-d" aria-selected="false">Site Survey</button>
+                                    role="tab" aria-controls="pills-d" aria-selected="false">APs (Ponto de Acesso)</button>
                             </li>
                             <li class="nav-item" role="presentation">
                                 <button ng-click="$ctrl.onCarregaNiveisItens('02')" class="nav-link rounded-pill"
@@ -151,6 +151,21 @@
                                                             <input ng-model="$ctrl._editNivel.tag" type="text"
                                                                 class="form-control">
                                                         </div>
+                                                        <div class="col-sm-3"></div>
+                                                        <div class="col-sm-3">
+                                                            <label for="displayName" class="form-label">
+                                                                Capacidade Mínima
+                                                            </label>
+                                                            <input ng-model="$ctrl._editNivel.capacidade_minima" type="number"
+                                                                class="form-control">
+                                                        </div>
+                                                        <div class="col-sm-3">
+                                                            <label for="displayName" class="form-label">
+                                                                Capacidade Máxima
+                                                            </label>
+                                                            <input ng-model="$ctrl._editNivel.capacidade_maxima" type="number"
+                                                                class="form-control">
+                                                        </div>                                                        
                                                     </div>
 
 
@@ -281,17 +296,49 @@
                                                                 class="form-control">
                                                         </div>
 
-                                                        <div class="col-sm-12">
+                                                        <div class="col-sm-12 mb-3">
+                                                            <div class="row gx-3">
+                                                                <div class="col-sm-6">
+                                                                    <label for="displayName" class="form-label">
+                                                                        Mínimo
+                                                                    </label>
+                                                                    <input ng-model="$ctrl._editNivelSub2.capacidade_minima" type="number"
+                                                                        class="form-control">
+                                                                </div>
+                                                                <div class="col-sm-6">
+                                                                    <label for="displayName" class="form-label">
+                                                                        Máximo
+                                                                    </label>
+                                                                    <input ng-model="$ctrl._editNivelSub2.capacidade_maxima" type="number"
+                                                                        class="form-control">
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div class="col-sm-12 mb-3">
                                                             <label for="displayName" class="form-label">
                                                                 Processo App
                                                             </label>
                                                             <select ng-model="$ctrl._editNivelSub2.processo_app"
                                                                 class="form-select flex-grow-1" id="basicSelect"
                                                                 aria-label="Basic select example">
-                                                                <option value="">Nenhum</option>
-                                                                <option value="id_categoria">Vinculo Tipo de Item</option>
+                                                                <option value=""></option>
+                                                                <option value="id_categoria">iD Categoria</option>
                                                                 <option value="id_status">iD Status</option>
-                                                                <option value="desv_categoria">Desv. Tipo de Item</option>
+                                                                <option value="desv_categoria">Desv. Categoria</option>
+                                                            </select>
+                                                        </div>
+
+                                                        <div class="col-sm-12">
+                                                            <label for="displayName" class="form-label">
+                                                                Processo Destino
+                                                            </label>
+                                                            <select ng-model="$ctrl._editNivelSub2.processo_app_destino"
+                                                                class="form-select flex-grow-1" id="basicSelect"
+                                                                aria-label="Basic select example">
+                                                                <option value="checar">Checar</option>
+                                                                <option value="finaliza">Finaliza</option>
+                                                                <option value="sem_destino">Sem Destino</option>
                                                             </select>
                                                         </div>
 
@@ -307,8 +354,9 @@
                                                             <tr ng-repeat="item in $ctrl._listNivel2">
                                                                 <td class="w-50">{{ item.descricao }}</td>
                                                                 <td class="w-50" style="text-align: right;">
-                                                                    <a class="btn btn-danger btn-sm">
+                                                                    <a ng-click="$ctrl.onExcluirSubNivel('2', item)" class="btn btn-danger btn-sm">
                                                                         <i class="bi bi-trash"></i>
+
                                                                     </a>
                                                                     <a ng-click="$ctrl.onEditar( item,'2',  $ctrl._editNivel._id)"
                                                                         class="btn btn-info btn-sm">
@@ -366,18 +414,53 @@
                                                                 class="form-control">
                                                         </div>
 
-                                                        <div class="col-sm-7">
+                                                        <div class="col-sm-12 mb-3">
+                                                            <div class="row gx-3">
+                                                                <div class="col-sm-6">
+                                                                    <label for="displayName" class="form-label">
+                                                                        Mínimo
+                                                                    </label>
+                                                                    <input ng-model="$ctrl._editNivelSub3.capacidade_minima" type="number"
+                                                                        class="form-control">
+                                                                </div>
+                                                                <div class="col-sm-6">
+                                                                    <label for="displayName" class="form-label">
+                                                                        Máximo
+                                                                    </label>
+                                                                    <input ng-model="$ctrl._editNivelSub3.capacidade_maxima" type="number"
+                                                                        class="form-control">
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div class="col-sm-12 mb-3">
                                                             <label for="displayName" class="form-label">
                                                                 Processo App
                                                             </label>
                                                             <select ng-model="$ctrl._editNivelSub3.processo_app"
                                                                 class="form-select flex-grow-1" id="basicSelect"
                                                                 aria-label="Basic select example">
+                                                                <option value=""></option>
                                                                 <option value="id_categoria">iD Categoria</option>
                                                                 <option value="id_status">iD Status</option>
                                                                 <option value="desv_categoria">Desv. Categoria</option>
                                                             </select>
                                                         </div>
+
+                                                        <div class="col-sm-12">
+                                                            <label for="displayName" class="form-label">
+                                                                Processo Destino
+                                                            </label>
+                                                            <select ng-model="$ctrl._editNivelSub3.processo_app_destino"
+                                                                class="form-select flex-grow-1" id="basicSelect"
+                                                                aria-label="Basic select example">
+                                                                <option value="checar">Checar</option>
+                                                                <option value="finaliza">Finaliza</option>
+                                                                <option value="sem_destino">Sem Destino</option>
+                                                            </select>
+                                                        </div>
+
+                                                        
 
                                                     </div>
                                                 </div>
@@ -391,7 +474,7 @@
                                                             <tr ng-repeat="item in $ctrl._listNivel3">
                                                                 <td class="w-50">{{ item.descricao }}</td>
                                                                 <td class="w-50" style="text-align: right;">
-                                                                    <a class="btn btn-danger btn-sm">
+                                                                    <a ng-click="$ctrl.onExcluirSubNivel('3', item)" class="btn btn-danger btn-sm">
                                                                         <i class="bi bi-trash"></i>
                                                                     </a>
                                                                     <a ng-click="$ctrl.onEditar( item,'3',  $ctrl._editNivelSub2._id)"
@@ -448,17 +531,49 @@
                                                             <input ng-model="$ctrl._editNivelSub4.tag" type="text"
                                                                 class="form-control">
                                                         </div>
+                                                        <div class="col-sm-12 mb-3">
+                                                            <div class="row gx-3">
+                                                                <div class="col-sm-6">
+                                                                    <label for="displayName" class="form-label">
+                                                                        Mínimo
+                                                                    </label>
+                                                                    <input ng-model="$ctrl._editNivelSub4.capacidade_minima" type="number"
+                                                                        class="form-control">
+                                                                </div>
+                                                                <div class="col-sm-6">
+                                                                    <label for="displayName" class="form-label">
+                                                                        Máximo
+                                                                    </label>
+                                                                    <input ng-model="$ctrl._editNivelSub4.capacidade_maxima" type="number"
+                                                                        class="form-control">
+                                                                </div>
+                                                            </div>
+                                                        </div>
 
-                                                        <div class="col-sm-7">
+                                                        <div class="col-sm-12 mb-3">
                                                             <label for="displayName" class="form-label">
                                                                 Processo App
                                                             </label>
                                                             <select ng-model="$ctrl._editNivelSub4.processo_app"
                                                                 class="form-select flex-grow-1" id="basicSelect"
                                                                 aria-label="Basic select example">
+                                                                <option value=""></option>
                                                                 <option value="id_categoria">iD Categoria</option>
                                                                 <option value="id_status">iD Status</option>
                                                                 <option value="desv_categoria">Desv. Categoria</option>
+                                                            </select>
+                                                        </div>
+
+                                                        <div class="col-sm-12">
+                                                            <label for="displayName" class="form-label">
+                                                                Processo Destino
+                                                            </label>
+                                                            <select ng-model="$ctrl._editNivelSub4.processo_app_destino"
+                                                                class="form-select flex-grow-1" id="basicSelect"
+                                                                aria-label="Basic select example">
+                                                                <option value="checar">Checar</option>
+                                                                <option value="finaliza">Finaliza</option>
+                                                                <option value="sem_destino">Sem Destino</option>
                                                             </select>
                                                         </div>
 
@@ -474,7 +589,7 @@
                                                             <tr ng-repeat="item in $ctrl._listNivel4">
                                                                 <td class="w-50">{{ item.descricao }}</td>
                                                                 <td class="w-50" style="text-align: right;">
-                                                                    <a class="btn btn-danger btn-sm">
+                                                                    <a ng-click="$ctrl.onExcluirSubNivel('4', item)"class="btn btn-danger btn-sm">
                                                                         <i class="bi bi-trash"></i>
                                                                     </a>
                                                                     <a ng-click="$ctrl.onEditar( item,'4',  $ctrl._editNivelSub3._id)"
@@ -887,13 +1002,20 @@
                                                         <button ng-click="$ctrl.initMap2()" class="btn btn-info"
                                                             type="button">Filtrar</button>
                                                         <button ng-click="$ctrl.ativarMarcacao()"
-                                                            ng-disabled="!$ctrl._nivelPlanta2" class="btn btn-success"
-                                                            type="button">
+                                                            ng-disabled="!$ctrl._nivelPlanta2 || $ctrl.marcacaoMapaAtiva"
+                                                            class="btn btn-success" type="button">
                                                             Marcação Área
                                                         </button>
-                                                        <button ng-click="$ctrl.cancelDrawing()" ng-show="$ctrl.drawing"
-                                                            class="btn btn-light" type="button">Cancelar
-                                                            Marcação</button>
+                                                        <button ng-click="$ctrl.finalizarMarcacaoMapa()"
+                                                            ng-show="$ctrl.marcacaoMapaAtiva"
+                                                            class="btn btn-primary" type="button">
+                                                            Finalizar área
+                                                        </button>
+                                                        <button ng-click="$ctrl.cancelarMarcacaoMapa()"
+                                                            ng-show="$ctrl.marcacaoMapaAtiva"
+                                                            class="btn btn-light" type="button">
+                                                            Cancelar marcação
+                                                        </button>
                                                     </div>
                                                 </div>
                                             </div>

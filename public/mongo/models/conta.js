@@ -9,6 +9,7 @@ const ContaSchema = new mongoose.Schema({
     cnpj: { type: String },
     contato_responsavel: { type: String },
     contato_celular: { type: String },
+    contato_responsavel_email: { type: String },
     logo: { type: String },
     telefone: { type: String },
     celular: { type: String },
@@ -26,6 +27,8 @@ const ContaSchema = new mongoose.Schema({
     tokem_api: { type: String },
     observacao: { type: String },
 
+    id_api: { type: String },
+
     alerta_email: { type: String },
     alerta_email_criterio: { type: String },
     alerta_celular: { type: String },
@@ -35,12 +38,16 @@ const ContaSchema = new mongoose.Schema({
         sku: { type: String },
         itens: { type: String },
         categorias: { type: String },
+        enderecos: { type: String },
+        coletores: { type: String },
     },
 
     plano_monitoramento: {
         posicao_esperada: { type: Number, enum: [0, 1], default: 1 },
         painel_alertas: { type: Number, enum: [0, 1], default: 1 },
-        interacao: { type: Number, enum: [0, 1], default: 1 }
+        interacao: { type: Number, enum: [0, 1], default: 1 },
+        regs_associados: { type: Number, enum: [0, 1], default: 1 },
+        portal: { type: Number, enum: [0, 1], default: 1 },
     },
 
     plano_conta: {
@@ -48,7 +55,9 @@ const ContaSchema = new mongoose.Schema({
         valor: { type: Number, default: 0 },
         representante: { type: String },
         suporte_celular: { type: String },
-    }
+    },
+
+    widget_layout: { type: Array, default: [] },
 
 
 }, {

@@ -1,0 +1,1264 @@
+<%- contentFor('body') %>
+<div ng-controller="emulatorCtrl" ng-cloak>
+
+  <div class="app-hero-header d-flex align-items-center flex-wrap gap-2">
+    <ol class="breadcrumb d-none d-lg-flex mb-0">
+      <li class="breadcrumb-item">
+        <i class="bi bi-house lh-1"></i>
+        <a class="text-decoration-none">Home</a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">Emulador Coletores e SKU</li>
+    </ol>
+    <div class="ms-lg-auto d-flex align-items-center gap-2">
+      <span class="text-muted small d-none d-md-inline">Monte o cenário, arraste objetos e acompanhe o histórico por caixa.</span>
+      <img ng-src="{{ _regConta._logo }}" alt="Logo" class="rounded border bg-white d-none d-sm-block" style="height: 36px; width: auto; max-width: 100px; object-fit: contain;">
+    </div>
+  </div>
+
+  <div class="app-body pt-0">
+    <div class="seal-emulator card border-0 shadow-sm overflow-hidden">
+      <div class="seal-emulator-inner">
+        <aside class="sidebar">
+          <div>
+            <h2 class="h5 mb-2">Emulador Seal</h2>
+            <p class="small mb-0">Gateways e caixas: selecione, arraste, edite e salve o layout.</p>
+          </div>
+
+          <div class="toolbox">
+            <div class="section-title">Objetos</div>
+            <div class="d-flex gap-2">  
+            <button type="button" class="tool-btn gateway h-100" ng-click="onAddGateway()">+ Gateway</button>
+            <button type="button" class="tool-btn item h-100" ng-click="onAddItem()">+ SKU</button>
+          </div>
+          </div>
+
+          <div class="controls">
+            <div class="section-title">Ações</div>
+            <button type="button" class="action-btn primary" ng-click="onSaveLayout()" style="display: none;">Salvar layout</button>
+            <button type="button" class="action-btn" ng-click="onLoadLayout()" style="display: none;">Carregar layout</button>
+            <button type="button" class="action-btn" ng-click="onExportLayout()" style="display: none;">Exportar JSON</button>
+            <button   type="button" class="action-btn danger" ng-click="onDeleteSelected()">Excluir selecionado</button>
+            <button type="button" class="action-btn danger" ng-click="onClearAll()">Limpar tudo</button>
+          </div>
+
+          <div class="details" ng-show="emulator.form.objName" >
+            <div class="section-title">Propriedades</div>
+            <label for="objName">Nome</label>
+            <input id="objName" type="text" placeholder="Selecione um objeto" autocomplete="off" ng-model="emulator.form.objName" />
+
+            <label for="objType"  style="display: none;">Tipo</label>
+            <input id="objType" type="text" placeholder="-" ng-show="false" ng-model="emulator.form.objType"/>
+
+            <label for="objRange" ng-show="emulator.form.objType=='gateway'" >Alcance do gateway</label>
+            <input id="objRange" ng-show="emulator.form.objType=='gateway'" type="number" min="40" step="10" placeholder="Somente gateway" ng-model="emulator.form.objRange" />
+
+            <label for="itemTag" ng-show="emulator.form.objType=='item'">Tag / Código</label>
+            <input id="itemTag"  ng-show="emulator.form.objType=='item'"type="text" placeholder="Ex.: CX-0001" autocomplete="off" ng-model="emulator.form.itemTag" />
+
+            <button type="button" class="action-btn bg-info text-white" ng-click="onApplyChanges()">Aplicar alterações</button>
+            <button
+              type="button"
+              class="action-btn bg-success text-white"
+              ng-show="emulator.selectedGateway && emulator.form.objType=='gateway'"
+              ng-click="onOpenGatewayItemsModal()">
+              Registrar
+            </button>
+            <!-- <div class="hint">
+              Dicas:<br>
+              • Clique para selecionar<br>
+              • Ctrl/Shift + clique para multisseleção<br>
+              • Arraste para mover<br>
+              • Use o mouse para redimensionar<br>
+              • Gateways mostram área de cobertura
+            </div> -->
+          </div>
+        </aside>
+
+        <main class="main">
+          <div class="topbar">
+            <div class="topbar-left">
+              <h1 class="h5 mb-0">Área Planta</h1>
+              <span class="small text-muted d-block">Organize os Gateways e mova os SKUs livremente</span>
+            </div>
+
+            <div class="legend">
+              <span class="legend-badge"><span class="dot" style="background:#2563eb"></span> Gateway</span>
+              <span class="legend-badge"><span class="dot" style="background:#f59e0b"></span> Caixa</span>
+              <span class="legend-badge"><span class="dot" style="background:#10b981"></span> Seleção</span>
+            </div>
+          </div>
+
+          <div class="workspace">
+            <div id="emulatorKonvaContainer"></div>
+            <div class="status">{{ emulator.statusText || 'Nenhum objeto selecionado' }}</div>
+          </div>
+        </main>
+
+        <aside class="sidebar-right" aria-label="Histórico de movimentação">
+          <div class="details">
+            <div class="section-title">Histórico de movimentação</div>
+            <label for="historyItem">Caixa</label>
+            <select id="historyItem"
+              ng-model="emulator.historyItemId"
+              ng-options="opt.id as opt.label for opt in emulator.historyOptions"
+              ng-change="onHistoryItemChange()"></select>
+            <div class="history-current-line">
+              <strong>Local atual</strong>
+              <span>{{ emulator.history.currentText || '—' }}</span>
+              <div class="sub">{{ emulator.history.currentSub }}</div>
+            </div>
+            <div class="section-title" style="margin-top:4px">Totais por local</div>
+            <div class="history-place-totals">
+              <div class="row" ng-repeat="row in emulator.history.totals track by $index">
+                <span>{{ row.label }}</span><em>{{ row.totalText }}</em>
+              </div>
+            </div>
+            <button type="button" class="action-btn" ng-click="onResetHistory()">Zerar histórico da caixa</button>
+            <label style="margin-top:10px">Trechos finalizados</label>
+            <div class="history-log">
+              <div class="entry leave" ng-repeat="entry in emulator.history.logEntries track by $index">
+                <time>Fim do trecho: {{ entry.endText }}</time>
+                <strong>{{ entry.label }}</strong>: {{ entry.durationText }}
+                <span class="sub">{{ entry.periodText }}</span>
+              </div>
+              <div class="empty" ng-if="!emulator.history.logEntries || emulator.history.logEntries.length === 0">
+                {{ emulator.history.emptyText }}
+              </div>
+            </div>
+            <p class="hint" style="margin-top:8px;margin-bottom:0">
+              Cada trecho encerra ao mudar de local (Fora ou gateway). Em sobreposição, vale o gateway mais próximo do centro da caixa.
+            </p>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+<div class="modal fade" id="emulatorGatewayPickerModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header py-2">
+        <h6 class="modal-title mb-0">Selecionar gateway cadastrado</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-3">
+        <label class="form-label small">Registro</label>
+        <select class="form-select"
+          ng-model="emulator.gatewayPicker.selectedId"
+          ng-options="g._id as (g.tokem || g.descricao || g._id) for g in _listGateways">
+        </select>
+        <div class="d-flex justify-content-end gap-2 mt-3">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary btn-sm" ng-click="onConfirmAddGateway()">Adicionar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="emulatorItemPickerModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header py-2">
+        <h6 class="modal-title mb-0">Selecionar SKU</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-3">
+        <label class="form-label small">Pesquisar por parte da tag</label>
+        <input type="text" class="form-control mb-2" placeholder="Ex.: CX-00"
+          ng-model="emulator.itemPicker.search" autocomplete="off" />
+
+        <div class="gateway-items-list border rounded p-1">
+          <button type="button"
+            class="btn btn-sm w-100 text-start mb-1"
+            ng-repeat="it in (_listItens | filter:{tag: emulator.itemPicker.search}) track by it._id"
+            ng-class="emulator.itemPicker.selectedId === it._id ? 'btn-primary' : 'btn-outline-secondary'"
+            ng-click="emulator.itemPicker.selectedId = it._id; emulator.itemPicker.categoriaPickId = ''">
+            <div class="fw-semibold">{{ (it.id_categoria && it.id_categoria.descricao) || it.descricao || 'Sem Vinculo' }}</div>
+            <div class="small opacity-75">{{ it.tag || it._id }}</div>
+          </button>
+          <div class="small text-muted p-2" ng-if="((_listItens | filter:{tag: emulator.itemPicker.search}).length || 0) === 0">
+            Nenhum SKU encontrado para esse filtro.
+          </div>
+        </div>
+
+        <div class="border rounded p-2 mt-2 bg-secondary" ng-if="itemPickerSelectedSemCategoria() && _listCategorias && _listCategorias.length">
+          <div class="small fw-semibold mb-2 text-text">Este SKU não tem um Item vinculado</div>
+          <div class="d-flex flex-column gap-2">
+            <select class="form-select form-select-sm"
+              ng-model="emulator.itemPicker.categoriaPickId"
+              ng-options="c._id as c.descricao for c in _listCategorias track by c._id">
+              <option value="">Selecione um Item…</option>
+            </select>
+            <button type="button" class="btn btn-warning btn-sm text-dark"
+              ng-click="onVincularCategoriaNoItemPicker()"
+              ng-disabled="!emulator.itemPicker.categoriaPickId || itemPickerSelectedSemCategoria()._savingCategoriaPicker">
+              {{ itemPickerSelectedSemCategoria()._savingCategoriaPicker ? 'Salvando…' : 'Vincular categoria' }}
+            </button>
+          </div>
+        </div>
+        <div class="small text-muted mt-2" ng-if="itemPickerSelectedSemCategoria() && (!_listCategorias || !_listCategorias.length)">
+          Não há categorias na conta. Cadastre categorias para vincular a este SKU.
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-3">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary btn-sm" ng-click="onConfirmAddItem()">Incluir</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <div class="modal fade" id="emulatorGatewayItemsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered emulator-gw-items-phone-dialog">
+      <div class="modal-content emulator-gw-items-phone-modal-content border-0">
+        <div class="emulator-gw-phone-chassis">
+          <div class="emulator-gw-phone-screen">
+            <div class="emulator-gw-phone-pane" ng-show="emulator.phoneModalView === 'tags'">
+              <header class="emulator-gw-phone-header">
+                <div class="emulator-gw-phone-title-row">
+                  <div class="emulator-gw-phone-title">
+                    <i class="bi bi-bluetooth" aria-hidden="true"></i>
+                    <span>App Emulator</span>
+                  </div>
+                  <div class="emulator-gw-phone-local" ng-if="emulator.selectedGateway">
+                    Local: <span>{{ emulator.selectedGateway.name }}</span>
+                  </div>
+                </div>
+                <div class="emulator-gw-phone-actions">
+                  <span class="emulator-gw-pill emulator-gw-pill-scan">No raio</span>
+                  <span class="emulator-gw-pill emulator-gw-pill-count">{{ emulator.gatewayItemsInRange.length || 0 }} tags</span>
+                  <button type="button" class="emulator-gw-pill emulator-gw-pill-stop" data-bs-dismiss="modal" ng-click="emulator.phoneModalView = 'tags'">Fechar</button>
+                </div>
+                <div class="emulator-gw-phone-progress" aria-hidden="true">
+                  <div class="emulator-gw-phone-progress-bar"></div>
+                </div>
+                <div class="emulator-gw-phone-sub" ng-if="emulator.selectedGateway">
+                  {{ _gatewway.id_nivel_loc1.descricao }}
+                  {{ _gatewway.id_nivel_loc2 ? ' - ' + _gatewway.id_nivel_loc2.descricao : '' }}
+                  {{ _gatewway.id_nivel_loc3 ? ' - ' + _gatewway.id_nivel_loc3.descricao : '' }}
+                  {{ _gatewway.id_nivel_loc4 ? ' - ' + _gatewway.id_nivel_loc4.descricao : '' }}
+                </div>
+              </header>
+              <div class="emulator-gw-phone-list gateway-items-list">
+                <article class="emulator-gw-device-card" ng-repeat="it in emulator.gatewayItemsInRange track by (it.id + '-' + it.tag)">
+                  <div class="emulator-gw-device-top">
+                    <i class="bi bi-cpu-fill emulator-gw-device-icon" aria-hidden="true"></i>
+                    <span class="emulator-gw-device-name">{{ it.name }}</span>
+                  </div>
+                  <div class="emulator-gw-device-mid">
+                    <div class="emulator-gw-device-mid-left">
+                      <span class="emulator-gw-lbl">ID:</span>
+                      <span class="emulator-gw-id-pill">{{ it.tag }}</span>
+                      <span class="emulator-gw-lbl">Dist.:</span>
+                      <span class="emulator-gw-rssi">{{ it.distanceText }}</span>
+                    </div>
+                    <span class="emulator-gw-loc-pill" ng-if="emulator.selectedGateway">{{ emulator.selectedGateway.name }}</span>
+                  </div>
+                  <div class="emulator-gw-cat-strip" ng-if="it.gwItemDbLoading">
+                    <span class="emulator-gw-cat-loading"><i class="bi bi-arrow-repeat emulator-gw-spin" aria-hidden="true"></i> Verificando cadastro…</span>
+                  </div>
+                  <div class="emulator-gw-cat-strip emulator-gw-cat-warn" ng-if="!it.gwItemDbLoading && it.itemMissingInDb">
+                    Nenhum item cadastrado com esta tag.
+                  </div>
+                  <div class="emulator-gw-cat-missing" ng-if="!it.gwItemDbLoading && !it.itemMissingInDb && it.needsCategoria && _listCategorias && _listCategorias.length">
+                    <label class="emulator-gw-cat-lbl" for="{{ 'gw-cat-' + it.id }}">Sem categoria — vincular</label>
+                    <div class="emulator-gw-cat-row">
+                      <select class="emulator-gw-cat-select" id="{{ 'gw-cat-' + it.id }}"
+                        ng-model="it.categoriaPickId"
+                        ng-options="c._id as c.descricao for c in _listCategorias track by c._id">
+                        <option value="">Selecione…</option>
+                      </select>
+                      <button type="button" class="emulator-gw-cat-btn"
+                        ng-click="onVincularCategoriaGatewayItem(it)"
+                        ng-disabled="!it.categoriaPickId || it.savingCategoria">
+                        {{ it.savingCategoria ? '…' : 'OK' }}
+                      </button>
+                    </div>
+                  </div>
+                  <div class="emulator-gw-cat-strip emulator-gw-cat-warn" ng-if="!it.gwItemDbLoading && !it.itemMissingInDb && it.needsCategoria && (!_listCategorias || !_listCategorias.length)">
+                    Cadastre categorias na conta para vincular.
+                  </div>
+                  <div class="emulator-gw-device-bot">
+                    <span class="emulator-gw-mini-pill"><i class="bi bi-eye" aria-hidden="true"></i> {{ $index + 1 }}</span>
+                    <span class="emulator-gw-mini-pill"><i class="bi bi-geo-alt" aria-hidden="true"></i> {{ it.distanceText }}</span>
+                  </div>
+                </article>
+                <div class="emulator-gw-phone-empty" ng-if="!emulator.gatewayItemsInRange || emulator.gatewayItemsInRange.length === 0">
+                  Nenhum SKU dentro do raio.
+                </div>
+              </div>
+              <button type="button" class="emulator-gw-fab" ng-click="onFinalizaPosicao()" aria-label="Escolher local de destino">
+                <i class="bi bi-check-lg" aria-hidden="true"></i>
+              </button>
+            </div>
+
+            <div class="emulator-gw-phone-pane emulator-gw-destino-pane" ng-show="emulator.phoneModalView === 'destino'">
+              <header class="emulator-gw-destino-head">
+                <div class="emulator-gw-destino-head-top">
+                  <div class="emulator-gw-destino-head-title">
+                    <i class="bi bi-geo-alt-fill emulator-gw-destino-pin" aria-hidden="true"></i>
+                    <span>Destino da Posição</span>
+                  </div>
+                  <button type="button" class="emulator-gw-destino-close" ng-click="onPhoneDestinoBackToTags()" aria-label="Voltar">
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>
+                  </button>
+                </div>
+                <p class="emulator-gw-destino-sub">Selecionar local…</p>
+                <button type="button" class="emulator-gw-destino-crumb"
+                  ng-click="onDestinoPhoneCrumbBarClick()"
+                  ng-disabled="!emulator.destinoDrill.chain.length"
+                  ng-class="{ 'is-muted': !emulator.destinoDrill.chain.length }">
+                  <i class="bi bi-geo-alt-fill" aria-hidden="true"></i>
+                  <span>{{ destinoPhoneCrumbDisplay() }}</span>
+                </button>
+                <p class="emulator-gw-destino-crumb-hint" ng-if="emulator.destinoDrill.chain.length">Toque na barra acima para voltar um nível.</p>
+                <button type="button" class="emulator-gw-destino-use-folder"
+                  ng-click="onDestinoPhoneUseCurrentFolder()"
+                  ng-show="emulator.destinoDrill.chain.length">
+                  Usar este nível
+                </button>
+              </header>
+              <input type="search" class="emulator-gw-destino-search" ng-model="emulator.destinoDrill.search"
+                placeholder="Buscar…" autocomplete="off" />
+              <ul class="emulator-gw-destino-list list-unstyled" role="listbox">
+                <li ng-repeat="loc in destinoPhoneListItems() track by loc._id" role="option"
+                  class="emulator-gw-destino-row"
+                  ng-class="{ 'is-selected': destinoPhoneRowIsSelected(loc) }"
+                  ng-click="onDestinoPhoneRowClick(loc)">
+                  <i class="bi emulator-gw-destino-row-ico" ng-class="destinoPhoneRowIconClass()" aria-hidden="true"></i>
+                  <span class="emulator-gw-destino-row-label">{{ loc.descricao || loc._id }}</span>
+                  <i class="bi bi-chevron-right emulator-gw-destino-row-chev" aria-hidden="true"
+                    ng-if="destinoPhoneLocHasChildren(loc) && emulator.destinoDrill.chain.length < 3"></i>
+                </li>
+                <li class="emulator-gw-destino-empty" ng-if="destinoPhoneListItems().length === 0">
+                  Nenhum local neste nível.
+                </li>
+              </ul>
+              <button type="button" class="emulator-gw-fab emulator-gw-fab-destino"
+                ng-click="onConfirmarDestinoPosicao()"
+                ng-disabled="!emulator.destinoPicker || !emulator.destinoPicker.selectedIds[0]"
+                aria-label="Salvar posição">
+                <i class="bi bi-check-lg" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+
+<%- contentFor('emulatorStyles') %>
+<style>
+  .seal-emulator {
+    --seal-emulator-h: min(78vh, calc(100dvh - 200px));
+    min-height: 420px;
+  }
+  .seal-emulator-inner {
+    box-sizing: border-box;
+    display: flex;
+    width: 100%;
+    height: var(--seal-emulator-h);
+    max-height: calc(100dvh - 160px);
+    min-height: 380px;
+    background: #f3f5f7;
+    color: #1f2937;
+  }
+  .seal-emulator-inner * { box-sizing: border-box; }
+
+  .seal-emulator-inner .app {
+    display: flex;
+    width: 100%;
+    height: 100%;
+  }
+
+  .seal-emulator-inner .sidebar {
+    width: 270px;
+    flex-shrink: 0;
+    background: #111827;
+    color: #fff;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    border-right: 1px solid rgba(255,255,255,.08);
+    overflow-y: auto;
+    min-height: 0;
+  }
+
+  .seal-emulator-inner .sidebar-right {
+    width: 280px;
+    flex-shrink: 0;
+    background: #111827;
+    color: #fff;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    border-left: 1px solid rgba(255,255,255,.08);
+    overflow: hidden;
+    min-height: 0;
+    align-self: stretch;
+  }
+
+  .seal-emulator-inner .sidebar-right .details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .seal-emulator-inner .sidebar-right .history-log {
+    flex: 1;
+    min-height: 120px;
+    max-height: none;
+    overflow-y: auto;
+  }
+
+  .seal-emulator-inner .sidebar h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  .seal-emulator-inner .sidebar p {
+    margin: 0;
+    color: #cbd5e1;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .seal-emulator-inner .toolbox,
+  .seal-emulator-inner .controls,
+  .seal-emulator-inner .details {
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 12px;
+    padding: 12px;
+  }
+
+  .seal-emulator-inner .section-title {
+    margin: 0 0 8px 0;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: #93c5fd;
+  }
+
+  .seal-emulator-inner .tool-btn,
+  .seal-emulator-inner .action-btn {
+    width: 100%;
+    border: 0;
+    border-radius: 10px;
+    padding: 10px 12px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 8px;
+    transition: .2s;
+  }
+
+  .seal-emulator-inner .tool-btn:hover,
+  .seal-emulator-inner .action-btn:hover { transform: translateY(-1px); }
+
+  .seal-emulator-inner .tool-btn.gateway { background: #2563eb; color: #fff; }
+  .seal-emulator-inner .tool-btn.item { background: #f59e0b; color: #111827; }
+  .seal-emulator-inner .tool-btn:last-child,
+  .seal-emulator-inner .action-btn:last-child { margin-bottom: 0; }
+
+  .seal-emulator-inner .action-btn { background: #e5e7eb; color: #111827; }
+  .seal-emulator-inner .action-btn.primary { background: #10b981; color: #fff; }
+  .seal-emulator-inner .action-btn.danger { background: #ef4444; color: #fff; }
+
+  .seal-emulator-inner .details label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 11px;
+    color: #cbd5e1;
+  }
+
+  .seal-emulator-inner .details input,
+  .seal-emulator-inner .details select {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,.15);
+    background: rgba(255,255,255,.08);
+    color: #fff;
+    margin-bottom: 8px;
+    outline: none;
+    font-size: 13px;
+  }
+
+  .seal-emulator-inner .details input::placeholder { color: #94a3b8; }
+
+  .seal-emulator-inner .hint {
+    font-size: 11px;
+    color: #94a3b8;
+    line-height: 1.5;
+  }
+
+  .seal-emulator-inner .history-place-totals {
+    font-size: 12px;
+    line-height: 1.55;
+    color: #cbd5e1;
+    margin-bottom: 8px;
+  }
+
+  .seal-emulator-inner .history-place-totals .row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+  }
+
+  .seal-emulator-inner .history-place-totals .row:last-child { border-bottom: 0; }
+  .seal-emulator-inner .history-place-totals .row em { font-style: normal; color: #fbbf24; }
+
+  .seal-emulator-inner .history-log {
+    max-height: 160px;
+    overflow-y: auto;
+    font-size: 11px;
+    line-height: 1.4;
+    color: #cbd5e1;
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 8px;
+    padding: 8px;
+    background: rgba(0,0,0,.2);
+  }
+
+  .seal-emulator-inner .history-log .entry {
+    padding: 6px 4px;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+  }
+
+  .seal-emulator-inner .history-log .entry:last-child { border-bottom: 0; }
+
+  .seal-emulator-inner .history-log .entry time {
+    color: #64748b;
+    font-size: 10px;
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  .seal-emulator-inner .history-log .entry.enter { border-left: 3px solid #22c55e; padding-left: 8px; }
+  .seal-emulator-inner .history-log .entry.leave { border-left: 3px solid #f59e0b; padding-left: 8px; }
+
+  .seal-emulator-inner .history-log .empty {
+    color: #64748b;
+    font-style: italic;
+    padding: 8px;
+  }
+
+  .seal-emulator-inner .history-log .sub {
+    display: block;
+    font-size: 10px;
+    color: #94a3b8;
+    margin-top: 2px;
+  }
+
+  .seal-emulator-inner .history-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .seal-emulator-inner .history-stat {
+    background: rgba(255,255,255,.06);
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+  }
+
+  .seal-emulator-inner .history-stat span {
+    display: block;
+    font-size: 11px;
+    color: #94a3b8;
+    margin-bottom: 4px;
+  }
+
+  .seal-emulator-inner .history-stat strong {
+    font-size: 15px;
+    color: #fff;
+  }
+
+  .seal-emulator-inner .history-stat.inside strong { color: #4ade80; }
+  .seal-emulator-inner .history-stat.outside strong { color: #fbbf24; }
+
+  .seal-emulator-inner .history-current-line {
+    background: rgba(255,255,255,.06);
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 12px;
+    line-height: 1.45;
+    color: #e2e8f0;
+    margin-bottom: 8px;
+  }
+
+  .seal-emulator-inner .history-current-line strong { color: #4ade80; display: block; margin-bottom: 4px; }
+  .seal-emulator-inner .history-current-line .sub { font-size: 10px; color: #94a3b8; }
+
+  .seal-emulator-inner .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .seal-emulator-inner .topbar {
+    flex-shrink: 0;
+    min-height: 56px;
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .seal-emulator-inner .legend {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+    font-size: 11px;
+    color: #4b5563;
+  }
+
+  .seal-emulator-inner .legend-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 999px;
+    padding: 4px 8px;
+  }
+
+  .seal-emulator-inner .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  .seal-emulator-inner .workspace {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    min-height: 0;
+    background:
+      linear-gradient(to right, rgba(0,0,0,.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(0,0,0,.05) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .seal-emulator-inner #emulatorKonvaContainer {
+    width: 100%;
+    height: 100%;
+  }
+
+  .seal-emulator-inner .status {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    background: rgba(17,24,39,.92);
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 11px;
+    z-index: 5;
+    box-shadow: 0 8px 24px rgba(0,0,0,.18);
+    max-width: min(320px, 90%);
+  }
+
+  /* Modal SKUs no gateway — layout tipo celular / Scanner BLE */
+  #emulatorGatewayItemsModal {
+    --egw-bg: #121826;
+    --egw-card: #1e2533;
+    --egw-border: #2d3748;
+    --egw-blue: #3b82f6;
+    --egw-red: #b91c1c;
+    --egw-yellow: #facc15;
+    --egw-muted: #94a3b8;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-items-phone-dialog {
+    max-width: min(400px, calc(100vw - 24px));
+    margin: 0.5rem auto;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-items-phone-modal-content {
+    background: transparent;
+    box-shadow: none;
+    overflow: visible;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-phone-chassis {
+    padding: 12px;
+    border-radius: 36px;
+    background: linear-gradient(145deg, #0c1018 0%, #1a2230 50%, #0c1018 100%);
+    box-shadow:
+      0 24px 48px rgba(0, 0, 0, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+  #emulatorGatewayItemsModal .emulator-gw-phone-screen {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: var(--egw-bg);
+    border-radius: 26px;
+    overflow: hidden;
+    min-height: min(520px, 72vh);
+    max-height: min(640px, 78vh);
+    border: 1px solid rgba(45, 55, 72, 0.9);
+  }
+  #emulatorGatewayItemsModal .emulator-gw-phone-pane {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    position: relative;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-phone-header {
+    flex-shrink: 0;
+    padding: 14px 14px 10px;
+    background: linear-gradient(180deg, rgba(30, 37, 51, 0.5) 0%, transparent 100%);
+    border-bottom: 1px solid rgba(45, 55, 72, 0.6);
+  }
+  #emulatorGatewayItemsModal .emulator-gw-phone-title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-phone-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 1rem;
+    color: #fff;
+    letter-spacing: -0.02em;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-phone-title .bi {
+    font-size: 1.15rem;
+    color: var(--egw-blue);
+  }
+  #emulatorGatewayItemsModal .emulator-gw-phone-local {
+    font-size: 0.7rem;
+    color: var(--egw-yellow);
+    text-align: right;
+    line-height: 1.35;
+    max-width: 52%;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-phone-local span {
+    font-weight: 600;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-phone-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-pill {
+    border: none;
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-pill-scan {
+    background: var(--egw-blue);
+    color: #fff;
+    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.35);
+  }
+  #emulatorGatewayItemsModal .emulator-gw-pill-count {
+    background: #334155;
+    color: #e2e8f0;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-pill-stop {
+    background: var(--egw-red);
+    color: #fff;
+    margin-left: auto;
+    cursor: pointer;
+    transition: filter 0.15s ease;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-pill-stop:hover {
+    filter: brightness(1.08);
+  }
+  #emulatorGatewayItemsModal .emulator-gw-phone-progress {
+    height: 3px;
+    background: rgba(45, 55, 72, 0.8);
+    border-radius: 2px;
+    margin-top: 10px;
+    overflow: hidden;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-phone-progress-bar {
+    height: 100%;
+    width: 40%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--egw-blue), #60a5fa);
+    animation: emulator-gw-scan-bar 2s ease-in-out infinite;
+  }
+  @keyframes emulator-gw-scan-bar {
+    0% { transform: translateX(-130%); }
+    100% { transform: translateX(320%); }
+  }
+  #emulatorGatewayItemsModal .emulator-gw-phone-sub {
+    margin-top: 6px;
+    text-align: right;
+    font-size: 0.65rem;
+    color: var(--egw-muted);
+    font-family: ui-monospace, monospace;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-phone-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 12px 12px 56px;
+    scrollbar-width: thin;
+    scrollbar-color: #334155 var(--egw-bg);
+  }
+  #emulatorGatewayItemsModal .emulator-gw-phone-list::-webkit-scrollbar {
+    width: 6px;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-phone-list::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 6px;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-device-card {
+    background: var(--egw-card);
+    border: 1px solid var(--egw-border);
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-device-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-device-icon {
+    color: var(--egw-blue);
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-device-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #f8fafc;
+    line-height: 1.25;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-device-mid {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+    margin-bottom: 10px;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-device-mid-left {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    flex: 1;
+    min-width: 0;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-lbl {
+    font-size: 0.7rem;
+    color: var(--egw-muted);
+  }
+  #emulatorGatewayItemsModal .emulator-gw-id-pill {
+    display: inline-block;
+    max-width: 100%;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: #334155;
+    color: #e2e8f0;
+    font-size: 0.68rem;
+    font-family: ui-monospace, monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-rssi {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--egw-blue);
+  }
+  #emulatorGatewayItemsModal .emulator-gw-loc-pill {
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(250, 204, 21, 0.12);
+    color: var(--egw-yellow);
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-cat-strip {
+    margin-bottom: 8px;
+    font-size: 0.72rem;
+    color: var(--egw-muted);
+    line-height: 1.35;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-cat-warn {
+    color: #fbbf24;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-cat-loading {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-spin {
+    animation: emulator-gw-spin 0.9s linear infinite;
+  }
+  @keyframes emulator-gw-spin {
+    to { transform: rotate(360deg); }
+  }
+  #emulatorGatewayItemsModal .emulator-gw-cat-missing {
+    margin-bottom: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(45, 55, 72, 0.9);
+  }
+  #emulatorGatewayItemsModal .emulator-gw-cat-lbl {
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #facc15;
+    margin-bottom: 6px;
+    letter-spacing: 0.02em;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-cat-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-cat-select {
+    flex: 1;
+    min-width: 0;
+    padding: 6px 8px;
+    border-radius: 10px;
+    border: 1px solid var(--egw-border);
+    background: #151b26;
+    color: #e2e8f0;
+    font-size: 0.78rem;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-cat-btn {
+    flex-shrink: 0;
+    padding: 6px 14px;
+    border-radius: 10px;
+    border: none;
+    font-weight: 700;
+    font-size: 0.75rem;
+    background: var(--egw-blue);
+    color: #fff;
+    cursor: pointer;
+    transition: filter 0.15s ease, opacity 0.15s ease;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-cat-btn:hover:not(:disabled) {
+    filter: brightness(1.08);
+  }
+  #emulatorGatewayItemsModal .emulator-gw-cat-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-device-bot {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-mini-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid var(--egw-border);
+    font-size: 0.68rem;
+    color: var(--egw-muted);
+  }
+  #emulatorGatewayItemsModal .emulator-gw-mini-pill .bi {
+    font-size: 0.75rem;
+    opacity: 0.85;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-phone-empty {
+    text-align: center;
+    color: var(--egw-muted);
+    font-size: 0.85rem;
+    padding: 28px 16px;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-fab {
+    position: absolute;
+    right: 16px;
+    bottom: 16px;
+    width: 52px;
+    height: 52px;
+    padding: 0;
+    margin: 0;
+    border: none;
+    border-radius: 50%;
+    background: var(--egw-blue);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.35);
+    font-size: 1.35rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-fab:hover {
+    filter: brightness(1.08);
+    box-shadow: 0 10px 24px rgba(59, 130, 246, 0.45);
+  }
+  #emulatorGatewayItemsModal .emulator-gw-fab:active {
+    transform: scale(0.96);
+  }
+  #emulatorGatewayItemsModal .emulator-gw-fab:focus-visible {
+    outline: 2px solid #93c5fd;
+    outline-offset: 3px;
+  }
+
+  /* Seleção de destino — dentro da “tela” do celular */
+  #emulatorGatewayItemsModal .emulator-gw-destino-pane {
+    background: #0c1017;
+    color: #e2e8f0;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-destino-head {
+    flex-shrink: 0;
+    padding: 14px 14px 10px;
+    border-bottom: 1px solid rgba(45, 55, 72, 0.85);
+  }
+  #emulatorGatewayItemsModal .emulator-gw-destino-head-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-destino-head-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 1rem;
+    color: #f8fafc;
+    letter-spacing: -0.02em;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-destino-pin {
+    font-size: 1.2rem;
+    color: #facc15;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-destino-close {
+    border: none;
+    background: rgba(148, 163, 184, 0.15);
+    color: #94a3b8;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-destino-close:hover {
+    background: rgba(148, 163, 184, 0.28);
+    color: #e2e8f0;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-destino-sub {
+    margin: 8px 0 0;
+    font-size: 0.75rem;
+    color: #64748b;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-destino-crumb {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    width: 100%;
+    margin-top: 10px;
+    padding: 10px 12px;
+    border: none;
+    border-radius: 12px;
+    background: rgba(30, 41, 59, 0.85);
+    color: #7dd3fc;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s ease, opacity 0.15s ease;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-destino-crumb .bi:first-child {
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: #38bdf8;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-destino-crumb span {
+    flex: 1;
+    min-width: 0;
+    line-height: 1.35;
+    word-break: break-word;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-destino-crumb.is-muted {
+    opacity: 0.65;
+    cursor: default;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-destino-crumb:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-destino-crumb-hint {
+    margin: 6px 0 0;
+    font-size: 0.65rem;
+    color: #64748b;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-destino-use-folder {
+    margin-top: 8px;
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.75rem;
+    background: rgba(59, 130, 246, 0.2);
+    border: 1px solid rgba(59, 130, 246, 0.45);
+    color: #93c5fd;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-destino-use-folder:hover {
+    background: rgba(59, 130, 246, 0.3);
+    color: #bfdbfe;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-destino-search {
+    flex-shrink: 0;
+    margin: 10px 14px 0;
+    padding: 8px 12px;
+    border-radius: 12px;
+    border: 1px solid #2d3748;
+    background: #151b26;
+    color: #e2e8f0;
+    font-size: 0.8rem;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-destino-search::placeholder {
+    color: #64748b;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-destino-search:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  }
+  #emulatorGatewayItemsModal .emulator-gw-destino-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 10px 12px 56px;
+    scrollbar-width: thin;
+    scrollbar-color: #334155 #0c1017;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-destino-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 12px;
+    margin-bottom: 8px;
+    border-radius: 12px;
+    background: #1a222e;
+    border: 1px solid #2d3748;
+    cursor: pointer;
+    transition: background 0.12s ease, border-color 0.12s ease;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-destino-row:hover {
+    background: #232d3d;
+    border-color: #3d4d63;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-destino-row.is-selected {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.12);
+    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.25);
+  }
+  #emulatorGatewayItemsModal .emulator-gw-destino-row-ico {
+    flex-shrink: 0;
+    font-size: 1.1rem;
+    color: #94a3b8;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-destino-row-label {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #f1f5f9;
+    line-height: 1.25;
+    word-break: break-word;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-destino-row-chev {
+    flex-shrink: 0;
+    font-size: 0.85rem;
+    color: #64748b;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-destino-empty {
+    padding: 1.5rem 0.5rem;
+    text-align: center;
+    font-size: 0.8rem;
+    color: #64748b;
+  }
+  #emulatorGatewayItemsModal .emulator-gw-fab-destino:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    filter: grayscale(0.3);
+  }
+
+  #emulatorItemPickerModal .gateway-items-list {
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  @media (max-width: 991px) {
+    .seal-emulator-inner {
+      flex-direction: column;
+      height: auto;
+      max-height: none;
+    }
+    .seal-emulator-inner .sidebar {
+      width: 100%;
+      max-height: 40vh;
+      border-right: none;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .seal-emulator-inner .sidebar-right {
+      width: 100%;
+      max-height: 42vh;
+      border-left: none;
+      border-top: 1px solid rgba(255,255,255,.08);
+    }
+    .seal-emulator-inner .sidebar-right .history-log {
+      max-height: 180px;
+      flex: none;
+    }
+    .seal-emulator-inner .workspace {
+      min-height: 280px;
+      height: 45vh;
+    }
+  }
+</style>
+
+<%- contentFor('emulatorExtraScripts') %>
+<script src="https://unpkg.com/konva@9/konva.min.js"></script>

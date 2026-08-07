@@ -1,5 +1,5 @@
 <%- contentFor('body') %>
-  <div ng-controller="relRegistrosCtrl" class="app-container">
+  <div ng-controller="relRegistrosCtrl" class="app-container" ng-cloak>
 
     <!-- App hero header starts -->
     <div class="app-hero-header d-flex align-items-center">
@@ -16,14 +16,66 @@
       <!-- Breadcrumb end -->
 
       <!-- Filter start -->
-      <div class="ms-auto d-flex flex-row gap-1 ">
+      <div class="ms-auto d-flex flex-row gap-1 flex-wrap justify-content-end">
         <div class="search-container d-lg-flex d-none">
-          <input ng-model="_pesquisa" ng-change="onPesquisa()" type="text" class="form-control" id="searchData" placeholder="Pesquisar">
+          <input ng-model="_filtro.data_de" id="filtro_data_de" ng-change="onFiltroChange(true)" type="date" class="form-control" title="Data inicial">
+          <i class="bi bi-calendar3"></i>
+        </div>
+        <div class="search-container d-lg-flex d-none">
+          <input ng-model="_filtro.data_a" id="filtro_data_a" ng-change="onFiltroChange(true)" type="date" class="form-control" title="Data final">
+          <i class="bi bi-calendar3"></i>
+        </div>
+        <div class="search-container d-lg-flex d-none">
+          <select ng-model="_filtro.id_gateway" ng-change="onFiltroChange()" class="form-control" title="Gateway">
+            <option value="">{{ _regConta.params_nomenclatura_itens.coletores }}..</option>
+            <option ng-repeat="g in _listGateways track by g._id" value="{{ g._id }}">{{ g.descricao || g.tag || g._id }}</option>
+          </select>
+          <i class="bi bi-router"></i>
+        </div>
+        <div class="search-container d-lg-flex d-none">
+          <select ng-model="_filtro.id_endereco" ng-change="onFiltroChange()" class="form-control" title="Endereço">
+            <option value="">Endereço..</option>
+            <option ng-repeat="e in _listEnderecos track by e._id" value="{{ e._id }}">{{ e.descricao || e.tag || e._id }}</option>
+          </select>
+          <i class="bi bi-geo-alt"></i>
+        </div>
+        <div class="search-container d-lg-flex d-none">
+          <select ng-model="_filtro.id_sku" ng-change="onFiltroChange()" class="form-control"
+            title="{{ _regConta.params_nomenclatura_itens.sku || 'SKU' }}">
+            <option value="">{{ _regConta.params_nomenclatura_itens.sku || 'SKU' }}..</option>
+            <option ng-repeat="s in _listSkus track by s._id" value="{{ s._id }}">{{ s.descricao || s.tag || s._id }}</option>
+          </select>
+          <i class="bi bi-box"></i>
+        </div>
+        <div class="search-container d-lg-flex d-none">
+          <select ng-model="_filtro.id_categoria" ng-change="onFiltroChange()" class="form-control"
+            title="{{ _regConta.params_nomenclatura_itens.categorias || 'Categoria' }}">
+            <option value="">{{ _regConta.params_nomenclatura_itens.categorias || 'Categoria' }}..</option>
+            <option ng-repeat="c in _listCategorias track by c._id" value="{{ c._id }}">{{ c.descricao || c.tag || c._id }}</option>
+          </select>
+          <i class="bi bi-folder"></i>
+        </div>
+        <div class="search-container d-lg-flex d-none">
+          <select ng-model="_filtro.status" ng-change="onFiltroChange()" class="form-control" title="Tipo de movimentação">
+            <option value="">Movimentação..</option>
+            <option value="permanencia">Permanência</option>
+            <option value="entrada">Entrada</option>
+            <option value="saida">Saída</option>
+          </select>
+          <i class="bi bi-arrow-left-right"></i>
+        </div>
+        <div class="search-container d-lg-flex d-none">
+          <input ng-model="_filtro.pesquisa" ng-change="onFiltroChange()" type="text" class="form-control" id="searchData" placeholder="Pesquisar">
           <i class="bi bi-search"></i>
         </div>
         <button ng-click="onCarregaRegistros()" type="button"
-        class="btn btn-secondary btn-sm ms-2" title="Atualizar lista">
-        <i class="bi bi-arrow-clockwise"></i>
+          class="btn btn-secondary btn-sm ms-2" title="Atualizar lista">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
+        <button ng-click="onExportarCSV()" type="button"
+          class="btn btn-success btn-sm ms-2" title="Exportar lista para CSV">
+          <i class="bi bi-file-earmark-arrow-down"></i>
+        </button>
       </div>
       <!-- Filter end -->
 
@@ -37,6 +89,40 @@
         aria-hidden="true">
         <div class="modal-dialog modal-fullscreen">
           <item funcao="funcaoLoc" edit="editLoc" on-fechar="onItem()"></item>
+        </div>
+      </div>
+
+      <div class="modal fade" id="modalInteracao" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Detalhes da Interação</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <div class="mb-3">
+                <span class="badge bg-secondary text-uppercase">
+                  Interação ID: {{ _interacaoSelecionada.interacao_id || 'N/A' }}
+                </span>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label fw-semibold">Interação Envio</label>
+                <pre
+                  class="bg-light text-dark p-3 rounded small mb-0"
+                  style="max-height: 8em; overflow-y: auto; white-space: pre-wrap;"
+                  ng-bind="jsonFormatado(_interacaoSelecionada.interacao_envio)"></pre>
+              </div>
+
+              <div>
+                <label class="form-label fw-semibold">Interação Retorno</label>
+                <pre
+                  class="bg-light text-dark p-3 rounded small mb-0"
+                  style="max-height: 8em; overflow-y: auto; white-space: pre-wrap;"
+                  ng-bind="jsonFormatado(_interacaoSelecionada.interacao_retorno)"></pre>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -61,7 +147,7 @@
         }"></i>
                         </th>
 
-                        <th class="w-90 sortable" ng-click="sortBy('id_categoria_reg1.descricao')">
+                        <th class="w-60 sortable" ng-click="sortBy('id_categoria_reg1.descricao')">
                           Registro
                           <i class="bi" ng-class="{
               'bi-caret-up-fill': sortField=='id_categoria_reg1.descricao' && !sortReverse,
@@ -69,7 +155,7 @@
         }"></i>
                         </th>
 
-                        <th class="w-10 sortable" ng-click="sortBy('tag')">
+                        <th class="w-20 sortable" ng-click="sortBy('tag')">
                           Status
                           <i class="bi" ng-class="{
               'bi-caret-up-fill': sortField=='tag' && !sortReverse,
@@ -78,7 +164,7 @@
                         </th>
 
                         <th class="w-5 sortable" ng-click="sortBy('id_categoria_reg1.descricao')">
-                          Esperado
+                          Interação
                           <i class="bi" ng-class="{
               'bi-caret-up-fill': sortField=='id_categoria_reg1.descricao' && !sortReverse,
               'bi-caret-down-fill': sortField=='id_categoria_reg1.descricao' && sortReverse
@@ -99,7 +185,7 @@
                       </tr>
                     </thead>
                     <tbody>
-                      <tr ng-repeat="item in _listItens | orderBy:sortField:sortReverse"">
+                      <tr ng-repeat="item in _listItens | orderBy:sortField:sortReverse">
                       <td>
                           <div class="d-inline-flex align-items-center justify-content-center rounded-circle me-2" 
                                style="width: 48px; height: 48px;"
@@ -175,26 +261,19 @@
                       </td>
  
                       <td>
-                        <span ng-show="item.associados.length > 0"
-                          class="badge text-uppercase fs-4"
-                          class="bg-light bg-opacity-10 text-light text-uppercase">
-                          {{ item.associados[0].quantidade }}
-                        </span>
+                        <div
+                          ng-repeat="interacao in item.interacoes track by (interacao._id || $index)"
+                          class="mb-1">
+                          <button
+                            type="button"
+                            class="btn btn-sm text-uppercase"
+                            ng-class="interacao.interacao_status == 'ok' ? 'btn-success' : 'btn-danger'"
+                            ng-click="onAbrirModalInteracao(interacao)">
+                            {{ interacao.interacao_id }}
+                          </button>
+                        </div>
+                        <span ng-if="!item.interacoes || !item.interacoes.length" class="text-muted">-</span>
                       </td>
-
-                      <td>
-                        <span ng-show="item.associados.length > 0"
-                          class="badge text-uppercase fs-4"
-                          ng-class="{
-                            'bg-success bg-opacity-10 text-success': item.associados[0].encontrado_categoria == item.associados[0].quantidade,
-                            'bg-danger bg-opacity-10 text-danger': item.associados[0].encontrado_categoria != item.associados[0].quantidade
-                          }">
-                          {{ item.associados[0].encontrado_categoria }}
-                        </span>
-                      </td>
-                      
-                     
-
 
                       </tr>
                     </tbody>

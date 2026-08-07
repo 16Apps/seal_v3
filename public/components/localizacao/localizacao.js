@@ -34,10 +34,17 @@ app.component('localizacao', {
     $ctrl.drawing = false;
     $ctrl.currentPoints = [];     // pontos do polígono em edição
     $ctrl.areas = [];
+    $ctrl.marcacaoMapaAtiva = false;
 
     //mapa
     let map;
-    let drawingManager;
+    let drawClickListener = null;
+    let drawPreviewLine = null;
+    let drawVertexMarkers = [];
+    let drawPath = [];
+    let isDrawingPolygon = false;
+    let mapAreaPolygons = [];
+    let lastDrawClickAt = 0;
 
     // ap site survey
     $ctrl._editAP = {
@@ -125,6 +132,10 @@ app.component('localizacao', {
           longitude: '',
 
           processo_app: '',
+          processo_app_destino: 'checar',
+
+          capacidade_maxima: 0,
+          capacidade_minima: 0,
 
           observacao: ''
         };
@@ -143,6 +154,7 @@ app.component('localizacao', {
         if (nivel == "1") {
           $ctrl._editNivel = reg;
           $ctrl._editNivel.ativo = "" + $ctrl._editNivel.ativo;
+
 
           $ctrl._editNivel['_foto'] = '../assets/images/icon_cadastro.fw.png'
           if ($ctrl._editNivel.foto) {
@@ -168,6 +180,10 @@ app.component('localizacao', {
         } else {
 
           $ctrl['_editNivelSub' + nivel] = reg;
+
+          if (!$ctrl['_editNivelSub' + nivel].processo_app_destino) {
+            $ctrl['_editNivelSub' + nivel].processo_app_destino = 'checar'
+          }
 
           if (nivel == "2") {
             $ctrl.onCarregaSubNiveis('03', $ctrl._editNivelSub2._id)
@@ -298,6 +314,26 @@ app.component('localizacao', {
             $ctrl.fechar();
           }
         })
+    }
+
+    $ctrl.onExcluirSubNivel = function (nivel, item) {
+      uteisService.onQuestion("Atenção!", "Deseja realmente excluir esse Registro?")
+        .then(async (res) => {
+          if (res) {
+            await uteisService.delBase('localizacao/_id/' + item._id);
+            uteisService.onToast('Registro excluído!', 'success', 3000, 'top-end');
+
+            $timeout(() => {
+              if (nivel == '2') {
+                $ctrl._listNivel2 = $ctrl._listNivel2.filter((reg) => reg._id != item._id);
+              } else if (nivel == '3') {
+                $ctrl._listNivel3 = $ctrl._listNivel3.filter((reg) => reg._id != item._id);
+              } else if (nivel == '4') {
+                $ctrl._listNivel4 = $ctrl._listNivel4.filter((reg) => reg._id != item._id);
+              }
+            }, 10)
+          }
+        });
     }
 
     $ctrl.onGetCEP = async function () {
@@ -808,24 +844,9 @@ app.component('localizacao', {
         ]
       });
 
-      drawingManager = new google.maps.drawing.DrawingManager({
-        drawingMode: google.maps.drawing.OverlayType.POLYGON,
-        drawingControl: false, //true
-        drawingControlOptions: {
-          position: google.maps.ControlPosition.TOP_CENTER,
-          drawingModes: ['polygon']
-        },
-        polygonOptions: {
-          fillColor: '#778da9',
-          fillOpacity: 0.35,
-          strokeWeight: 2,
-          strokeColor: '#415a77',
-          clickable: true,
-          editable: true,
-          zIndex: 1
-        }
-      });
-      drawingManager.setMap(map);
+      mapAreaPolygons = [];
+
+      // DrawingManager foi removido na Maps JS API 3.65 — desenho via cliques nativos.
 
       // 🔹 Carrega as áreas já salvas no banco
       //if ($ctrl._nivelPlanta2 != '') {
@@ -878,8 +899,10 @@ app.component('localizacao', {
                 strokeWeight: 2,
                 fillColor: color.fill,
                 fillOpacity: 0.4,  // opaco e elegante
-                map: map
+                map: map,
+                clickable: true
               });
+              mapAreaPolygons.push(polygon);
 
               // 🔹 Calcula o centro da área
               const bounds = new google.maps.LatLngBounds();
@@ -951,7 +974,7 @@ app.component('localizacao', {
                   }
                 }
               } else {
-                console.warn('Biblioteca geometry não carregada. Adicione "&libraries=drawing,geometry" no script do Maps.');
+                console.warn('Biblioteca geometry não carregada. Adicione "&libraries=geometry" no script do Maps.');
               }
             });
           });
@@ -959,75 +982,230 @@ app.component('localizacao', {
         });
       //}
 
-      // 🔹 Evento para desenhar novas áreas
-      google.maps.event.addListener(drawingManager, 'overlaycomplete', event => {
-        drawingManager.setDrawingMode(null);
-
-        const polygon = event.overlay;
-        const vertices = polygon.getPath().getArray().map(v => ({
-          lat: v.lat(),
-          lng: v.lng()
-        }));
-
-        // const nome = prompt("Nome do local:");
-        // if (!nome) {
-        //     polygon.setMap(null);
-        //     return;
-        // }
-
-
-        let _editNivel;
-        if ($ctrl._nivelPlanta4) {
-          _editNivel = $ctrl._listPlantaNivel4.filter((item) => item._id == $ctrl._nivelPlanta4)
-        } else if ($ctrl._nivelPlanta3) {
-          _editNivel = $ctrl._listPlantaNivel3.filter((item) => item._id == $ctrl._nivelPlanta3)
-        } else if ($ctrl._nivelPlanta2) {
-          _editNivel = $ctrl._listPlantaNivel2.filter((item) => item._id == $ctrl._nivelPlanta2)
-        }
-
-        _editNivel = _editNivel[0]
-
-        // Exibe rótulo
-        const bounds = new google.maps.LatLngBounds();
-        polygon.getPath().forEach(p => bounds.extend(p));
-        const labelPos = bounds.getCenter();
-
-        new google.maps.InfoWindow({
-          content: `<b>${_editNivel.descricao}</b>`,
-          position: labelPos
-        }).open(map);
-
-        // Envia para o backend
-        const payload = {
-          descricao: _editNivel.descricao,
-          planta: 'aeroporto_congonhas',
-          pontos: vertices
-        };
-
-        let areasData = [];
-        areasData.push({
-          pointsLatLng: payload.pontos
-        })
-
-        _editNivel['areasData'] = areasData
-
-        uteisService.patchBase('/localizacao', _editNivel)
-
-          .then((res) => {
-            uteisService.onToast('Área salva com sucesso!', 'success', 2000, 'top-end');
-          })
-        // .catch(() => alert('Erro ao salvar área'));
-      });
+      // Desenho de área: ativado por ativarMarcacao() (cliques + duplo clique para finalizar)
     };
 
-    $ctrl.ativarMarcacao = function () {
-      if (!$ctrl._nivelPlanta2 || !$ctrl._nivelPlanta3) {
-        uteisService.onToast('Selecione o andar e a zona antes de ativar a marcação.', 'info', 2000, 'top-end');
+    function setPoligonosClicaveis(ativo) {
+      mapAreaPolygons.forEach(function (p) {
+        if (p) p.setOptions({ clickable: !!ativo });
+      });
+    }
+
+    function distMetrosLatLng(a, b) {
+      if (!a || !b) return Infinity;
+      if (google.maps.geometry && google.maps.geometry.spherical) {
+        return google.maps.geometry.spherical.computeDistanceBetween(a, b);
+      }
+      var dLat = a.lat() - b.lat();
+      var dLng = a.lng() - b.lng();
+      return Math.sqrt(dLat * dLat + dLng * dLng) * 111320;
+    }
+
+    function limparPreviewDesenhoMapa(opts) {
+      opts = opts || {};
+      if (drawClickListener) {
+        google.maps.event.removeListener(drawClickListener);
+        drawClickListener = null;
+      }
+      if (drawPreviewLine) {
+        drawPreviewLine.setMap(null);
+        drawPreviewLine = null;
+      }
+      drawVertexMarkers.forEach(function (m) { m.setMap(null); });
+      drawVertexMarkers = [];
+      drawPath = [];
+      lastDrawClickAt = 0;
+      isDrawingPolygon = false;
+      setPoligonosClicaveis(true);
+      if (map) {
+        map.setOptions({
+          disableDoubleClickZoom: false,
+          draggableCursor: null,
+          draggingCursor: null
+        });
+      }
+      if (!opts.manterAtiva) {
+        $timeout(function () {
+          $ctrl.marcacaoMapaAtiva = false;
+        });
+      }
+    }
+
+    function atualizarPreviewDesenhoMapa() {
+      if (!map) return;
+      if (drawPreviewLine) {
+        drawPreviewLine.setPath(drawPath);
+      } else if (drawPath.length) {
+        drawPreviewLine = new google.maps.Polyline({
+          path: drawPath,
+          strokeColor: '#415a77',
+          strokeWeight: 2,
+          clickable: false,
+          map: map
+        });
+      }
+    }
+
+    function getNivelSelecionadoParaArea() {
+      let lista = null;
+      let id = null;
+      if ($ctrl._nivelPlanta4) {
+        lista = $ctrl._listPlantaNivel4;
+        id = $ctrl._nivelPlanta4;
+      } else if ($ctrl._nivelPlanta3) {
+        lista = $ctrl._listPlantaNivel3;
+        id = $ctrl._nivelPlanta3;
+      } else if ($ctrl._nivelPlanta2) {
+        lista = $ctrl._listPlantaNivel2;
+        id = $ctrl._nivelPlanta2;
+      }
+      if (!lista || !id) return null;
+      const found = lista.filter(function (item) { return item._id == id; });
+      return found[0] || null;
+    }
+
+    function salvarAreaPoligonoMapa(polygon) {
+      const vertices = polygon.getPath().getArray().map(function (v) {
+        return { lat: v.lat(), lng: v.lng() };
+      });
+
+      const _editNivel = getNivelSelecionadoParaArea();
+      if (!_editNivel) {
+        uteisService.onToast('Selecione a localização antes de salvar a área.', 'warning', 2500, 'top-end');
+        polygon.setMap(null);
         return;
       }
 
-      uteisService.onToast('Modo de marcação ativado! Agora clique no mapa para desenhar a área.', 'info', 2000, 'top-end');
-      drawingManager.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
+      const bounds = new google.maps.LatLngBounds();
+      polygon.getPath().forEach(function (p) { bounds.extend(p); });
+      const labelPos = bounds.getCenter();
+
+      new google.maps.InfoWindow({
+        content: '<b>' + (_editNivel.descricao || '') + '</b>',
+        position: labelPos
+      }).open(map);
+
+      _editNivel.areasData = [{ pointsLatLng: vertices }];
+
+      uteisService.patchBase('/localizacao', _editNivel)
+        .then(function () {
+          uteisService.onToast('Área salva com sucesso!', 'success', 2000, 'top-end');
+        })
+        .catch(function () {
+          uteisService.onToast('Erro ao salvar área.', 'error', 2500, 'top-end');
+        });
+    }
+
+    function finalizarDesenhoPoligonoMapa() {
+      if (!isDrawingPolygon) return;
+      if (drawPath.length < 3) {
+        uteisService.onToast('Desenhe pelo menos 3 pontos para fechar a área.', 'info', 2500, 'top-end');
+        return;
+      }
+
+      const pathCopy = drawPath.slice();
+      limparPreviewDesenhoMapa();
+
+      const polygon = new google.maps.Polygon({
+        paths: pathCopy,
+        fillColor: '#778da9',
+        fillOpacity: 0.35,
+        strokeWeight: 2,
+        strokeColor: '#415a77',
+        clickable: true,
+        editable: false,
+        zIndex: 1,
+        map: map
+      });
+      mapAreaPolygons.push(polygon);
+      salvarAreaPoligonoMapa(polygon);
+    }
+
+    $ctrl.cancelarMarcacaoMapa = function () {
+      if (!isDrawingPolygon && !$ctrl.marcacaoMapaAtiva) return;
+      limparPreviewDesenhoMapa();
+      uteisService.onToast('Marcação cancelada.', 'info', 1500, 'top-end');
+    };
+
+    $ctrl.finalizarMarcacaoMapa = function () {
+      finalizarDesenhoPoligonoMapa();
+    };
+
+    $ctrl.ativarMarcacao = function () {
+      if (!$ctrl._nivelPlanta2) {
+        uteisService.onToast('Selecione o nível antes de ativar a marcação.', 'info', 2000, 'top-end');
+        return;
+      }
+      if (!map) {
+        uteisService.onToast('Abra o mapa antes de marcar a área.', 'info', 2000, 'top-end');
+        return;
+      }
+
+      limparPreviewDesenhoMapa({ manterAtiva: true });
+      isDrawingPolygon = true;
+      $ctrl.marcacaoMapaAtiva = true;
+      setPoligonosClicaveis(false);
+      map.setOptions({
+        disableDoubleClickZoom: true,
+        draggableCursor: 'crosshair',
+        draggingCursor: 'crosshair'
+      });
+
+      uteisService.onToast(
+        'Clique para marcar os vértices. Para fechar: clique no 1º ponto (círculo) ou em Finalizar área.',
+        'info',
+        4000,
+        'top-end'
+      );
+
+      drawClickListener = map.addListener('click', function (e) {
+        if (!isDrawingPolygon || !e || !e.latLng) return;
+
+        var agora = Date.now();
+        // Duplo clique manual (Maps costuma engolir o evento dblclick sobre overlays)
+        if (drawPath.length >= 3 && (agora - lastDrawClickAt) < 350) {
+          lastDrawClickAt = 0;
+          finalizarDesenhoPoligonoMapa();
+          return;
+        }
+        lastDrawClickAt = agora;
+
+        // Fecha ao clicar perto do primeiro vértice
+        if (drawPath.length >= 3 && distMetrosLatLng(e.latLng, drawPath[0]) <= 12) {
+          finalizarDesenhoPoligonoMapa();
+          return;
+        }
+
+        drawPath.push(e.latLng);
+
+        var isFirst = drawPath.length === 1;
+        var marker = new google.maps.Marker({
+          position: e.latLng,
+          map: map,
+          clickable: isFirst,
+          cursor: 'crosshair',
+          zIndex: 999,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: isFirst ? 7 : 4,
+            fillColor: isFirst ? '#04a777' : '#415a77',
+            fillOpacity: 1,
+            strokeColor: '#ffffff',
+            strokeWeight: 2
+          },
+          title: isFirst ? 'Clique aqui para fechar a área' : ''
+        });
+
+        if (isFirst) {
+          marker.addListener('click', function () {
+            if (drawPath.length >= 3) finalizarDesenhoPoligonoMapa();
+            else uteisService.onToast('Adicione pelo menos 3 pontos antes de fechar.', 'info', 2000, 'top-end');
+          });
+        }
+
+        drawVertexMarkers.push(marker);
+        atualizarPreviewDesenhoMapa();
+      });
     };
 
     // Final Mapa Google
