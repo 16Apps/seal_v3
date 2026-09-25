@@ -173,7 +173,14 @@ require('./public/mongo/routes/x_unimed')(app, dbMongo);
 // require('./public/mongo/routes/mqtt')(app, dbMongo, server);
 // require('./public/mongo/routes/ble')(app, dbMongo);
 // const iaRoute = require('./public/mongo/routes/ia.route');
-iaRoute(app);
+// iaRoute(app);
+
+fetch('https://api.ipify.org?format=json')
+    .then(res => res.json())
+    .then(data => {
+        console.log('IP PUBLICO RAILWAY:', data.ip);
+    })
+    .catch(console.error);
 
 
 
