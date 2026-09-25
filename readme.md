@@ -33,6 +33,9 @@
 
   $ heroku logs --tail -a seal
 
+  #152.55.180.123
+  #
+
 
 -Deploy Git Ambiente
 git init
