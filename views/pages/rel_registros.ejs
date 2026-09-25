@@ -8,55 +8,66 @@
       <ol class="breadcrumb d-none d-lg-flex">
         <li class="breadcrumb-item">
           <i class="bi bi-house lh-1"></i>
-          <a  class="text-decoration-none">Relatórios</a>
+          <a class="text-decoration-none">Relatórios</a>
         </li>
         <li class="breadcrumb-item" aria-current="page">Registros de Leitura</li>
-        <li class="breadcrumb-item text-info" aria-current="page">Total: {{ _listItens.length }}</li>
+        <li class="breadcrumb-item text-info" aria-current="page">
+          Página {{ _paginacao.page }} · {{ _listItens.length }} de {{ _paginacao.totalNaPagina }} (máx. {{
+          _paginacao.limit }}/página)
+        </li>
       </ol>
       <!-- Breadcrumb end -->
 
       <!-- Filter start -->
       <div class="ms-auto d-flex flex-row gap-1 flex-wrap justify-content-end">
         <div class="search-container d-lg-flex d-none">
-          <input ng-model="_filtro.data_de" id="filtro_data_de" ng-change="onFiltroChange(true)" type="date" class="form-control" title="Data inicial">
+          <input ng-model="_filtro.data_de" id="filtro_data_de" ng-change="onFiltroServidor()" type="date"
+            class="form-control" title="Data inicial">
           <i class="bi bi-calendar3"></i>
         </div>
         <div class="search-container d-lg-flex d-none">
-          <input ng-model="_filtro.data_a" id="filtro_data_a" ng-change="onFiltroChange(true)" type="date" class="form-control" title="Data final">
+          <input ng-model="_filtro.data_a" id="filtro_data_a" ng-change="onFiltroServidor()" type="date"
+            class="form-control" title="Data final">
           <i class="bi bi-calendar3"></i>
         </div>
         <div class="search-container d-lg-flex d-none">
-          <select ng-model="_filtro.id_gateway" ng-change="onFiltroChange()" class="form-control" title="Gateway">
+          <select ng-model="_filtro.id_gateway" ng-change="onFiltroServidor()" class="form-control" title="Gateway">
             <option value="">{{ _regConta.params_nomenclatura_itens.coletores }}..</option>
-            <option ng-repeat="g in _listGateways track by g._id" value="{{ g._id }}">{{ g.descricao || g.tag || g._id }}</option>
+            <option ng-repeat="g in _listGateways track by g._id" value="{{ g._id }}">{{ g.descricao || g.tag || g._id
+              }}</option>
           </select>
           <i class="bi bi-router"></i>
         </div>
         <div class="search-container d-lg-flex d-none">
-          <select ng-model="_filtro.id_endereco" ng-change="onFiltroChange()" class="form-control" title="Endereço">
+          <select ng-model="_filtro.id_endereco" ng-change="onFiltroLocal()" class="form-control"
+            title="Endereço (página atual)">
             <option value="">Endereço..</option>
-            <option ng-repeat="e in _listEnderecos track by e._id" value="{{ e._id }}">{{ e.descricao || e.tag || e._id }}</option>
+            <option ng-repeat="e in _listEnderecos track by e._id" value="{{ e._id }}">{{ e.descricao || e.tag || e._id
+              }}</option>
           </select>
           <i class="bi bi-geo-alt"></i>
         </div>
         <div class="search-container d-lg-flex d-none">
-          <select ng-model="_filtro.id_sku" ng-change="onFiltroChange()" class="form-control"
+          <select ng-model="_filtro.id_sku" ng-change="onFiltroServidor()" class="form-control"
             title="{{ _regConta.params_nomenclatura_itens.sku || 'SKU' }}">
             <option value="">{{ _regConta.params_nomenclatura_itens.sku || 'SKU' }}..</option>
-            <option ng-repeat="s in _listSkus track by s._id" value="{{ s._id }}">{{ s.descricao || s.tag || s._id }}</option>
+            <option ng-repeat="s in _listSkus track by s._id" value="{{ s._id }}">{{ s.descricao || s.tag || s._id }}
+            </option>
           </select>
           <i class="bi bi-box"></i>
         </div>
         <div class="search-container d-lg-flex d-none">
-          <select ng-model="_filtro.id_categoria" ng-change="onFiltroChange()" class="form-control"
-            title="{{ _regConta.params_nomenclatura_itens.categorias || 'Categoria' }}">
+          <select ng-model="_filtro.id_categoria" ng-change="onFiltroLocal()" class="form-control"
+            title="{{ _regConta.params_nomenclatura_itens.categorias || 'Categoria' }} (página atual)">
             <option value="">{{ _regConta.params_nomenclatura_itens.categorias || 'Categoria' }}..</option>
-            <option ng-repeat="c in _listCategorias track by c._id" value="{{ c._id }}">{{ c.descricao || c.tag || c._id }}</option>
+            <option ng-repeat="c in _listCategorias track by c._id" value="{{ c._id }}">{{ c.descricao || c.tag || c._id
+              }}</option>
           </select>
           <i class="bi bi-folder"></i>
         </div>
         <div class="search-container d-lg-flex d-none">
-          <select ng-model="_filtro.status" ng-change="onFiltroChange()" class="form-control" title="Tipo de movimentação">
+          <select ng-model="_filtro.status" ng-change="onFiltroServidor()" class="form-control"
+            title="Tipo de movimentação">
             <option value="">Movimentação..</option>
             <option value="permanencia">Permanência</option>
             <option value="entrada">Entrada</option>
@@ -65,15 +76,16 @@
           <i class="bi bi-arrow-left-right"></i>
         </div>
         <div class="search-container d-lg-flex d-none">
-          <input ng-model="_filtro.pesquisa" ng-change="onFiltroChange()" type="text" class="form-control" id="searchData" placeholder="Pesquisar">
+          <input ng-model="_filtro.pesquisa" ng-model-options="{ debounce: 400 }" ng-change="onFiltroServidor()"
+            type="text" class="form-control" id="searchData" placeholder="Pesquisar tag">
           <i class="bi bi-search"></i>
         </div>
-        <button ng-click="onCarregaRegistros()" type="button"
+        <button ng-click="onCarregaRegistros(_paginacao.page)" type="button" ng-disabled="_carregando"
           class="btn btn-secondary btn-sm ms-2" title="Atualizar lista">
-          <i class="bi bi-arrow-clockwise"></i>
+          <i class="bi" ng-class="_carregando ? 'bi-arrow-repeat' : 'bi-arrow-clockwise'"></i>
         </button>
-        <button ng-click="onExportarCSV()" type="button"
-          class="btn btn-success btn-sm ms-2" title="Exportar lista para CSV">
+        <button ng-click="onExportarCSV()" type="button" ng-disabled="_carregando" class="btn btn-success btn-sm ms-2"
+          title="Exportar página atual para CSV">
           <i class="bi bi-file-earmark-arrow-down"></i>
         </button>
       </div>
@@ -108,16 +120,14 @@
 
               <div class="mb-3">
                 <label class="form-label fw-semibold">Interação Envio</label>
-                <pre
-                  class="bg-light text-dark p-3 rounded small mb-0"
+                <pre class="bg-light text-dark p-3 rounded small mb-0"
                   style="max-height: 8em; overflow-y: auto; white-space: pre-wrap;"
                   ng-bind="jsonFormatado(_interacaoSelecionada.interacao_envio)"></pre>
               </div>
 
               <div>
                 <label class="form-label fw-semibold">Interação Retorno</label>
-                <pre
-                  class="bg-light text-dark p-3 rounded small mb-0"
+                <pre class="bg-light text-dark p-3 rounded small mb-0"
                   style="max-height: 8em; overflow-y: auto; white-space: pre-wrap;"
                   ng-bind="jsonFormatado(_interacaoSelecionada.interacao_retorno)"></pre>
               </div>
@@ -130,74 +140,64 @@
         <div class="col-xxl-12">
           <div class="card mb-3">
             <div class="card-body">
+              <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3" ng-show="_carregando">
+                <div class="text-muted small">
+                  <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                  Carregando registros…
+                </div>
+              </div>
+
               <div class="table-responsive">
                 <div class="table-outer">
                   <table class="table align-middle table-hover m-0">
                     <thead>
                       <tr>
-                        <th>
+                        <th></th>
 
-                        </th>
-
-                        <th class="w-20" ng-click="sortBy('categoria.descricao')" class="sortable">
+                        <th class="w-20 sortable" ng-click="sortBy('id_categoria.descricao')">
                           SKU
                           <i class="bi" ng-class="{
-              'bi-caret-up-fill': sortField=='categoria.descricao' && !sortReverse,
-              'bi-caret-down-fill': sortField=='categoria.descricao' && sortReverse
+              'bi-caret-up-fill': sortField=='id_categoria.descricao' && !sortReverse,
+              'bi-caret-down-fill': sortField=='id_categoria.descricao' && sortReverse
         }"></i>
                         </th>
 
-                        <th class="w-60 sortable" ng-click="sortBy('id_categoria_reg1.descricao')">
+                        <th class="w-60 sortable" ng-click="sortBy('data_registro')">
                           Registro
                           <i class="bi" ng-class="{
-              'bi-caret-up-fill': sortField=='id_categoria_reg1.descricao' && !sortReverse,
-              'bi-caret-down-fill': sortField=='id_categoria_reg1.descricao' && sortReverse
+              'bi-caret-up-fill': sortField=='data_registro' && !sortReverse,
+              'bi-caret-down-fill': sortField=='data_registro' && sortReverse
         }"></i>
                         </th>
 
-                        <th class="w-20 sortable" ng-click="sortBy('tag')">
+                        <th class="w-20 sortable" ng-click="sortBy('status')">
                           Status
                           <i class="bi" ng-class="{
-              'bi-caret-up-fill': sortField=='tag' && !sortReverse,
-              'bi-caret-down-fill': sortField=='tag' && sortReverse
+              'bi-caret-up-fill': sortField=='status' && !sortReverse,
+              'bi-caret-down-fill': sortField=='status' && sortReverse
         }"></i>
                         </th>
 
-                        <th class="w-5 sortable" ng-click="sortBy('id_categoria_reg1.descricao')">
+                        <th class="w-5">
                           Interação
-                          <i class="bi" ng-class="{
-              'bi-caret-up-fill': sortField=='id_categoria_reg1.descricao' && !sortReverse,
-              'bi-caret-down-fill': sortField=='id_categoria_reg1.descricao' && sortReverse
-        }"></i>
                         </th>
-
-                        <th class="w-5 sortable" ng-click="sortBy('id_categoria_reg1.descricao')">
-                        
-                          <i class="bi" ng-class="{
-              'bi-caret-up-fill': sortField=='id_categoria_reg1.descricao' && !sortReverse,
-              'bi-caret-down-fill': sortField=='id_categoria_reg1.descricao' && sortReverse
-        }"></i>
-                        </th>
-
-                        
-
-                 
                       </tr>
                     </thead>
                     <tbody>
-                      <tr ng-repeat="item in _listItens | orderBy:sortField:sortReverse">
-                      <td>
-                          <div class="d-inline-flex align-items-center justify-content-center rounded-circle me-2" 
-                               style="width: 48px; height: 48px;"
-                               ng-class="{
+                      <tr ng-if="!_carregando && (!_listItens || !_listItens.length)">
+                        <td colspan="5" class="text-center text-muted py-4">Nenhum registro nesta página.</td>
+                      </tr>
+                      <tr ng-repeat="item in _listItens | orderBy:sortField:sortReverse track by item._id">
+                        <td>
+                          <div class="d-inline-flex align-items-center justify-content-center rounded-circle me-2"
+                            style="width: 48px; height: 48px;" ng-class="{
                                  'bg-success': item.status == 'entrada' || item.status == 'associacao_ok',
                                  'bg-warning': item.status == 'saida',
                                  'bg-info': item.status == 'permanencia',
                                  'bg-danger': item.status == 'associacao_erro',
                                  'bg-secondary': item.status != 'entrada' && item.status != 'saida' && item.status != 'permanencia' && item.status != 'associacao_erro' && item.status != 'associacao_ok'
                                }">
-                            <i class="bi text-white fs-5" 
-                               ng-class="{
+                            <i class="bi text-white fs-5" ng-class="{
                                  'bi-arrow-right-circle-fill': item.status == 'entrada',
                                  'bi-arrow-left-circle-fill': item.status == 'saida',
                                  'bi-pause-circle-fill': item.status == 'permanencia',
@@ -206,78 +206,91 @@
                                  'bi-circle-fill': item.status != 'entrada' && item.status != 'saida' && item.status != 'permanencia' && item.status != 'associacao_erro' && item.status != 'associacao_ok'
                                }"></i>
                           </div>
-                      </td>
+                        </td>
 
-                      <td>
-                        {{ item.id_categoria.descricao ? item.id_categoria.descricao : 'Item N/A' }}
-                        <br>
-                        <span 
-                          class="badge bg-light bg-opacity-10 text-light text-uppercase">
-                          <i class="bi bi-tag me-1 "></i>{{ item.tag }}
-                        </span>
-                      </td>
+                        <td style="letter-spacing: 0.05em;">
+                          {{ item.id_categoria.descricao ? item.id_categoria.descricao : 'Item N/A' }}
+                          <br>
+                          <span class="badge bg-light bg-opacity-10 text-white text-uppercase ">
+                            <i class="bi bi-tag me-1 "></i>{{ item.tag }}
+                          </span>
+                          <span class="badge bg-light bg-opacity-10 text-warning text-uppercase">
+                            {{ item.rssi }}db
+                          </span>
+                        
+                        </td>
 
-                      <td>
-                        {{ item.data_permanecia ? formataDataHora(item.data_permanecia) : '' }}
-                        <br>
-                        <span 
-                          class="badge bg-light bg-opacity-10 text-light text-uppercase">
-                          <i class="bi bi-tag me-1 "></i>{{ item.data_registro ? formataDataHora(item.data_registro) : '' }}
-                        </span>
-                      </td>
+                        <td>
+                          {{ item.data_permanecia ? formataDataHora(item.data_permanecia) : '' }}
+                          <br>
+                          <span class="badge bg-light bg-opacity-10 text-light text-uppercase">
+                            <i class="bi bi-calendar3 me-1 "></i>{{ item.data_registro ?
+                            formataDataHora(item.data_registro) : '' }}
+                          </span>
+                        </td>
 
-                      <td>
-                        {{ item.id_gateway.descricao }}<br>
-                        <!-- Status: entrada -->
-                        <span ng-show="item.status=='entrada'"
-                          class="badge bg-success bg-opacity-10 text-success text-uppercase">
-                          <i class="bi bi-arrow-right-circle me-1"></i>{{ item.status }}
-                        </span>
-                        <!-- Status: saida -->
-                        <span ng-show="item.status=='saida'"
-                          class="badge bg-warning bg-opacity-10 text-warning text-uppercase">
-                          <i class="bi bi-arrow-left-circle me-1"></i>{{ item.status }}
-                        </span>
-                        <!-- Status: permanencia -->
-                        <span ng-show="item.status=='permanencia'"
-                          class="badge bg-info bg-opacity-10 text-info text-uppercase">
-                          <i class="bi bi-pause-circle me-1"></i>{{ item.status }}
-                        </span>
-                        <!-- Status: associacao_erro -->
-                        <span ng-show="item.status=='associacao_erro'"
-                          class="badge bg-danger bg-opacity-10 text-danger text-uppercase">
-                          <i class="bi bi-exclamation-triangle me-1"></i>{{ item.status }}
-                        </span>
-                        <!-- Status: associacao_ok -->
-                        <span ng-show="item.status=='associacao_ok'"
-                          class="badge bg-success bg-opacity-10 text-success text-uppercase">
-                          <i class="bi bi-check-circle me-1"></i>{{ item.status }}
-                        </span>
-                        <!-- Status: outros (fallback) -->
-                        <span ng-show="item.status!='entrada' && item.status!='saida' && item.status!='permanencia' && item.status!='associacao_erro' && item.status!='associacao_ok'"
-                          class="badge bg-secondary bg-opacity-10 text-secondary text-uppercase">
-                          <i class="bi bi-circle me-1"></i>{{ item.status }}
-                        </span>
-                      </td>
- 
-                      <td>
-                        <div
-                          ng-repeat="interacao in item.interacoes track by (interacao._id || $index)"
-                          class="mb-1">
-                          <button
-                            type="button"
-                            class="btn btn-sm text-uppercase"
-                            ng-class="interacao.interacao_status == 'ok' ? 'btn-success' : 'btn-danger'"
-                            ng-click="onAbrirModalInteracao(interacao)">
-                            {{ interacao.interacao_id }}
-                          </button>
-                        </div>
-                        <span ng-if="!item.interacoes || !item.interacoes.length" class="text-muted">-</span>
-                      </td>
+                        <td>
+                          {{ item.id_gateway.descricao }}<br>
+                          <span ng-show="item.status=='entrada'"
+                            class="badge bg-success bg-opacity-10 text-success text-uppercase">
+                            <i class="bi bi-arrow-right-circle me-1"></i>{{ item.status }}
+                          </span>
+                          <span ng-show="item.status=='saida'"
+                            class="badge bg-warning bg-opacity-10 text-warning text-uppercase">
+                            <i class="bi bi-arrow-left-circle me-1"></i>{{ item.status }}
+                          </span>
+                          <span ng-show="item.status=='permanencia'"
+                            class="badge bg-info bg-opacity-10 text-info text-uppercase">
+                            <i class="bi bi-pause-circle me-1"></i>{{ item.status }}
+                          </span>
+                          <span ng-show="item.status=='associacao_erro'"
+                            class="badge bg-danger bg-opacity-10 text-danger text-uppercase">
+                            <i class="bi bi-exclamation-triangle me-1"></i>{{ item.status }}
+                          </span>
+                          <span ng-show="item.status=='associacao_ok'"
+                            class="badge bg-success bg-opacity-10 text-success text-uppercase">
+                            <i class="bi bi-check-circle me-1"></i>{{ item.status }}
+                          </span>
+                          <span
+                            ng-show="item.status!='entrada' && item.status!='saida' && item.status!='permanencia' && item.status!='associacao_erro' && item.status!='associacao_ok'"
+                            class="badge bg-secondary bg-opacity-10 text-secondary text-uppercase">
+                            <i class="bi bi-circle me-1"></i>{{ item.status }}
+                          </span>
+                        </td>
+
+                        <td>
+                          <div ng-repeat="interacao in item.interacoes track by (interacao._id || $index)" class="mb-1">
+                            <button type="button" class="btn btn-sm text-uppercase"
+                              ng-class="interacao.interacao_status == 'ok' ? 'btn-success' : 'btn-danger'"
+                              ng-click="onAbrirModalInteracao(interacao)">
+                              {{ interacao.interacao_id }}
+                            </button>
+                          </div>
+                          <span ng-if="!item.interacoes || !item.interacoes.length" class="text-muted">-</span>
+                        </td>
 
                       </tr>
                     </tbody>
                   </table>
+                </div>
+              </div>
+
+              <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-3">
+                <div class="text-muted small">
+                  Ordenado por data de registro (mais recente primeiro) · {{ _paginacao.limit }} por página
+                </div>
+                <div class="btn-group" role="group" aria-label="Paginação">
+                  <button type="button" class="btn btn-outline-secondary btn-sm" ng-click="onPaginaAnterior()"
+                    ng-disabled="_carregando || _paginacao.page <= 1">
+                    <i class="bi bi-chevron-left"></i> Anterior
+                  </button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm" disabled>
+                    Página {{ _paginacao.page }}
+                  </button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm" ng-click="onPaginaProxima()"
+                    ng-disabled="_carregando || !_paginacao.temProxima">
+                    Próxima <i class="bi bi-chevron-right"></i>
+                  </button>
                 </div>
               </div>
             </div>

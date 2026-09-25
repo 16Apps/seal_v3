@@ -43,6 +43,7 @@ const ContaSchema = new mongoose.Schema({
     },
 
     plano_monitoramento: {
+        software: { type: String },
         posicao_esperada: { type: Number, enum: [0, 1], default: 1 },
         painel_alertas: { type: Number, enum: [0, 1], default: 1 },
         interacao: { type: Number, enum: [0, 1], default: 1 },
@@ -58,6 +59,7 @@ const ContaSchema = new mongoose.Schema({
     },
 
     widget_layout: { type: Array, default: [] },
+    interval_pdi: { type: Number, default: 30 },
 
 
 }, {

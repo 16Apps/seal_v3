@@ -43,6 +43,7 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
         },
     
         plano_monitoramento: {
+            software: 'seal',
             posicao_esperada: 0,
             painel_alertas: 0,
             interacao: 0,
@@ -134,6 +135,7 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
             }
             if (!$scope._regConta.plano_monitoramento) {
                 $scope._regConta.plano_monitoramento = {
+                    software: 'seal',
                     posicao_esperada: "0",
                     painel_alertas: "0",
                     interacao: "0",
@@ -142,6 +144,7 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
                 };
             } else {
                 // Garante que os valores sejam números
+                $scope._regConta.plano_monitoramento.software = $scope._regConta.plano_monitoramento.software || 'seal';
                 $scope._regConta.plano_monitoramento.posicao_esperada = "" + parseInt($scope._regConta.plano_monitoramento.posicao_esperada) || 0;
                 $scope._regConta.plano_monitoramento.painel_alertas = "" + parseInt($scope._regConta.plano_monitoramento.painel_alertas) || 0;
                 $scope._regConta.plano_monitoramento.interacao = "" + parseInt($scope._regConta.plano_monitoramento.interacao) || 0;
@@ -1010,6 +1013,10 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
         // uteisService.onMsgBox('Olá','teste','error')
         uteisService.onQuestion('Está tudo certo...', 'info', 2000, 'top-end')
 
+    };
+
+    $scope.onEntrarMicrosoft = async function () {
+        window.location.href = '/auth/microsoft';
     };
 
 });

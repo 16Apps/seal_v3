@@ -1,6 +1,7 @@
 app.controller('relRegistrosCtrl', function ($scope, $http, params, uteisService, $timeout) {
 
     const hoje = moment().format('YYYY-MM-DD');
+    const PAGE_SIZE = 100;
 
     $scope._regConta = {};
     $scope._listItens = [];
@@ -11,8 +12,16 @@ app.controller('relRegistrosCtrl', function ($scope, $http, params, uteisService
     $scope._listCategorias = [];
     $scope._mapaItemCategoria = {};
     $scope._interacaoSelecionada = null;
-    $scope.sortField = 'categoria.descricao';
-    $scope.sortReverse = false;
+    $scope._carregando = false;
+    $scope.sortField = 'data_registro';
+    $scope.sortReverse = true;
+
+    $scope._paginacao = {
+        page: 1,
+        limit: PAGE_SIZE,
+        temProxima: false,
+        totalNaPagina: 0
+    };
 
     $scope._filtro = {
         data_de: hoje,
@@ -37,8 +46,6 @@ app.controller('relRegistrosCtrl', function ($scope, $http, params, uteisService
         if (elA) elA.value = dataA;
     }
 
-    var modalInstance = undefined;
-
     const getId = (obj) => (obj && obj._id ? obj._id : (obj || ''));
 
     const normaliza = (v) =>
@@ -58,8 +65,9 @@ app.controller('relRegistrosCtrl', function ($scope, $http, params, uteisService
 
         $timeout(aplicarDatasNosInputs);
 
-        await $scope.onCarregaOpcoesFiltro();
-        $scope.onCarregaRegistros();
+        // Carrega registros e opções de filtro em paralelo (sem bloquear a tabela no mapa de itens)
+        $scope.onCarregaOpcoesFiltro();
+        $scope.onCarregaRegistros(1);
     });
 
     $scope.onCarregaOpcoesFiltro = async function () {
@@ -67,19 +75,29 @@ app.controller('relRegistrosCtrl', function ($scope, $http, params, uteisService
         if (!idConta) return;
 
         try {
-            const [gateways, enderecos, skus, categorias, itens] = await Promise.all([
-                uteisService.getBase('/_bd?c=gateway&id_conta=' + idConta + '&_sort=descricao'),
-                uteisService.getBase('/_bd?c=localizacao&id_conta=' + idConta + '&_sort=descricao'),
-                uteisService.getBase('/_bd?c=categoria&id_conta=' + idConta + '&_sort=descricao'),
-                uteisService.getBase('/_bd?c=categoria_item&id_conta=' + idConta + '&_sort=descricao'),
-                uteisService.getBase('/_bd?c=item&id_conta=' + idConta + '&limit=5000')
+            const [gateways, enderecos, skus, categorias] = await Promise.all([
+                uteisService.getBase('/_bd?c=gateway&id_conta=' + idConta + '&_sort=descricao&limit=500'),
+                uteisService.getBase('/_bd?c=localizacao&id_conta=' + idConta + '&_sort=descricao&limit=1000'),
+                uteisService.getBase('/_bd?c=categoria&id_conta=' + idConta + '&_sort=descricao&limit=500'),
+                uteisService.getBase('/_bd?c=categoria_item&id_conta=' + idConta + '&_sort=descricao&limit=500')
             ]);
 
             $scope._listGateways = Array.isArray(gateways) ? gateways : [];
             $scope._listEnderecos = Array.isArray(enderecos) ? enderecos : [];
             $scope._listSkus = Array.isArray(skus) ? skus : [];
             $scope._listCategorias = Array.isArray(categorias) ? categorias : [];
+            $scope.$applyAsync();
 
+            // Mapa item→categoria em segundo plano (só para filtro de categoria na página atual)
+            carregarMapaItemCategoria(idConta);
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    async function carregarMapaItemCategoria(idConta) {
+        try {
+            const itens = await uteisService.getBase('/_bd?c=item&id_conta=' + idConta + '&limit=2000');
             const mapa = {};
             (Array.isArray(itens) ? itens : []).forEach((item) => {
                 if (!item || !item._id) return;
@@ -87,59 +105,98 @@ app.controller('relRegistrosCtrl', function ($scope, $http, params, uteisService
                 if (item.tag) mapa['tag:' + String(item.tag).toLowerCase()] = getId(item.id_categoria_reg1);
             });
             $scope._mapaItemCategoria = mapa;
+            $scope.$applyAsync();
         } catch (e) {
             console.error(e);
         }
-    };
+    }
 
-    $scope.onCarregaRegistros = async function () {
+    $scope.onCarregaRegistros = async function (page) {
+        if ($scope._carregando) return;
 
         const elDe = document.getElementById('filtro_data_de');
         const elA = document.getElementById('filtro_data_a');
         if (elDe && elDe.value) $scope._filtro.data_de = elDe.value;
         if (elA && elA.value) $scope._filtro.data_a = elA.value;
 
+        const pagina = Math.max(1, parseInt(page, 10) || $scope._paginacao.page || 1);
+        $scope._paginacao.page = pagina;
+        $scope._carregando = true;
+
+        const f = $scope._filtro || {};
         let _url = '/_bd?c=registro&id_conta=' + $scope._regConta._id;
         _url += '&pop=id_gateway&pop=id_nivel_loc1&pop=id_nivel_loc2&pop=id_nivel_loc3&pop=id_nivel_loc4';
         _url += '&pop=id_categoria';
-        _url += '&_sort=data_permanecia';
+        _url += '&_sort=data_registro';
+        _url += '&page=' + pagina;
+        _url += '&limit=' + PAGE_SIZE;
 
-        const dataDe = $scope._filtro.data_de;
-        const dataA = $scope._filtro.data_a;
+        const dataDe = f.data_de;
+        const dataA = f.data_a;
         if (dataDe && dataA) {
             _url += '&data_registro=*dtP' + moment(dataDe).format('YYYY-MM-DD') + '|' + moment(dataA).format('YYYY-MM-DD');
         }
 
-        await uteisService.getBase(_url)
-            .then((res) => {
-                $scope._listItensBase = Array.isArray(res) ? res : [];
-                $scope.aplicarFiltros();
-                $scope.$apply();
-            })
-            .catch((error) => {
-                uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
-            });
+        // Filtros aplicados no servidor (reduz payload)
+        if (f.id_gateway) _url += '&id_gateway=' + encodeURIComponent(f.id_gateway);
+        if (f.id_sku) _url += '&id_categoria=' + encodeURIComponent(f.id_sku);
+        if (f.status) _url += '&status=' + encodeURIComponent(f.status);
+        if (f.pesquisa) _url += '&tag=*like' + encodeURIComponent(f.pesquisa.trim());
+
+        try {
+            const res = await uteisService.getBase(_url);
+            const lista = Array.isArray(res) ? res : [];
+            $scope._listItensBase = lista;
+            $scope._paginacao.temProxima = lista.length >= PAGE_SIZE;
+            $scope._paginacao.totalNaPagina = lista.length;
+            $scope.aplicarFiltros();
+        } catch (error) {
+            $scope._listItensBase = [];
+            $scope._listItens = [];
+            $scope._paginacao.temProxima = false;
+            $scope._paginacao.totalNaPagina = 0;
+            uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
+        } finally {
+            $scope._carregando = false;
+            $scope.$applyAsync();
+        }
+    };
+
+    /** Filtros que disparam nova busca no servidor (volta à página 1). */
+    $scope.onFiltroServidor = function () {
+        $scope.onCarregaRegistros(1);
+    };
+
+    /** Filtros só da página atual (endereço / categoria). */
+    $scope.onFiltroLocal = function () {
+        $scope.aplicarFiltros();
     };
 
     $scope.onFiltroChange = function (recarregar) {
         if (recarregar) {
-            $scope.onCarregaRegistros();
+            $scope.onCarregaRegistros(1);
             return;
         }
         $scope.aplicarFiltros();
+    };
+
+    $scope.onPaginaAnterior = function () {
+        if ($scope._paginacao.page <= 1 || $scope._carregando) return;
+        $scope.onCarregaRegistros($scope._paginacao.page - 1);
+    };
+
+    $scope.onPaginaProxima = function () {
+        if (!$scope._paginacao.temProxima || $scope._carregando) return;
+        $scope.onCarregaRegistros($scope._paginacao.page + 1);
     };
 
     $scope.aplicarFiltros = function () {
         const f = $scope._filtro || {};
         const pesquisa = f.pesquisa ? normaliza(f.pesquisa) : '';
 
+        // Gateway / SKU / status / tag já vieram filtrados do servidor;
+        // endereço e categoria ainda filtram a página carregada.
         $scope._listItens = ($scope._listItensBase || []).filter((item) => {
-            if (f.id_gateway && getId(item.id_gateway) !== f.id_gateway) return false;
-
-            if (f.id_sku && getId(item.id_categoria) !== f.id_sku) return false;
-
-            if (f.status && String(item.status || '').toLowerCase() !== f.status) return false;
-
             if (f.id_endereco) {
                 const idsLoc = [
                     getId(item.id_nivel_loc1),
@@ -160,6 +217,7 @@ app.controller('relRegistrosCtrl', function ($scope, $http, params, uteisService
                 if (idCatItem !== f.id_categoria) return false;
             }
 
+            // Refino local da pesquisa (gateway, status, níveis) além do tag*like no servidor
             if (!pesquisa) return true;
 
             const catDesc = normaliza(item.id_categoria?.descricao);
@@ -225,6 +283,7 @@ app.controller('relRegistrosCtrl', function ($scope, $http, params, uteisService
         const cabecalho = [
             'SKU',
             'Tag',
+            'RSSI',
             'Data Permanencia',
             'Data Registro',
             'Status',
@@ -260,6 +319,7 @@ app.controller('relRegistrosCtrl', function ($scope, $http, params, uteisService
             return [
                 item.id_categoria?.descricao || 'Item N/A',
                 item.tag || '',
+                item.rssi != null && item.rssi !== '' ? String(item.rssi) : '',
                 fmtData(item.data_permanecia),
                 fmtData(item.data_registro),
                 item.status || '',
@@ -277,7 +337,7 @@ app.controller('relRegistrosCtrl', function ($scope, $http, params, uteisService
         const url = URL.createObjectURL(blob);
 
         const stamp = moment().format('YYYYMMDD_HHmmss');
-        const nomeArquivo = 'registros_' + stamp + '.csv';
+        const nomeArquivo = 'registros_p' + $scope._paginacao.page + '_' + stamp + '.csv';
 
         const a = document.createElement('a');
         a.href = url;
@@ -287,7 +347,7 @@ app.controller('relRegistrosCtrl', function ($scope, $http, params, uteisService
         document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(url), 1500);
 
-        uteisService.onToast('Arquivo exportado: ' + nomeArquivo, 'success', 2500, 'top-end');
+        uteisService.onToast('Arquivo exportado (página atual): ' + nomeArquivo, 'success', 2500, 'top-end');
     };
 
     $scope.formataDataHora = function (data) {

@@ -5,6 +5,14 @@ const Localizacao = require('../models/localizacao');
 const Categoria = require('../models/categoria');
 const Item = require('../models/item');
 const Posicao = require('../models/posicao');
+const Gateway = require('../models/gateway');
+
+const ip_server = 'https://connectiot-app.azurewebsites.net';
+const REGISTRO_URL = ip_server + '/_bd/registro';
+const POSICAO_URL = ip_server + '/_bd/posicao';
+
+const ultimasLeituras = new Map(); // { tag => timestamp }
+const DEBOUNCE_LEITURA_MS = 10 * 1000;
 
 function normalizarEpc(valor) {
   if (valor == null) return '';
@@ -144,6 +152,7 @@ module.exports = (app) => {
           ativo: '1',
           id_doc: pedido,
           descricao: notafiscal,
+          tipo: 'conferencia',
           status: 'pendente',
           status_data: new Date(),
           partida_data: parseDataBrasil(datahora) || new Date(),
@@ -191,5 +200,135 @@ module.exports = (app) => {
     }
 
   });
+
+  async function buscaRegistro(gateway, tag) {
+
+    console.log(gateway, tag);
+    try {
+      if (!gateway || !tag) {
+        return { ok: false, message: 'Gateway ou tag não informados.' };
+      }
+
+      const filtro = { $and: [] };
+
+      ['id_nivel_loc1', 'id_nivel_loc2', 'id_nivel_loc3', 'id_nivel_loc4'].forEach((campo) => {
+        const valor = gateway[campo];
+        if (valor) {
+          filtro.$and.push({ [campo]: valor });
+        }
+      });
+
+      filtro.$and.push({
+        itens: {
+          $elemMatch: {
+            tag: tag,
+            status: 'pendente'
+          }
+        }
+      });
+
+
+      const query = filtro.$and.length === 1 ? filtro.$and[0] : filtro;
+      let posicao = await Posicao.findOne(query);
+   
+      if (!posicao) {
+        return { ok: false, message: 'Nenhuma posição encontrada para a tag informada.' };
+      }
+
+      const item = (posicao.itens || []).find((it) => it.tag === tag && it.status === 'pendente');
+      if (item) {
+        item.status = 'concluido';
+        item.status_data = new Date();
+      }
+
+      const itens = posicao.itens || [];
+      const todosConcluidos = itens.length > 0 && itens.every((it) => it.status === 'concluido');
+      const algumConcluido = itens.some((it) => it.status === 'concluido');
+      if (todosConcluidos) {
+        posicao.status = 'concluido';
+      } else if (algumConcluido) {
+        posicao.status = 'parcial';
+      }
+
+      // await axios.patch(
+      //   POSICAO_URL,
+      //   posicao,
+      //   { timeout: 5000 }
+      // );
+
+      return { ok: true, posicao };
+    } catch (error) {
+      console.error('[x_dsv/buscaRegistro] Erro:', error.message);
+      return { ok: false, message: error.message };
+    }
+  };
+
+  app.post('/x_dsv/registro/portal', async (req, res) => {
+
+    const payload = req.body;
+    const tag = payload.Tagid;
+    const tokemPortal = payload.Devicename;
+
+    const agora = Date.now();
+    if (tag && ultimasLeituras.has(tag)) {
+      const diffMs = agora - ultimasLeituras.get(tag);
+      if (diffMs < DEBOUNCE_LEITURA_MS) {
+        return res.status(200).json({
+          ok: true,
+          ignored: true,
+          message: `Leitura ignorada: última foi há ${(diffMs / 1000).toFixed(2)}s (menos de 10s)`
+        });
+      }
+    }
+    if (tag) {
+      ultimasLeituras.set(tag, agora);
+    }
+
+    const gateway = await Gateway.findOne({ tokem: tokemPortal, ativo: 1 });
+    if (!gateway) {
+      return res.status(404).json({
+        ok: false,
+        error: 'Gateway não encontrado.'
+      });
+    }
+
+    const registro = {
+      tokem: tokemPortal,
+      tag: tag,
+      data_leitura: "",
+      antena: payload.Antennaname || "0",
+      rssi: payload.Rssi || "-0",
+      bateria: "0",
+      temperatura: "0",
+      latitude: "",
+      longitude: "",
+      id_nivel_loc1: "",
+      id_nivel_loc2: "",
+      id_nivel_loc3: "",
+      id_nivel_loc4: "",
+      id_nivel_loc1_final: "",
+      id_nivel_loc2_final: "",
+      id_nivel_loc3_final: "",
+      id_nivel_loc4_final: ""
+    };
+
+    console.log(tag);
+    buscaRegistro(gateway, tag);
+
+    await axios.post(
+      REGISTRO_URL,
+      registro,
+      { timeout: 5000 }
+    );
+
+    return res.status(200).json({
+      ok: true,
+      gateway: gateway,
+      registro: registro
+    });
+
+  });
+
+
 
 };

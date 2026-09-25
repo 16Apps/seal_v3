@@ -11,6 +11,7 @@
   "license": "ISC",
   "description": "<script src=\"https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js\"></script>\r # Criar a pasta controller em public\r # Criar arquivo app.js, controlador da aplicação\r # Vincular nos layouts, a chamada da aplicação ng-app=\"myApp\"\r # Mongo\r # npm install mongoose\r # criar a pasta config, e o arquivo mongo.js com a conexão\r # no server.js requisita-lo\r # em public criar as pastas mongo, e dentro routes e models",
   "dependencies": {
+    "@azure/msal-node": "^5.5.0",
     "@stoprocent/noble": "^2.3.17",
     "aedes": "^1.0.2",
     "axios": "^1.13.1",

@@ -15,13 +15,18 @@
       <!-- Breadcrumb end -->
 
       <!-- Filter start -->
-      <div class="ms-auto d-flex flex-row gap-1 ">
+      <div class="ms-auto d-flex flex-row gap-1 align-items-center">
         <div class="search-container d-lg-flex d-none">
-          <input type="text" class="form-control" id="searchData" placeholder="Pesquisar">
+          <input ng-model="_pesquisa" type="text" class="form-control" id="searchData"
+            placeholder="Pesquisar tokem ou descrição">
           <i class="bi bi-search"></i>
         </div>
+        <button ng-click="onCarregaRegistros()" type="button"
+          class="btn btn-secondary btn-sm" title="Atualizar dados">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
         <button ng-click="onGateway('add', undefined)" type="button"
-          class="btn btn-warning btn-sm ms-3 text-dark">Novo</button>
+          class="btn btn-warning btn-sm text-dark">Novo</button>
       </div>
       <!-- Filter end -->
 
@@ -79,19 +84,51 @@
          }"></i>
                         </th>
 
+                         <!-- Sinal -->
+                         <th class="w-10 sortable" ng-click="sortBy('_ultimoSinal.valor')">
+                          Sinal
+                          <i class="bi" ng-class="{
+            'bi-caret-up-fill': sortField=='_ultimoSinal.valor' && !sortReverse,
+            'bi-caret-down-fill': sortField=='_ultimoSinal.valor' && sortReverse
+         }"></i>
+                        </th>
+
                         <th>Ações</th>
 
                       </tr>
                     </thead>
 
                     <tbody>
-                      <tr ng-repeat="item in _listGateways | orderBy:sortField:sortReverse">
+                      <tr ng-repeat="item in _listGateways | filter:filtraGateway | orderBy:sortField:sortReverse">
                         <td>
                           <img class="rounded-circle img-3x me-2" src="{{ item._foto }}" alt="Wrapmarket" />
                         </td>
                         <td>{{ item.descricao }}</td>
-                        <td>{{ item.modo == 'fixo' ? 'Fixo' : 'Móvel' }}</td>
-                        <td>{{ item.tokem }}</td>
+                        <td>
+                          {{ item.modo == 'fixo' ? 'Fixo' : (item.modo == 'fluxo' ? 'Fluxo' : 'Móvel') }}
+                          <div ng-if="item.modo == 'fixo' && item._niveisTexto" class="small text-muted mt-1">
+                            {{ item._niveisTexto }}
+                          </div>
+                        </td>
+                        <td>
+                          {{ item.tokem }}
+                          <br>
+                          <small class="text-muted">{{ item.tokem_associado }}</small>
+                        </td>
+
+                        <td>
+                          <span ng-if="item._ultimoSinal"
+                            ng-class="{
+                              'text-success': +item._ultimoSinal.valor >= 70,
+                              'text-warning': +item._ultimoSinal.valor >= 30 && +item._ultimoSinal.valor < 70,
+                              'text-danger': +item._ultimoSinal.valor < 30
+                            }">
+                            {{ item._ultimoSinal.data }}
+                            <span>·</span>
+                            {{ item._ultimoSinal.valor }}%
+                          </span>
+                          <span ng-if="!item._ultimoSinal" class="text-muted">—</span>
+                        </td>
                         <td>
                           <a class="btn btn-info btn-sm" ng-click="onGateway('edit', item)">
                             <i class="bi bi-pencil"></i>

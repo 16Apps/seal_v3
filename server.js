@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 var express = require('express');
 var expressLayouts = require('express-ejs-layouts');
 var cors = require('cors');
@@ -30,6 +32,23 @@ const io = socketio(server);
 // Ao conectar
 io.on('connection', (socket) => {
   console.log('Cliente conectado:', socket.id);
+
+  // Presence do portal_movimentacao: room portal:{id_conta}
+  socket.on('portal_join', (data) => {
+    const idConta = data && (data.id_conta || data.idConta);
+    if (!idConta) return;
+    const room = 'portal:' + String(idConta);
+    socket.join(room);
+    console.log('[portal_join]', socket.id, room);
+  });
+
+  socket.on('portal_leave', (data) => {
+    const idConta = data && (data.id_conta || data.idConta);
+    if (!idConta) return;
+    const room = 'portal:' + String(idConta);
+    socket.leave(room);
+    console.log('[portal_leave]', socket.id, room);
+  });
 });
 
 app.set('io', io); // opcional, para acessar no controller
@@ -146,6 +165,10 @@ require('./public/mongo/routes/x_naturgy')(app, dbMongo);
 require('./public/mongo/routes/x_oracle')(app, dbMongo);
 require('./public/mongo/routes/x_dsv')(app, dbMongo);
 require('./public/mongo/routes/x_vw')(app, dbMongo);
+// require('./public/mongo/routes/xx_sync_bd')(app, dbMongo);
+require('./public/mongo/routes/x_unimed')(app, dbMongo);
+
+// require('./public/mongo/routes/auth_microsoft/api')(app, dbMongo);
 // require('./public/mongo/routes/mqtt')(app, dbMongo);
 // require('./public/mongo/routes/mqtt')(app, dbMongo, server);
 // require('./public/mongo/routes/ble')(app, dbMongo);

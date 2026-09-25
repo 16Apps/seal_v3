@@ -1,6 +1,7 @@
 const shortid = require('shortid');
 const fs = require('fs');
 const axios = require('axios'); // se for enviar via HTTP
+const path = require('path');
 
 const Gateway = require("../models/gateway");
 const Item = require("../models/item");
@@ -17,30 +18,92 @@ const Interacao = require("../models/interacao");
 const Colaborador = require("../models/colaborador");
 const RegistroColaborador = require("../models/registro_colaborador");
 
-const ultimasLeituras = new Map(); // { tag => timestamp }
+const ultimasLeituras = new Map(); // { "tag|tokem" => timestamp }
+const DEBOUNCE_LEITURA_SEG = 6; // leitor envia ~5s; folga evita processar o próximo tick como ciclo novo
 const { setTimeout: sleep } = require('timers/promises');
 const moment = require('moment')
 const cron = require('node-cron');
+
+let _urlRegistro = 'https://connectiot-app.azurewebsites.net/_bd/registro';
+let _urlRegistroLocal = 'http://localhost:3000/_bd/registro';
 
 module.exports = (app, dbConnection) => {
 
     console.log("api")
 
+    function salvarLogArquivo(titulo, dados) {
+        try {
+            const dir = path.join(__dirname, '../../../logs');
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+            const arquivo = path.join(dir, `middleware_${moment().format('YYYY-MM-DD')}.log`);
+            const linha =
+                `[${moment().format('YYYY-MM-DD HH:mm:ss')}] ${titulo} ` +
+                `${typeof dados === 'string' ? dados : JSON.stringify(dados)}\n`;
+            fs.appendFileSync(arquivo, linha, 'utf8');
+        } catch (err) {
+            console.error('Erro ao gravar log:', err.message);
+        }
+    }
+
+    app.post('/x_midleware/registro', async (req, res) => {
+
+        const payload = req.body;
+        console.log('/x_midleware/registro', payload);
+        salvarLogArquivo('/x_midleware/registro', payload);
+
+        const tokemPortal = payload.Devicename;
+
+        const gateway = await Gateway.findOne({ tokem: tokemPortal, ativo: 1 });
+        if (!gateway) {
+            return res.status(404).json({
+                ok: false,
+                error: 'Gateway não encontrado.'
+            });
+        }
+
+        const registro = {
+            tokem: tokemPortal,
+            tag: payload.Tagid,
+            data_leitura: "",
+            antena: payload.Antennaname || "0",
+            rssi: payload.Rssi || "-0",
+            bateria: "0",
+            temperatura: "0",
+            latitude: "",
+            longitude: "",
+            id_nivel_loc1: "",
+            id_nivel_loc2: "",
+            id_nivel_loc3: "",
+            id_nivel_loc4: "",
+            id_nivel_loc1_final: "",
+            id_nivel_loc2_final: "",
+            id_nivel_loc3_final: "",
+            id_nivel_loc4_final: ""
+        };
+
+        await axios.post(
+            _urlRegistro, //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! SERVER PROD
+            registro,
+            { timeout: 5000 }
+        );
+
+        return res.status(200).json({
+            ok: true,
+            gateway: gateway,
+            registro: registro
+        });
+
+    });
+
     app.post('/_bd/registro/gateway', async (req, res) => {
         try {
             const payload = req.body;
 
+            console.log('payload', payload);
+
             if (!Array.isArray(payload) || payload.length === 0) {
                 return res.status(400).json({ erro: 'Payload inválido' });
             }
-
-            // 1️⃣ Primeiro item contém o gateway
-            const gatewayItem = payload.find(i => i.gateway);
-            if (!gatewayItem) {
-                return res.status(400).json({ erro: 'Gateway não informado' });
-            }
-
-            const tokem = gatewayItem.gateway;
 
             // Função para formatar MAC como endereço MAC (XX:XX:XX:XX:XX:XX)
             const formatarMAC = (mac) => {
@@ -51,11 +114,34 @@ module.exports = (app, dbConnection) => {
                 return limpo.match(/.{1,2}/g)?.join(':') || limpo;
             };
 
-            // 1.5️⃣ Busca o gateway no banco para obter intervalo_reg_rssi
-            const gateway = await Gateway.findOne({ tokem: formatarMAC(tokem), ativo: 1 });
+            // 1️⃣ tokem: query (?tokem=) tem prioridade; senão body (item com gateway)
+            const tokemQuery = req.query.tokem ? String(req.query.tokem).trim() : '';
+            let gateway = null;
+
+            if (tokemQuery) {
+                gateway = await Gateway.findOne({
+                    $or: [
+                        { tokem: tokemQuery },
+                        { tokem: formatarMAC(tokemQuery) }
+                    ],
+                    ativo: 1
+                });
+            } else {
+                const gatewayItem = payload.find(i => i.gateway);
+                if (!gatewayItem) {
+                    return res.status(400).json({ erro: 'Gateway não informado' });
+                }
+                gateway = await Gateway.findOne({
+                    tokem: formatarMAC(gatewayItem.gateway),
+                    ativo: 1
+                });
+            }
+
             if (!gateway) {
                 return res.status(400).json({ erro: 'Gateway não encontrado no banco de dados' });
             }
+
+            const tokem = gateway.tokem;
 
             // 2️⃣ Filtra apenas leituras com MAC
             const leituras = payload.filter(i => i.mac);
@@ -63,12 +149,12 @@ module.exports = (app, dbConnection) => {
             let enviados = 0;
             let erros = [];
 
-            console.log('/_bd/registro/gateway::' + leituras.length)
+
 
             // 3️⃣ Envio ordeiro (um por vez)
             for (const leitura of leituras) {
                 const registro = {
-                    tokem: formatarMAC(tokem),
+                    tokem: tokem,
                     tag: formatarMAC(leitura.mac),     // MAC formatado como endereço MAC
                     data_leitura: "", //leitura.timestamp ? moment(leitura.timestamp).format('YYYY-MM-DD HH:mm:ss') : moment().format('YYYY-MM-DD HH:mm:ss'),
                     antena: "0",
@@ -165,29 +251,39 @@ module.exports = (app, dbConnection) => {
         } = req.body;
 
 
-        //Todo: Se não foi informado a data de leitura, usa a data atual
+        //Todo: Normaliza data_leitura como Date real (evita skew UTC vs horário local)
         if (!data_leitura) {
-            data_leitura = moment().utcOffset(-3).format('YYYY-MM-DD HH:mm:ss');
-        };
+            data_leitura = new Date();
+        } else if (!(data_leitura instanceof Date)) {
+            const raw = String(data_leitura).trim();
+            const mLocal = moment(raw, 'YYYY-MM-DD HH:mm:ss', true);
+            if (mLocal.isValid()) {
+                // Interpreta relógio local como Brasília (UTC-3)
+                data_leitura = mLocal.utcOffset(-3, true).toDate();
+            } else {
+                const parsed = new Date(raw);
+                data_leitura = isNaN(parsed.getTime()) ? new Date() : parsed;
+            }
+        }
 
-
-        // Todo: Inibe leituras repetidas em menos de 5 segundos
+        // Todo: Inibe leituras repetidas do mesmo coletor (leitor ~5s → debounce 6s)
         const agora = Date.now();
-        if (ultimasLeituras.has(tag)) {
-            const ultimo = ultimasLeituras.get(tag);
+        const chaveLeitura = String(tag || '') + '|' + String(tokem || '');
+        if (ultimasLeituras.has(chaveLeitura)) {
+            const ultimo = ultimasLeituras.get(chaveLeitura);
             const diffSegundos = (agora - ultimo) / 1000;
-            if (diffSegundos < 5) {
+            if (diffSegundos <= DEBOUNCE_LEITURA_SEG) {
                 return res.status(200).json({
                     success: true,
                     ignored: true,
-                    message: `Leitura ignorada: última foi há ${diffSegundos.toFixed(2)}s (menos de 5s)`
+                    message: `Leitura ignorada: última foi há ${diffSegundos.toFixed(2)}s (menos de ${DEBOUNCE_LEITURA_SEG}s no mesmo coletor)`
                 });
             };
         };
-        ultimasLeituras.set(tag, agora);
+        ultimasLeituras.set(chaveLeitura, agora);
 
 
-        //T odo: Busca cadastro do gateway
+        //Todo: Busca cadastro do gateway
         let gateway = await Gateway.findOne({ tokem, ativo: 1 });
         if (!gateway) {
             return res.status(200).json({
@@ -197,9 +293,9 @@ module.exports = (app, dbConnection) => {
             });
         };
 
-
         // Todo: Checa associação do Gateway
         // Se existir associação, resolve para o gateway primário
+        console.log('gateway1', gateway.tokem);
         if (gateway.tokem_associado) {
             const visited = new Set();
             let current = gateway;
@@ -233,6 +329,20 @@ module.exports = (app, dbConnection) => {
         };
 
 
+        // Todo: Filtra por RSSI (mesma regra de /_bd/registro/gateway)
+        // Aceita apenas sinais fortes o suficiente conforme gateway.intervalo_reg_rssi
+        {
+            const rssiValor = parseFloat(rssi) * -1 || 0;
+            const thresholdRSSI = gateway.intervalo_reg_rssi || 0;
+            if (thresholdRSSI !== 0 && !(rssiValor < thresholdRSSI)) {
+                return res.status(200).json({
+                    success: true,
+                    ignored: true,
+                    message: `Leitura ignorada por RSSI: valor ${rssiValor} fora do intervalo ${thresholdRSSI} (gateway ${gateway.tokem})`
+                });
+            }
+        }
+
         // Todo: Envia dados para log via socket
         const io = req.app.get('io');
         const dadosRegistro = {
@@ -264,15 +374,13 @@ module.exports = (app, dbConnection) => {
         io.emit(gateway._id, dadosRegistro);
         io.emit(gateway.id_conta, dadosRegistro);
 
-
         // Todo: Se não foi informado o nível de localização, usa o nível do gateway
-        if (!id_nivel_loc1 && gateway.modo == 'fixo') {
-            id_nivel_loc1 = gateway.id_nivel_loc1;
-            id_nivel_loc2 = gateway.id_nivel_loc2;
-            id_nivel_loc3 = gateway.id_nivel_loc3;
-            id_nivel_loc4 = gateway.id_nivel_loc4;
-        };
-
+        // if (!id_nivel_loc1 && gateway.modo == 'fixo') {
+        id_nivel_loc1 = gateway.id_nivel_loc1;
+        id_nivel_loc2 = gateway.id_nivel_loc2;
+        id_nivel_loc3 = gateway.id_nivel_loc3;
+        id_nivel_loc4 = gateway.id_nivel_loc4;
+        // };
 
         // Todo: Busca cadastro do item
         let item = await Item.findOne({ tag, id_conta: gateway.id_conta });
@@ -282,18 +390,17 @@ module.exports = (app, dbConnection) => {
             message: `Item ${tag} não cadastrado na conta`
         });
 
-
         // Todo: Caso o Item possua uma tag Secundária
         if (item.tag_secundaria) {
             tag = item.tag_secundaria;
-            let item = await Item.findOne({ tag, id_conta: gateway.id_conta });
-            if (!item) return res.status(200).json({
+            const itemPrimario = await Item.findOne({ tag, id_conta: gateway.id_conta });
+            if (!itemPrimario) return res.status(200).json({
                 success: true,
                 ignored: true,
                 message: `Item ${tag} não cadastrado na conta`
             });
+            item = itemPrimario;
         };
-
 
         // Todo: Cria um novo ciclo de Registro e Atualiza Status e Endereço do Item (SKU)
         let _addReg = async () => {
@@ -343,8 +450,8 @@ module.exports = (app, dbConnection) => {
             await novoRegistro.save();
             await _updItem(novoRegistro)
 
-            _checkAssociacao(novoRegistro)
-            _checkInteracao('entrada', novoRegistro)
+            await _checkAssociacao(novoRegistro)
+            await _checkInteracao('entrada', novoRegistro)
 
             // _checkAlerta(novoRegistro)
 
@@ -369,8 +476,7 @@ module.exports = (app, dbConnection) => {
                 });
             } catch (err) {
                 console.error('Erro ao executar preenchimento inf_compl do item:', err.message);
-            }
-
+            };
         };
 
         // Todo: Checa último registro do item
@@ -408,52 +514,98 @@ module.exports = (app, dbConnection) => {
 
         if (ultimoRegistro?.data_permanecia && ultimoRegistro?.data_registro) {
 
-            const diffMs = new Date(data_leitura) - new Date(ultimoRegistro.data_permanecia);
+            // updatedAt = horário real do Mongo (evita skew de data_permanecia)
+            const refUltima = ultimoRegistro.updatedAt || ultimoRegistro.data_permanecia;
+            const diffSegundos = Math.floor((Date.now() - new Date(refUltima).getTime()) / 1000);
+            // Janela de disputa entre gateways: intervalo_ausencia do coletor (fallback 60s)
+            const intervaloAusencia = Number(gateway.intervalo_ausencia) > 0
+                ? Number(gateway.intervalo_ausencia)
+                : 60;
+            const dentroJanela = Number.isFinite(diffSegundos) && diffSegundos >= 0 && diffSegundos <= intervaloAusencia;
 
-            const diffSegundos = Math.floor(diffMs / 1000);
-            console.log(`Diferença: ${diffSegundos} segundos ${gateway.intervalo_ausencia}`);
+            console.log(`Diferença: ${diffSegundos} segundos ${intervaloAusencia}`);
 
-            // Todo: Ultrapassou o limte de perca de leitura
-            // ou status não é de permanencia
-            if ((diffSegundos > gateway.intervalo_ausencia) || (status == 'em_transito' || status == 'entrada')) {
+            const gatewayDiferente = String(ultimoRegistro.id_gateway || '') !== String(gateway._id || '');
 
-                _addReg();
+            const mesmoLocal =
+                String(ultimoRegistro.id_nivel_loc1 || '') === String(id_nivel_loc1 || '') &&
+                String(ultimoRegistro.id_nivel_loc2 || '') === String(id_nivel_loc2 || '') &&
+                String(ultimoRegistro.id_nivel_loc3 || '') === String(id_nivel_loc3 || '') &&
+                String(ultimoRegistro.id_nivel_loc4 || '') === String(id_nivel_loc4 || '');
+
+            // RSSI: -30 é mais forte que -40 (maior algebricamente = melhor)
+            const rssiAtual = parseFloat(rssi);
+            const rssiAnterior = parseFloat(ultimoRegistro.rssi);
+            const rssiComparavel = !Number.isNaN(rssiAtual) && !Number.isNaN(rssiAnterior);
+            const rssiMaisFraco = rssiComparavel && rssiAtual < rssiAnterior;
+            const rssiMaisForteOuIgual = rssiComparavel && rssiAtual >= rssiAnterior;
+
+            // Dentro da janela + outro gateway + RSSI mais fraco → ignora (não “rouba” a tag)
+            if (dentroJanela && gatewayDiferente && rssiMaisFraco) {
+                return res.status(200).json({
+                    success: true,
+                    ignored: true,
+                    message: `Leitura descartada: gateway diferente e RSSI mais fraco em ${diffSegundos}s (${rssiAtual} < ${rssiAnterior}, janela ${intervaloAusencia}s)`
+                });
+            }
+
+            // Novo ciclo somente se: mudou LOCAL ou estourou ausência.
+            // Gateway diferente DENTRO da janela NÃO abre ciclo — atualiza o atual
+            // (e se RSSI melhor/igual, assume o novo gateway = “melhor sinal vence”).
+            const estorouAusencia = diffSegundos > intervaloAusencia;
+            const abrirNovoCiclo = !mesmoLocal || estorouAusencia;
+
+            if (abrirNovoCiclo) {
+
+                await _addReg();
 
             } else {
 
+                // Permanência no mesmo ciclo
                 ultimoRegistro.rssi = rssi;
                 ultimoRegistro.bateria = bateria;
                 ultimoRegistro.temperatura = temperatura;
                 ultimoRegistro.data_permanecia = data_leitura;
+                ultimoRegistro.status = 'permanencia';
 
-                // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                // Todo: Removi por não compreender o porque de criar um novo
-                // ciclo de Registro que está dentro do tempo de ausencia
-                // Não vou tratar o endereço final, por não ver aplicação no momento
-                // if (status == 'em_transito' || status == 'entrada') {
-                //     ultimoRegistro.id_nivel_loc1_final = id_nivel_loc1;
-                //     ultimoRegistro.id_nivel_loc2_final = id_nivel_loc2;
-                //     ultimoRegistro.id_nivel_loc3_final = id_nivel_loc3;
-                //     ultimoRegistro.id_nivel_loc4_final = id_nivel_loc4;
-                //     _addReg();
-                // };
+                // Outro gateway com sinal melhor/igual (ou sem RSSI comparável): assume o coletor atual
+                if (gatewayDiferente && (rssiMaisForteOuIgual || !rssiComparavel)) {
+                    ultimoRegistro.id_gateway = gateway._id;
+                    ultimoRegistro.id_nivel_loc1 = id_nivel_loc1;
+                    ultimoRegistro.id_nivel_loc2 = id_nivel_loc2;
+                    ultimoRegistro.id_nivel_loc3 = id_nivel_loc3;
+                    ultimoRegistro.id_nivel_loc4 = id_nivel_loc4;
+                    retorno = `Permanência: gateway assumido por melhor/igual RSSI (${rssiAtual} >= ${rssiAnterior})`;
+                }
 
-                //Todo: Atualiza o Registro e Atualiza Status e Endereço do Item (SKU)
                 await ultimoRegistro.save();
-                await sleep(1600);
 
-                //Todo: Atualiza Status e Endereço do Item (SKU)
-                // Não haveria necessidade de atualizar o item, pois o registro já foi atualizado
-                // await _updItem(ultimoRegistro)
+                try {
+                    await Item.updateOne(
+                        { _id: item._id },
+                        {
+                            $set: {
+                                status: 'ativo',
+                                id_nivel_loc1: id_nivel_loc1 || item.id_nivel_loc1,
+                                id_nivel_loc2: id_nivel_loc2 || item.id_nivel_loc2,
+                                id_nivel_loc3: id_nivel_loc3 || item.id_nivel_loc3,
+                                id_nivel_loc4: id_nivel_loc4 || item.id_nivel_loc4,
+                                'registro_atual': ultimoRegistro.toObject ? ultimoRegistro.toObject() : ultimoRegistro
+                            }
+                        }
+                    );
+                } catch (err) {
+                    console.error('Erro ao sincronizar item na permanência:', err.message);
+                }
 
-                //_checkAlerta(ultimoRegistro)
-
+                status = 'permanencia';
+                retorno = retorno || 'Sem movimentação, mesma localização (permanência)';
             };
 
 
         } else {
 
-            _addReg();
+            await _addReg();
 
         }
 
@@ -472,6 +624,12 @@ module.exports = (app, dbConnection) => {
         // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         // Todo: Falta Verificar por Associacao por Categoria : idItem e idCategoria
         // Todo: Falta Verificar por Associacao por Item (SkU)
+
+        const gateway = await Gateway.findOne({ _id: _reg.id_gateway, ativo: 1 }).lean();
+        if (!gateway || Number(gateway.gera_associao) === 0) {
+            console.log('ℹ️ checkAssociacao: gateway sem gera_associao — ação descartada');
+            return;
+        }
 
         function delay(ms) {
             return new Promise(resolve => setTimeout(resolve, ms));
@@ -503,10 +661,41 @@ module.exports = (app, dbConnection) => {
             return;
         }
 
+        const intervaloSegundos = Number(associacao.intervalo) > 0 ? Number(associacao.intervalo) : 5;
+
+        // Evita duplicidade: associação recente da mesma tag no mesmo gateway
+        const janelaMs = (intervaloSegundos + 5) * 1000;
+        const associacaoRecente = await AssociacaoRegistro.findOne({
+            tag: _reg.tag,
+            id_gateway: _reg.id_gateway,
+            createdAt: { $gte: new Date(Date.now() - janelaMs) }
+        }).sort({ createdAt: -1 }).lean();
+
+        if (associacaoRecente) {
+            console.log(
+                'ℹ️ checkAssociacao: já existe associação recente para tag '
+                + _reg.tag + ' no gateway — ignorado'
+            );
+            return;
+        }
+
         console.log("🕒 checkAssociacao: Aguardando " + associacao.intervalo + "s para confirmar leituras...");
         await delay((associacao.intervalo * 1000) + 1000 || 8000);
 
-        const intervaloSegundos = Number(associacao.intervalo) > 0 ? Number(associacao.intervalo) : 5;
+        // Revalida após o delay (outro ciclo paralelo pode ter gravado no meio)
+        const associacaoAposEspera = await AssociacaoRegistro.findOne({
+            tag: _reg.tag,
+            id_gateway: _reg.id_gateway,
+            createdAt: { $gte: new Date(Date.now() - janelaMs) }
+        }).sort({ createdAt: -1 }).lean();
+
+        if (associacaoAposEspera) {
+            console.log(
+                'ℹ️ checkAssociacao: associação criada por outro ciclo durante a espera — ignorado'
+            );
+            return;
+        }
+
         const base = new Date(_reg.data_registro || _reg.data_permanecia || new Date());
         const inicio = new Date(base.getTime() - (intervaloSegundos * 1000));
         const fim = new Date(base.getTime() + (intervaloSegundos * 1000));
@@ -771,23 +960,31 @@ module.exports = (app, dbConnection) => {
             filtro.previsao_chegada_data = { $gte: inicio, $lte: fim }
 
             if (_reg.id_nivel_loc4) {
+                filtro.id_nivel_loc1_destino = _reg.id_nivel_loc1;
+                filtro.id_nivel_loc2_destino = _reg.id_nivel_loc2;
                 filtro.id_nivel_loc3_destino = _reg.id_nivel_loc3;
-                filtro.id_nivel_loc4_destino = "";
+                filtro.id_nivel_loc4_destino = _reg.id_nivel_loc4;
             }
             // Nível 3 → 2
             else if (_reg.id_nivel_loc3) {
+                filtro.id_nivel_loc1_destino = _reg.id_nivel_loc1;
+                filtro.id_nivel_loc2_destino = _reg.id_nivel_loc2;
                 filtro.id_nivel_loc3_destino = _reg.id_nivel_loc3;
                 filtro.id_nivel_loc4_destino = "";
             }
             // Nível 2 → 1
             else if (_reg.id_nivel_loc2) {
+                filtro.id_nivel_loc1_destino = _reg.id_nivel_loc1;
                 filtro.id_nivel_loc2_destino = _reg.id_nivel_loc2;
                 filtro.id_nivel_loc3_destino = "";
+                filtro.id_nivel_loc4_destino = "";
             }
             // Nível 1 → 0
             else if (_reg.id_nivel_loc1) {
                 filtro.id_nivel_loc1_destino = _reg.id_nivel_loc1;
                 filtro.id_nivel_loc2_destino = "";
+                filtro.id_nivel_loc3_destino = "";
+                filtro.id_nivel_loc4_destino = "";
             }
 
         } else if (movimento == 'saida') {
@@ -815,8 +1012,10 @@ module.exports = (app, dbConnection) => {
             }
 
         };
-
+        console.log('movimento_reg', _reg);
+        console.log('posicaofiltro', filtro);
         posicao = await Posicao.findOne(filtro);
+        console.log('posicao', posicao);
 
         // Todo: Se não houver Posição, trata-se de entrada ou saida indevida
         if (!posicao) {
@@ -968,7 +1167,7 @@ module.exports = (app, dbConnection) => {
                             });
 
                     } catch (error) {
-                        if(_serialPDI){
+                        if (_serialPDI) {
                             await _atualizaInteracaoRegistro(_reg, _serialPDI, 'error', JSON.stringify(payload), JSON.stringify(error.code || error.message));
                         };
                     }
@@ -976,7 +1175,7 @@ module.exports = (app, dbConnection) => {
                 runPdiDisplaySepioo();
             };
         };
-        
+
     };
 
     async function _atualizaInteracaoRegistro(_reg, _id, status, envio, retorno) {
@@ -2125,7 +2324,7 @@ module.exports = (app, dbConnection) => {
         }
     });
 
-    
+
 
     const importarCsvItensHandler = async (req, res) => {
         try {
@@ -2217,7 +2416,7 @@ module.exports = (app, dbConnection) => {
                     return loc._id;
                 }
 
-                
+
                 const id_loc1 = await getOrCreateLocal(loc_nivel1, 1, id_conta, null);
                 const id_loc2 = await getOrCreateLocal(loc_nivel2, 2, id_conta, id_loc1);
                 const id_loc3 = await getOrCreateLocal(loc_nivel3, 3, id_conta, id_loc2);
@@ -2709,6 +2908,322 @@ module.exports = (app, dbConnection) => {
         }
     });
 
+    // Portal: localiza ordem de posição por tag pendente (+ níveis do gateway, se houver)
+    app.get('/posicao/por-tag-pendente', async (req, res) => {
+        const Posicao = require('../models/posicao');
+        const {
+            tag,
+            id_conta,
+            id_nivel_loc1,
+            id_nivel_loc2,
+            id_nivel_loc3,
+            id_nivel_loc4
+        } = req.query;
+
+        if (!tag) {
+            return res.status(400).json({ ok: false, message: 'Tag não informada.' });
+        }
+
+        try {
+            let filtro = { $and: [] };
+
+            if (id_conta) filtro.$and.push({ id_conta });
+            if (id_nivel_loc1) filtro.$and.push({ id_nivel_loc1 });
+            if (id_nivel_loc2) filtro.$and.push({ id_nivel_loc2 });
+            if (id_nivel_loc3) filtro.$and.push({ id_nivel_loc3 });
+            if (id_nivel_loc4) filtro.$and.push({ id_nivel_loc4 });
+
+            filtro.$and.push({
+                itens: {
+                    $elemMatch: {
+                        tag: tag,
+                        status: 'pendente'
+                    }
+                }
+            });
+
+            const query = filtro.$and.length === 1 ? filtro.$and[0] : filtro;
+            const posicao = await Posicao.findOne(query).sort({ createdAt: -1 });
+
+            if (!posicao) {
+                return res.status(404).json({ ok: false, message: 'Nenhuma posição encontrada para a tag informada.' });
+            }
+
+            return res.status(200).json({ ok: true, posicao });
+        } catch (e) {
+            console.error('[posicao/por-tag-pendente]', e);
+            return res.status(400).json({ ok: false, message: e.toString() });
+        }
+    });
+
+    /**
+     * Portal checagem_multipla: atende uma tag individualmente na ordem (não carrega a ordem inteira).
+     * POST /posicao/atender-tag
+     * Body: { tag, id_conta, id_nivel_loc1..4, id_gateway, rssi }
+     * - pendente → conclui item (update atômico); recalcula parcial/concluido
+     * - já concluído → reabre como pendente (update atômico) e recalcula o pedido
+     * - não encontrada → not_found (portal trata como excedente visual)
+     */
+    app.post('/posicao/atender-tag', async (req, res) => {
+        const Posicao = require('../models/posicao');
+        const {
+            tag,
+            id_conta,
+            id_nivel_loc1,
+            id_nivel_loc2,
+            id_nivel_loc3,
+            id_nivel_loc4,
+            id_gateway,
+            rssi
+        } = req.body || {};
+
+        const tagRaw = String(tag || '').trim();
+        if (!tagRaw) {
+            return res.status(400).json({ ok: false, message: 'Tag não informada.' });
+        }
+
+        function normalizaTagPos(valor) {
+            if (valor == null) return '';
+            return String(valor).replace(/[^0-9A-Za-z]/g, '').toUpperCase();
+        }
+
+        const chave = normalizaTagPos(tagRaw);
+        const tagsCandidatas = [...new Set([tagRaw, chave].filter(Boolean))];
+
+        function montarFiltroBase() {
+            const filtro = { $and: [] };
+            if (id_conta) filtro.$and.push({ id_conta });
+            if (id_nivel_loc1) filtro.$and.push({ id_nivel_loc1 });
+            if (id_nivel_loc2) filtro.$and.push({ id_nivel_loc2 });
+            if (id_nivel_loc3) filtro.$and.push({ id_nivel_loc3 });
+            if (id_nivel_loc4) filtro.$and.push({ id_nivel_loc4 });
+            return filtro;
+        }
+
+        function acharItem(posicao) {
+            return (posicao.itens || []).find((it) => {
+                const t = normalizaTagPos(it.tag);
+                return t && (t === chave || tagsCandidatas.indexOf(String(it.tag || '')) >= 0);
+            }) || null;
+        }
+
+        function statusOrdemPorItens(itens) {
+            const lista = itens || [];
+            const todosConcluidos = lista.length > 0 && lista.every((it) => it.status === 'concluido');
+            const algumConcluido = lista.some((it) => it.status === 'concluido');
+            if (todosConcluidos) return 'concluido';
+            if (algumConcluido) return 'parcial';
+            return 'pendente';
+        }
+
+        async function recalcularStatusOrdemAtomico(idPosicao) {
+            const atual = await Posicao.findById(idPosicao).lean();
+            if (!atual) return null;
+            const novoStatus = statusOrdemPorItens(atual.itens);
+            await Posicao.updateOne(
+                { _id: idPosicao },
+                { $set: { status: novoStatus, status_data: new Date() } }
+            );
+            return { ...atual, status: novoStatus };
+        }
+
+        try {
+            let posicao = null;
+            let item = null;
+            let tagMatch = tagRaw;
+
+            // 1) Prefere item ainda pendente
+            for (const tagBusca of tagsCandidatas) {
+                const filtro = montarFiltroBase();
+                filtro.$and.push({
+                    itens: { $elemMatch: { tag: tagBusca, status: 'pendente' } }
+                });
+                const query = filtro.$and.length === 1 ? filtro.$and[0] : filtro;
+                posicao = await Posicao.findOne(query).sort({ createdAt: -1 }).lean();
+                if (posicao) {
+                    item = acharItem(posicao);
+                    if (item && item.status === 'pendente') {
+                        tagMatch = String(item.tag || tagBusca);
+                        break;
+                    }
+                    posicao = null;
+                    item = null;
+                }
+            }
+
+            // 2) Já lida / qualquer status (reabrir)
+            if (!posicao) {
+                for (const tagBusca of tagsCandidatas) {
+                    const filtro = montarFiltroBase();
+                    filtro.$and.push({
+                        itens: { $elemMatch: { tag: tagBusca } }
+                    });
+                    const query = filtro.$and.length === 1 ? filtro.$and[0] : filtro;
+                    posicao = await Posicao.findOne(query).sort({ createdAt: -1 }).lean();
+                    if (posicao) {
+                        item = acharItem(posicao);
+                        if (item) {
+                            tagMatch = String(item.tag || tagBusca);
+                            break;
+                        }
+                        posicao = null;
+                        item = null;
+                    }
+                }
+            }
+
+            if (!posicao || !item) {
+                return res.status(200).json({
+                    ok: true,
+                    resultado: 'not_found',
+                    message: 'Nenhuma ordem encontrada para a tag.'
+                });
+            }
+
+            const horaAnterior = item.status_data || null;
+            const agora = new Date();
+            const setItem = {
+                'itens.$.status_data': agora
+            };
+            if (rssi != null && rssi !== '') setItem['itens.$.rssi'] = String(rssi);
+            if (id_gateway) setItem['itens.$.id_gatweway'] = String(id_gateway);
+
+            // Relida: item já concluído → reabre como pendente (atômico)
+            if (item.status === 'concluido') {
+                setItem['itens.$.status'] = 'pendente';
+                const upd = await Posicao.updateOne(
+                    {
+                        _id: posicao._id,
+                        itens: { $elemMatch: { tag: tagMatch, status: 'concluido' } }
+                    },
+                    { $set: setItem }
+                );
+
+                if (!upd.matchedCount && !upd.n) {
+                    // Outra request já alterou — relê estado atual
+                    const atual = await recalcularStatusOrdemAtomico(posicao._id);
+                    const itemAtual = atual ? acharItem(atual) : null;
+                    return res.status(200).json({
+                        ok: true,
+                        resultado: itemAtual && itemAtual.status === 'pendente' ? 'reaberto' : 'atendido',
+                        message: 'Estado atualizado por outra leitura concorrente.',
+                        posicao: {
+                            id_posicao: posicao._id,
+                            id_doc: (atual && atual.id_doc) || posicao.id_doc || '',
+                            descricao: (atual && atual.descricao) || posicao.descricao || '',
+                            tipo: (atual && atual.tipo) || posicao.tipo || '',
+                            status: (atual && atual.status) || posicao.status,
+                            total_itens: ((atual && atual.itens) || []).length,
+                            pendentes: ((atual && atual.itens) || []).filter((it) => it.status === 'pendente').length,
+                            concluidos: ((atual && atual.itens) || []).filter((it) => it.status === 'concluido').length
+                        },
+                        item: {
+                            tag: tagMatch,
+                            status: (itemAtual && itemAtual.status) || 'pendente',
+                            status_data: (itemAtual && itemAtual.status_data) || agora,
+                            id_item: (itemAtual && itemAtual.id_item) || item.id_item || null
+                        },
+                        lida_em_anterior: horaAnterior
+                    });
+                }
+
+                const atual = await recalcularStatusOrdemAtomico(posicao._id);
+                const itensReab = (atual && atual.itens) || [];
+                return res.status(200).json({
+                    ok: true,
+                    resultado: 'reaberto',
+                    message: 'Item reaberto como pendente. Status do pedido atualizado.',
+                    posicao: {
+                        id_posicao: posicao._id,
+                        id_doc: (atual && atual.id_doc) || posicao.id_doc || '',
+                        descricao: (atual && atual.descricao) || posicao.descricao || '',
+                        tipo: (atual && atual.tipo) || posicao.tipo || '',
+                        status: (atual && atual.status) || 'pendente',
+                        total_itens: itensReab.length,
+                        pendentes: itensReab.filter((it) => it.status === 'pendente').length,
+                        concluidos: itensReab.filter((it) => it.status === 'concluido').length
+                    },
+                    item: {
+                        tag: tagMatch,
+                        status: 'pendente',
+                        status_data: agora,
+                        id_item: item.id_item || null
+                    },
+                    lida_em_anterior: horaAnterior
+                });
+            }
+
+            // Atende item pendente (update atômico no item — evita corrida entre tags)
+            setItem['itens.$.status'] = 'concluido';
+            const upd = await Posicao.updateOne(
+                {
+                    _id: posicao._id,
+                    itens: { $elemMatch: { tag: tagMatch, status: 'pendente' } }
+                },
+                { $set: setItem }
+            );
+
+            const matched = (upd.matchedCount != null ? upd.matchedCount : upd.n) || 0;
+            if (!matched) {
+                // Já foi concluído por outra request concorrente
+                const atual = await recalcularStatusOrdemAtomico(posicao._id);
+                const itemAtual = atual ? acharItem(atual) : null;
+                const itens = (atual && atual.itens) || [];
+                return res.status(200).json({
+                    ok: true,
+                    resultado: 'atendido',
+                    message: 'Item já atendido (leitura concorrente).',
+                    posicao: {
+                        id_posicao: posicao._id,
+                        id_doc: (atual && atual.id_doc) || posicao.id_doc || '',
+                        descricao: (atual && atual.descricao) || posicao.descricao || '',
+                        tipo: (atual && atual.tipo) || posicao.tipo || '',
+                        status: (atual && atual.status) || posicao.status,
+                        total_itens: itens.length,
+                        pendentes: itens.filter((it) => it.status === 'pendente').length,
+                        concluidos: itens.filter((it) => it.status === 'concluido').length
+                    },
+                    item: {
+                        tag: tagMatch,
+                        status: (itemAtual && itemAtual.status) || 'concluido',
+                        status_data: (itemAtual && itemAtual.status_data) || agora,
+                        id_item: (itemAtual && itemAtual.id_item) || item.id_item || null
+                    }
+                });
+            }
+
+            const atual = await recalcularStatusOrdemAtomico(posicao._id);
+            const itens = (atual && atual.itens) || [];
+            const todosConcluidos = itens.length > 0 && itens.every((it) => it.status === 'concluido');
+
+            return res.status(200).json({
+                ok: true,
+                resultado: 'atendido',
+                message: todosConcluidos
+                    ? 'Item atendido. Ordem concluída.'
+                    : 'Item atendido na ordem.',
+                posicao: {
+                    id_posicao: posicao._id,
+                    id_doc: (atual && atual.id_doc) || posicao.id_doc || '',
+                    descricao: (atual && atual.descricao) || posicao.descricao || '',
+                    tipo: (atual && atual.tipo) || posicao.tipo || '',
+                    status: (atual && atual.status) || (todosConcluidos ? 'concluido' : 'parcial'),
+                    total_itens: itens.length,
+                    pendentes: itens.filter((it) => it.status === 'pendente').length,
+                    concluidos: itens.filter((it) => it.status === 'concluido').length
+                },
+                item: {
+                    tag: tagMatch,
+                    status: 'concluido',
+                    status_data: agora,
+                    id_item: item.id_item || null
+                }
+            });
+        } catch (e) {
+            console.error('[posicao/atender-tag]', e);
+            return res.status(400).json({ ok: false, message: e.toString() });
+        }
+    });
 
     app.patch('/_app/check-tag', async (req, res) => {
         res.header("Access-Control-Allow-Origin", "*");
@@ -3438,8 +3953,8 @@ module.exports = (app, dbConnection) => {
     };
 
 
-    
-    
+
+
 
 
 

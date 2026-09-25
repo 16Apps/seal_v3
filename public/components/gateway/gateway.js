@@ -24,8 +24,18 @@ app.component('gateway', {
     $ctrl._listNivel3_destino = [];
     $ctrl._listNivel4_destino = [];
 
+    // Sequência para ignorar respostas atrasadas (causa do "ora carrega ora não")
+    $ctrl._seqNiveis = 0;
+    $ctrl._seqNiveisDestino = 0;
+
     $ctrl._regLeituras = [];
     $ctrl.socket = null;
+
+    function normalizaIdNivel(v) {
+      if (v == null || v === '') return '';
+      if (typeof v === 'object' && v._id) return String(v._id);
+      return String(v);
+    }
 
     $ctrl.options = {
       headers: { 'Content-Type': 'application/json' }
@@ -59,8 +69,11 @@ app.component('gateway', {
 
       if (reg == undefined) {
 
-        await $ctrl.onCarregaNiveis('01');
-        await $ctrl.onCarregaNiveisDestino('01');
+        $ctrl._seqNiveis += 1;
+        $ctrl._seqNiveisDestino += 1;
+
+        await $ctrl.onCarregaNiveis('01', false, $ctrl._seqNiveis);
+        await $ctrl.onCarregaNiveisDestino('01', false, $ctrl._seqNiveisDestino);
 
         $ctrl._editGateway = {
           _id: uteisService.onGetID(),
@@ -88,6 +101,11 @@ app.component('gateway', {
           intervalo_reg_gps: '180',
           intervalo_reg_rssi: '180',
           intervalo_reg_inventario: '60',
+          gera_associao: '0',
+
+          portal_acao: '0',
+          portal_registro_ordem: '0',
+          portal_alertas: '0',
 
           leitor: 'beacon',
           leitor_mac: '',
@@ -112,40 +130,65 @@ app.component('gateway', {
 
       } else {
 
-        $ctrl._editGateway = reg;
+        $ctrl._editGateway = angular.copy(reg);
         $ctrl._editGateway.ativo = "" + $ctrl._editGateway.ativo;
+        $ctrl._editGateway.gera_associao = "" + $ctrl._editGateway.gera_associao;
         $ctrl._editGateway.posicao_esperada_auto = "" + $ctrl._editGateway.posicao_esperada_auto;
         $ctrl._editGateway.id_categoria = $ctrl._editGateway.id_categoria;
+
+        // Garante IDs string para o select casar com value="{{ item._id }}"
+        $ctrl._editGateway.id_nivel_loc1 = normalizaIdNivel($ctrl._editGateway.id_nivel_loc1);
+        $ctrl._editGateway.id_nivel_loc2 = normalizaIdNivel($ctrl._editGateway.id_nivel_loc2);
+        $ctrl._editGateway.id_nivel_loc3 = normalizaIdNivel($ctrl._editGateway.id_nivel_loc3);
+        $ctrl._editGateway.id_nivel_loc4 = normalizaIdNivel($ctrl._editGateway.id_nivel_loc4);
+        $ctrl._editGateway.id_nivel_loc1_destino = normalizaIdNivel($ctrl._editGateway.id_nivel_loc1_destino);
+        $ctrl._editGateway.id_nivel_loc2_destino = normalizaIdNivel($ctrl._editGateway.id_nivel_loc2_destino);
+        $ctrl._editGateway.id_nivel_loc3_destino = normalizaIdNivel($ctrl._editGateway.id_nivel_loc3_destino);
+        $ctrl._editGateway.id_nivel_loc4_destino = normalizaIdNivel($ctrl._editGateway.id_nivel_loc4_destino);
 
         $ctrl._editGateway['_foto'] = '../assets/images/icon_cadastro.fw.png'
         if ($ctrl._editGateway.foto) {
           $ctrl._editGateway._foto = uteisService.apiUrl_() + '/image/' + $ctrl._editGateway.foto
         };
 
-        await $ctrl.onCarregaNiveis('01');
-       
+        // Cancela respostas atrasadas de edições anteriores
+        $ctrl._seqNiveis += 1;
+        $ctrl._seqNiveisDestino += 1;
+        const seqOrigem = $ctrl._seqNiveis;
+        const seqDestino = $ctrl._seqNiveisDestino;
+
+        $ctrl._listNivel1 = [];
+        $ctrl._listNivel2 = [];
+        $ctrl._listNivel3 = [];
+        $ctrl._listNivel4 = [];
+        $ctrl._listNivel1_destino = [];
+        $ctrl._listNivel2_destino = [];
+        $ctrl._listNivel3_destino = [];
+        $ctrl._listNivel4_destino = [];
+
+        await $ctrl.onCarregaNiveis('01', true, seqOrigem);
 
         if ($ctrl._editGateway.id_nivel_loc1) {
-          await $ctrl.onCarregaNiveis('02')
+          await $ctrl.onCarregaNiveis('02', true, seqOrigem);
 
           if ($ctrl._editGateway.id_nivel_loc2) {
-            await $ctrl.onCarregaNiveis('03')
+            await $ctrl.onCarregaNiveis('03', true, seqOrigem);
 
             if ($ctrl._editGateway.id_nivel_loc3) {
-              await $ctrl.onCarregaNiveis('04')
+              await $ctrl.onCarregaNiveis('04', true, seqOrigem);
             };
           }
         }
 
-        await $ctrl.onCarregaNiveisDestino('01');
+        await $ctrl.onCarregaNiveisDestino('01', true, seqDestino);
         if ($ctrl._editGateway.id_nivel_loc1_destino) {
-          await $ctrl.onCarregaNiveisDestino('02')
+          await $ctrl.onCarregaNiveisDestino('02', true, seqDestino);
 
           if ($ctrl._editGateway.id_nivel_loc2_destino) {
-            await $ctrl.onCarregaNiveisDestino('03')
+            await $ctrl.onCarregaNiveisDestino('03', true, seqDestino);
 
             if ($ctrl._editGateway.id_nivel_loc3_destino) {
-              await $ctrl.onCarregaNiveisDestino('04')
+              await $ctrl.onCarregaNiveisDestino('04', true, seqDestino);
             };
           }
         }
@@ -190,90 +233,158 @@ app.component('gateway', {
         });
     };
 
-    $ctrl.onCarregaNiveis = async function (nivel) {
-
-      let id_nivel = null;
-      if (nivel == '02') {
-        id_nivel = $ctrl._editGateway.id_nivel_loc1
-      } else if (nivel == '03') {
-        id_nivel = $ctrl._editGateway.id_nivel_loc2
-      } else if (nivel == '04') {
-        id_nivel = $ctrl._editGateway.id_nivel_loc3
+    $ctrl.onMudaNivel = async function (nivel) {
+      if (nivel === '02') {
+        $ctrl._editGateway.id_nivel_loc2 = '';
+        $ctrl._editGateway.id_nivel_loc3 = '';
+        $ctrl._editGateway.id_nivel_loc4 = '';
+      } else if (nivel === '03') {
+        $ctrl._editGateway.id_nivel_loc3 = '';
+        $ctrl._editGateway.id_nivel_loc4 = '';
+      } else if (nivel === '04') {
+        $ctrl._editGateway.id_nivel_loc4 = '';
       }
-
-      let _url = '/_bd?c=localizacao&id_conta=' + $ctrl._regConta._id + '&id_nivel=' + id_nivel
-      _url += '&sort=descricao'
-
-      await uteisService.getBase(_url)
-        .then((res) => {
-
-          $timeout(() => {
-            if (nivel == '01') {
-              $ctrl._listNivel1 = res
-              $ctrl._listNivel2 = []
-              $ctrl._listNivel3 = [];
-              $ctrl._listNivel4 = [];
-
-            } else if (nivel == '02') {
-              $ctrl._listNivel2 = res
-              $ctrl._listNivel3 = [];
-              $ctrl._listNivel4 = [];
-
-            } else if (nivel == '03') {
-              $ctrl._listNivel3 = res
-              $ctrl._listNivel4 = [];
-
-            } else if (nivel == '04') {
-              $ctrl._listNivel4 = res
-            };
-          }, 700)
-        })
-        .catch((error) => {
-          uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
-        });
+      $ctrl._seqNiveis += 1;
+      await $ctrl.onCarregaNiveis(nivel, true, $ctrl._seqNiveis);
     };
 
-    $ctrl.onCarregaNiveisDestino = async function (nivel) {
+    $ctrl.onMudaNivelDestino = async function (nivel) {
+      if (nivel === '02') {
+        $ctrl._editGateway.id_nivel_loc2_destino = '';
+        $ctrl._editGateway.id_nivel_loc3_destino = '';
+        $ctrl._editGateway.id_nivel_loc4_destino = '';
+      } else if (nivel === '03') {
+        $ctrl._editGateway.id_nivel_loc3_destino = '';
+        $ctrl._editGateway.id_nivel_loc4_destino = '';
+      } else if (nivel === '04') {
+        $ctrl._editGateway.id_nivel_loc4_destino = '';
+      }
+      $ctrl._seqNiveisDestino += 1;
+      await $ctrl.onCarregaNiveisDestino(nivel, true, $ctrl._seqNiveisDestino);
+    };
+
+    $ctrl.onCarregaNiveis = async function (nivel, limparFilhos, seq) {
+      const seqAtual = seq != null ? seq : $ctrl._seqNiveis;
 
       let id_nivel = null;
       if (nivel == '02') {
-        id_nivel = $ctrl._editGateway.id_nivel_loc1_destino
+        id_nivel = $ctrl._editGateway.id_nivel_loc1;
       } else if (nivel == '03') {
-        id_nivel = $ctrl._editGateway.id_nivel_loc2_destino
+        id_nivel = $ctrl._editGateway.id_nivel_loc2;
       } else if (nivel == '04') {
-        id_nivel = $ctrl._editGateway.id_nivel_loc3_destino
+        id_nivel = $ctrl._editGateway.id_nivel_loc3;
       }
 
-      let _url = '/_bd?c=localizacao&id_conta=' + $ctrl._regConta._id + '&id_nivel=' + id_nivel
-      _url += '&sort=descricao'
+      // Sem pai selecionado: só limpa filhos
+      if (nivel !== '01' && !id_nivel) {
+        if (nivel == '02') {
+          $ctrl._listNivel2 = [];
+          $ctrl._listNivel3 = [];
+          $ctrl._listNivel4 = [];
+        } else if (nivel == '03') {
+          $ctrl._listNivel3 = [];
+          $ctrl._listNivel4 = [];
+        } else if (nivel == '04') {
+          $ctrl._listNivel4 = [];
+        }
+        return;
+      }
 
-      await uteisService.getBase(_url)
-        .then((res) => {
+      let _url = '/_bd?c=localizacao&id_conta=' + $ctrl._regConta._id + '&id_nivel=' + id_nivel;
+      _url += '&sort=descricao';
 
-          $timeout(() => {
-            if (nivel == '01') {
-              $ctrl._listNivel1_destino = res
-              $ctrl._listNivel2_destino = []
-              $ctrl._listNivel3_destino = [];
-              $ctrl._listNivel4_destino = [];
+      try {
+        const res = await uteisService.getBase(_url);
+        // Resposta atrasada de outra edição → ignora
+        if (seqAtual !== $ctrl._seqNiveis) return;
 
-            } else if (nivel == '02') {
-              $ctrl._listNivel2_destino = res
-              $ctrl._listNivel3_destino = [];
-              $ctrl._listNivel4_destino = [];
+        const lista = Array.isArray(res) ? res : [];
 
-            } else if (nivel == '03') {
-              $ctrl._listNivel3_destino = res
-              $ctrl._listNivel4_destino = [];
+        if (nivel == '01') {
+          $ctrl._listNivel1 = lista;
+          if (limparFilhos !== false) {
+            $ctrl._listNivel2 = [];
+            $ctrl._listNivel3 = [];
+            $ctrl._listNivel4 = [];
+          }
+        } else if (nivel == '02') {
+          $ctrl._listNivel2 = lista;
+          if (limparFilhos !== false) {
+            $ctrl._listNivel3 = [];
+            $ctrl._listNivel4 = [];
+          }
+        } else if (nivel == '03') {
+          $ctrl._listNivel3 = lista;
+          if (limparFilhos !== false) {
+            $ctrl._listNivel4 = [];
+          }
+        } else if (nivel == '04') {
+          $ctrl._listNivel4 = lista;
+        }
+      } catch (error) {
+        uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
+      }
+    };
 
-            } else if (nivel == '04') {
-              $ctrl._listNivel4_destino = res
-            };
-          }, 700)
-        })
-        .catch((error) => {
-          uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
-        });
+    $ctrl.onCarregaNiveisDestino = async function (nivel, limparFilhos, seq) {
+      const seqAtual = seq != null ? seq : $ctrl._seqNiveisDestino;
+
+      let id_nivel = null;
+      if (nivel == '02') {
+        id_nivel = $ctrl._editGateway.id_nivel_loc1_destino;
+      } else if (nivel == '03') {
+        id_nivel = $ctrl._editGateway.id_nivel_loc2_destino;
+      } else if (nivel == '04') {
+        id_nivel = $ctrl._editGateway.id_nivel_loc3_destino;
+      }
+
+      if (nivel !== '01' && !id_nivel) {
+        if (nivel == '02') {
+          $ctrl._listNivel2_destino = [];
+          $ctrl._listNivel3_destino = [];
+          $ctrl._listNivel4_destino = [];
+        } else if (nivel == '03') {
+          $ctrl._listNivel3_destino = [];
+          $ctrl._listNivel4_destino = [];
+        } else if (nivel == '04') {
+          $ctrl._listNivel4_destino = [];
+        }
+        return;
+      }
+
+      let _url = '/_bd?c=localizacao&id_conta=' + $ctrl._regConta._id + '&id_nivel=' + id_nivel;
+      _url += '&sort=descricao';
+
+      try {
+        const res = await uteisService.getBase(_url);
+        if (seqAtual !== $ctrl._seqNiveisDestino) return;
+
+        const lista = Array.isArray(res) ? res : [];
+
+        if (nivel == '01') {
+          $ctrl._listNivel1_destino = lista;
+          if (limparFilhos !== false) {
+            $ctrl._listNivel2_destino = [];
+            $ctrl._listNivel3_destino = [];
+            $ctrl._listNivel4_destino = [];
+          }
+        } else if (nivel == '02') {
+          $ctrl._listNivel2_destino = lista;
+          if (limparFilhos !== false) {
+            $ctrl._listNivel3_destino = [];
+            $ctrl._listNivel4_destino = [];
+          }
+        } else if (nivel == '03') {
+          $ctrl._listNivel3_destino = lista;
+          if (limparFilhos !== false) {
+            $ctrl._listNivel4_destino = [];
+          }
+        } else if (nivel == '04') {
+          $ctrl._listNivel4_destino = lista;
+        }
+      } catch (error) {
+        uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
+      }
     };
 
     $ctrl.onGetFoto = function () {
@@ -440,19 +551,20 @@ app.component('gateway', {
 
 
     $ctrl.fechar = function () {
-      // dispara o callback do pai
-      setTimeout(() => {
-        $ctrl._listNivel1 = [];
-        $ctrl._listNivel2 = [];
-        $ctrl._listNivel3 = [];
-        $ctrl._listNivel4 = [];
+      // invalida qualquer carga em andamento
+      $ctrl._seqNiveis += 1;
+      $ctrl._seqNiveisDestino += 1;
 
-        $ctrl._listNivel1_destino = [];
-        $ctrl._listNivel2_destino = [];
-        $ctrl._listNivel3_destino = [];
-        $ctrl._listNivel4_destino = [];
-    
-      }, 100);
+      $ctrl._listNivel1 = [];
+      $ctrl._listNivel2 = [];
+      $ctrl._listNivel3 = [];
+      $ctrl._listNivel4 = [];
+
+      $ctrl._listNivel1_destino = [];
+      $ctrl._listNivel2_destino = [];
+      $ctrl._listNivel3_destino = [];
+      $ctrl._listNivel4_destino = [];
+
       $ctrl.onFechar();
     };
 

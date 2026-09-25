@@ -13,7 +13,7 @@
 
           <!-- Logo starts -->
           <a href="index.html" class="auth-logo mt-5 mb-3">
-            <img src="assets/images/logo.fw.png" alt="Wrapmarket" />
+            <img src="assets/images/logo_seal.png" alt="Wrapmarket" />
           </a>
           <!-- Logo ends -->
 
@@ -28,7 +28,7 @@
                 <span class="input-group-text">
                   <i class="bi bi-envelope"></i>
                 </span>
-                <input ng-model="_regConta.email" type="email" id="email" class="form-control"
+                <input ng-model="_regConta.email" type="text" id="email" class="form-control"
                   placeholder="Informe seu email">
               </div>
             </div>
@@ -57,6 +57,11 @@
                 <span ng-show='_await' class="spinner-border spinner-border-sm" aria-hidden="true"></span>
                 <span ng-show='_await'>Validando...</span>
                 <span ng-show='!_await'>Acessar</span>
+              </button>
+
+              <button ng-click="onEntrarMicrosoft()" ng-disabled="_await" class="btn btn-outline-warning mb-3">
+                <i class="bi bi-microsoft me-2"></i>
+                Entrar com Microsoft
               </button>
 
               <a href="/signup" class="btn btn-outline-secondary">Não tem uma conta? Clique aqui</a>

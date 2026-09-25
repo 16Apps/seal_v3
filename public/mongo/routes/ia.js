@@ -13,7 +13,7 @@ const registro = require('../models/registro');
  * ideia de tools/function calling.
  */
 async function callOpenAIWithTools({ history, userMessage, id_conta, toolResults }) {
-  const apiKey = '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';
+  const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
     throw new Error('OPENAI_API_KEY não configurada nas variáveis de ambiente.');

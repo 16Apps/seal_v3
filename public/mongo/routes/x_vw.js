@@ -3,7 +3,7 @@ const Localizacao = require("../models/localizacao");
 const Registro = require("../models/registro");
 const Posicao = require("../models/posicao");
 const logsService = require("../services/logs");
-
+const Conta = require("../models/conta");
 const axios = require('axios'); // se for enviar via HTTP
 
 // 🔑 Chave de assinatura fornecida pela Sepioo
@@ -22,12 +22,385 @@ function gerarIdDocAleatorio() {
   return resultado;
 }
 
-
 module.exports = (app, dbConnection) => {
 
+// BOTAO DE CLICK NA PDI
+// ****************************************************************
+
+app.post('/x_vw/sepioo/pdi', async (req, res) => {
+
+  // 1 - Verificar se o PDI existe no banco de dados
+  // 2 - Atualiza display do PDI
+  // 3 - Salva no connect 
+
+})
+
+app.post('/x_vw/sepioo/button', async (req, res) => {
+
+  let id_conta = "b53740dd-8470";
+
+  const conta = await Conta.findById(id_conta);
+  let itemEncontrado = null;
+  let id_pdi = null;
+  let _objectsPDI = [];
+  const LIMITE_MINUTOS = conta.interval_pdi || 5;
+
+  console.log(LIMITE_MINUTOS)
+
+  const niveisIguais = (a, b) => [1, 2, 3, 4].every((n) =>
+    String((a && a[`id_nivel_loc${n}`]) || '') === String((b && b[`id_nivel_loc${n}`]) || '')
+  );
+
+  // SEQUENCE vem como "925-953": usa o 1º número para ordenar
+  const sequenceNumeroFromSeq = (seq) => {
+    const m = String(seq || '').match(/(\d+)/);
+    return m ? Number(m[1]) : Number.MAX_SAFE_INTEGER;
+  };
+
+  const minutosDesde = (d) => d
+    ? Math.floor((Date.now() - new Date(d).getTime()) / 60000)
+    : null;
+
+  try {
+    console.log('req.body', req.body);
+    id_pdi = req.body.PDI || req.body.deviceId || req.body.objectId;
+
+    if (!id_pdi) {
+      return res.status(400).json({ ok: false, error: 'Informe PDI / deviceId / objectId.' });
+    }
+
+    // 1) Item pelo serial do PDI
+    itemEncontrado = await Item.findOne({ 'vinculos_device.id_mac': id_pdi })
+      .populate('id_categoria')
+      .lean();
+
+    if (!itemEncontrado) {
+      await logsService.registrar({
+        tipo: 'integracao',
+        acao: 'start_check',
+        status: 'alerta',
+        mensagem: 'Click PDI recebido, SKU não encontrado',
+        id_conta,
+        dados: { id_pdi }
+      });
+      return res.json({
+        ok: false,
+        error: 'PDI não encontrado',
+        data: [{ id_mac: id_pdi, sepioo_error: '' }]
+      });
+    }
+
+    id_conta = itemEncontrado.id_conta || id_conta;
+
+    await logsService.registrar({
+      tipo: 'integracao',
+      acao: 'start_check',
+      status: 'sucesso',
+      mensagem: 'Click PDI recebido, SKU encontrado',
+      id_conta,
+      id_item: itemEncontrado._id,
+      dados: { id_pdi }
+    });
+
+    // 2) Itens no mesmo local + mesma categoria do item clicado
+    const idCategoriaClicada = String(
+      (itemEncontrado.id_categoria && itemEncontrado.id_categoria._id)
+        || itemEncontrado.id_categoria
+        || ''
+    );
+
+    const filtroLoc = {
+      id_conta,
+      id_categoria: idCategoriaClicada || null,
+      id_nivel_loc1: itemEncontrado.id_nivel_loc1 || null,
+      id_nivel_loc2: itemEncontrado.id_nivel_loc2 || null,
+      id_nivel_loc3: itemEncontrado.id_nivel_loc3 || null,
+      id_nivel_loc4: itemEncontrado.id_nivel_loc4 || null,
+      'vinculos_device.0': { $exists: true }
+    };
+
+    const itensNoLocal = await Item.find(filtroLoc)
+      .populate('id_categoria')
+      .lean();
+
+    // 3) Modo A: só entram na sequência itens com loc atual == loc esperada da categoria
+    const itensSequencia = (itensNoLocal || []).filter((it) =>
+      niveisIguais(it, it.id_categoria)
+    );
+
+    const itemClicadoOk = niveisIguais(itemEncontrado, itemEncontrado.id_categoria);
+
+    const acionaLed = async (objectId, cor) => {
+      const payloadLed = {
+        color: cor,
+        pattern: 'FLASH_1_SECOND',
+        duration: 5,
+        durationInMinutes: 0,
+        objectIds: [objectId]
+      };
+      const responseLed = await axios.post(url_sepioo_seal + '/sepioo/flash', payloadLed, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Ocp-Apim-Subscription-Key': subscriptionKey
+        }
+      });
+      await logsService.registrar({
+        tipo: 'sistema',
+        acao: 'acionaLed',
+        status: 'sucesso',
+        mensagem: 'LED acionado com sucesso',
+        id_conta,
+        id_item: itemEncontrado._id,
+        dados: {
+          id_pdi: objectId,
+          cor,
+          eventId: responseLed.data?.data?.eventId
+        }
+      });
+      return responseLed.data;
+    };
+
+    const alteraDisplay = async (pdiObj, textStatus) => {
+      const cf = pdiObj.customFields || {};
+      const payloadDisplay = {
+        objectId: pdiObj.objectId,
+        deviceIds: [pdiObj.objectId],
+        customFields: {
+          SEQUENCE: cf.SEQUENCE,
+          PARTNUMBER: cf.PARTNUMBER,
+          INSERTION: cf.INSERTION,
+          STATUS: textStatus
+        }
+      };
+      const responseDisplay = await axios.post(url_sepioo_seal + '/sepioo/object', payloadDisplay, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Ocp-Apim-Subscription-Key': subscriptionKey
+        }
+      });
+      await logsService.registrar({
+        tipo: 'sistema',
+        acao: 'alteraDisplay',
+        status: 'sucesso',
+        mensagem: 'Display alterado com sucesso',
+        id_conta,
+        id_item: pdiObj.id_item || itemEncontrado._id,
+        dados: {
+          id_pdi: pdiObj.objectId,
+          textStatus,
+          eventId: responseDisplay.data?.data?.eventId,
+          status: responseDisplay.data?.data?.status
+        }
+      });
+      return responseDisplay.data;
+    };
+
+    // Item clicado fora da loc esperada da categoria → bloqueia
+    console.log('itemClicadoOk', itemClicadoOk);
+    if (!itemClicadoOk) {
+      // Ainda consulta Sepioo do PDI clicado para alterar display
+      let responseObjectDisplay = null;
+      try {
+        responseObjectDisplay = await axios.get(url_sepioo_seal + '/sepioo/object/' + id_pdi, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Ocp-Apim-Subscription-Key': subscriptionKey
+          }
+        });
+      } catch (e) { /* display opcional */ }
+
+      const pdiClicado = {
+        objectId: id_pdi,
+        customFields: responseObjectDisplay?.data?.customFields || {},
+        id_item: itemEncontrado._id,
+        localizacao_correta: false,
+        checkSequenciamento: 'loc incorreta'
+      };
+      if (responseObjectDisplay?.data) {
+        await alteraDisplay(pdiClicado, 'LOC_INCORRETO');
+        try { await acionaLed(id_pdi, 'RED'); } catch (e) { /* ignore */ }
+        setTimeout(async () => {
+          await alteraDisplay(pdiClicado, 'AGUARDANDO');
+        }, 10000);
+      }
+
+      return res.json({
+        ok: false,
+        error: 'LOC_INCORRETO',
+        data: itemEncontrado.vinculos_device,
+        objectsPDI: [pdiClicado],
+        itensNoLocal: (itensNoLocal || []).map((i) => i._id),
+        itensSequencia: itensSequencia.map((i) => i._id)
+      });
+    }
+
+    console.log('vinculo', itensSequencia);
+
+    // 4) Monta todos os PDIs dos itens elegíveis (loc correta)
+    for (const item of itensSequencia) {
+      for (const vinculo of (item.vinculos_device || [])) {
+
+        if (!vinculo || !vinculo.id_mac) continue;
+
+        const responseObjectDisplay = await axios.get(
+          url_sepioo_seal + '/sepioo/object/' + vinculo.id_mac,
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Ocp-Apim-Subscription-Key': subscriptionKey
+            }
+          }
+        );
+
+        const cf = responseObjectDisplay.data?.customFields || {};
+        const sequenceRaw = cf.SEQUENCE;
+        _objectsPDI.push({
+          objectId: responseObjectDisplay.data?.objectId || vinculo.id_mac,
+          id_item: item._id,
+          tag: item.tag,
+          sequence: sequenceRaw,
+          sequenceNumero: sequenceNumeroFromSeq(sequenceRaw),
+          status: cf.STATUS,
+          customFields: cf,
+          button_click: vinculo.button_click ? new Date(vinculo.button_click) : null,
+          id_item_loc1: item.id_nivel_loc1 || null,
+          id_item_loc2: item.id_nivel_loc2 || null,
+          id_item_loc3: item.id_nivel_loc3 || null,
+          id_item_loc4: item.id_nivel_loc4 || null,
+          id_categoria_loc1_esperado: item.id_categoria?.id_nivel_loc1 || null,
+          id_categoria_loc2_esperado: item.id_categoria?.id_nivel_loc2 || null,
+          id_categoria_loc3_esperado: item.id_categoria?.id_nivel_loc3 || null,
+          id_categoria_loc4_esperado: item.id_categoria?.id_nivel_loc4 || null,
+          localizacao_correta: true
+        });
+      }
+    };
+
+    // Menor → maior (ex.: 920-943 antes de 925-953)
+    _objectsPDI.sort((a, b) => a.sequenceNumero - b.sequenceNumero);
+    console.log('objectsPDI', _objectsPDI);
+
+    const indexPDI = _objectsPDI.findIndex((p) => String(p.objectId) === String(id_pdi));
+    if (indexPDI < 0) {
+      return res.json({
+        ok: false,
+        error: 'PDI clicado não entrou na sequência (fora do filtro de localização).',
+        data: itemEncontrado.vinculos_device,
+        objectsPDI: _objectsPDI
+      });
+    };
+
+    const pdiAtual = _objectsPDI[indexPDI];
+
+    const registrarClick = async (index) => {
+      const mac = _objectsPDI[index].objectId;
+      await Item.updateOne(
+        { 'vinculos_device.id_mac': mac },
+        { $set: { 'vinculos_device.$.button_click': new Date() } }
+      );
+      _objectsPDI[index].button_click = new Date();
+      _objectsPDI[index].checkSequenciamento = 'registrado';
+    };
+
+    // 5) Sequência global: todos os anteriores (0..k-1) devem ter click recente
+    let sequenciaOk = true;
+    if (indexPDI > 0) {
+      for (let i = 0; i < indexPDI; i++) {
+        const m = minutosDesde(_objectsPDI[i].button_click);
+        if (m === null || m > LIMITE_MINUTOS) {
+          sequenciaOk = false;
+          pdiAtual.checkSequenciamento = `sequenciamento incorreto (pdi seq ${_objectsPDI[i].sequence} — ${m === null ? 'sem click' : m + ' min'})`;
+          break;
+        }
+      }
+    }
+
+    if (!sequenciaOk) {
+      pdiAtual.responseLed = await acionaLed(pdiAtual.objectId, 'RED');
+      pdiAtual.responseDisplay = await alteraDisplay(pdiAtual, 'SEQ_INCORRETO');
+      setTimeout(async () => {
+        await alteraDisplay(pdiAtual, 'AGUARDANDO');
+      }, 10000);
+      return res.json({
+        ok: false,
+        error: 'SEQ_INCORRETO',
+        data: itemEncontrado.vinculos_device,
+        objectsPDI: _objectsPDI
+      });
+    }
+
+    const mAtual = minutosDesde(pdiAtual.button_click);
+    if (mAtual === null || mAtual > LIMITE_MINUTOS) {
+      await registrarClick(indexPDI);
+    } else {
+      pdiAtual.checkSequenciamento = `checado em ${mAtual} minutos`;
+    }
+
+    pdiAtual.responseLed = await acionaLed(pdiAtual.objectId, 'GREEN');
+    setTimeout(async () => {
+      pdiAtual.responseDisplay = await alteraDisplay(pdiAtual, 'OK');
+    }, 1000);
+    
+
+    return res.json({
+      ok: true,
+      data: itemEncontrado.vinculos_device,
+      objectsPDI: _objectsPDI,
+      itensNoLocal: (itensNoLocal || []).map((i) => i._id),
+      itensSequencia: itensSequencia.map((i) => i._id)
+    });
+
+  } catch (error) {
+    console.error('[x_vw/sepioo/button]', error.message);
+    try {
+      await logsService.registrar({
+        tipo: 'integracao',
+        acao: 'start_check',
+        status: 'erro',
+        mensagem: 'Erro ao consultar objeto Sepioo',
+        id_conta,
+        id_item: itemEncontrado?._id,
+        dados: { id_pdi, erro: error.message }
+      });
+    } catch (e) { /* ignore */ }
+
+    return res.json({
+      ok: false,
+      error: 'Erro ao consultar objeto Sepioo',
+      data: [{ id_mac: id_pdi, sepioo_error: error.message }]
+    });
+  }
+
+});
 
 
-  app.post('/x_vw/sepioo/button', async (req, res) => {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  app.post('/x_vw/sepioo/button_homologado', async (req, res) => {
 
     let id_conta = "03ec6119-89cf"
 
@@ -49,8 +422,6 @@ module.exports = (app, dbConnection) => {
       // id_pdi = req.body.objectId;
       id_pdi = req.body.PDI ||req.body.deviceId || req.body.objectId;
 
-
-
       if (id_pdi) {
 
         // todo: 1 - Buscar o item pelo id_mac no campo vinculos_device do cadastro de Itens
@@ -60,6 +431,8 @@ module.exports = (app, dbConnection) => {
         })
           .populate('id_categoria')
           .lean();
+
+          console.log('itemEncontrado', itemEncontrado);
 
         if (itemEncontrado) {
 
@@ -76,7 +449,7 @@ module.exports = (app, dbConnection) => {
           });
 
           for (let i = 0; i < itemEncontrado.vinculos_device.length; i++) {
-
+    
             // todo:  2 - Consumir da PDI, dados de sequenciamento e status
             let responseObjectDisplay = await axios.get(url_sepioo_seal + '/sepioo/object/' + itemEncontrado.vinculos_device[i].id_mac, {
               headers: {
@@ -326,7 +699,8 @@ module.exports = (app, dbConnection) => {
   });
 
 
-
+// FINAL BOTAO DE CLICK NA PDI
+// ****************************************************************
 
 
 
@@ -426,6 +800,8 @@ module.exports = (app, dbConnection) => {
 
       // 3. Ordenar PDIs pela sequência
       pdis.sort((a, b) => a.sequenceNumero - b.sequenceNumero);
+
+      console.log('pdis', pdis);
 
       // 4. Localizar a PDI que efetivamente teve o botão pressionado
       const indiceClicado = pdis.findIndex(

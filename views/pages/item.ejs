@@ -411,11 +411,20 @@
         }"></i>
                         </th>
 
-                        <th class="w-30 sortable" ng-click="sortBy('id_categoria_reg1.descricao')">
+
+                        <th class="w-30 sortable" ng-click="sortBy('id_categoria_reg1.descricao')" ng-show="_regConta.plano_monitoramento.software != 'ommi'">
                           {{ _regConta.params_nomenclatura_itens.categorias }}
                           <i class="bi" ng-class="{
               'bi-caret-up-fill': sortField=='id_categoria_reg1.descricao' && !sortReverse,
               'bi-caret-down-fill': sortField=='id_categoria_reg1.descricao' && sortReverse
+        }"></i>
+                        </th>
+
+                        <th class="w-20 sortable" ng-click="sortBy('tag')" ng-show="_regConta.plano_monitoramento.software == 'ommi'">
+                          Tag
+                          <i class="bi" ng-class="{
+              'bi-caret-up-fill': sortField=='tag' && !sortReverse,
+              'bi-caret-down-fill': sortField=='tag' && sortReverse
         }"></i>
                         </th>
 
@@ -427,13 +436,7 @@
         }"></i>
                         </th>
 
-                        <th class="w-20 sortable" ng-click="sortBy('tag')">
-                          Tag
-                          <i class="bi" ng-class="{
-              'bi-caret-up-fill': sortField=='tag' && !sortReverse,
-              'bi-caret-down-fill': sortField=='tag' && sortReverse
-        }"></i>
-                        </th> -->
+                         -->
 
                         <th class="w-20 sortable" ng-click="sortBy('localizacao')">
                           Localização
@@ -481,9 +484,11 @@
                         {{ item.inf_compl4 ? ' | ' + item.inf_compl4 : '' }}
                       </td>
 
-                      <td>
+                      <td ng-show="_regConta.plano_monitoramento.software != 'ommi'">
                         {{ item.id_categoria_reg1.descricao }}
                       </td>
+
+                      <td ng-show="_regConta.plano_monitoramento.software == 'ommi'">{{ item.tag}}</td> 
 
                       <!-- <td>
                         {{ item.id_externo ? item.id_externo : item.inf_compl1 }}
@@ -493,7 +498,7 @@
                       </span>
                       </td>
 
-                      <td>{{ item.tag}}</td> -->
+                      -->
 
                       <td>
                         {{ item.id_nivel_loc1 ? item.id_nivel_loc1.descricao : 'Em Transporte' }}

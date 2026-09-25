@@ -1659,6 +1659,7 @@ app.controller('emulatorCtrl', function ($scope, $http, $timeout, uteisService) 
             id_doc: uteisService.onGetID(),
             descricao: '',
             observacao: '',
+            tipo: 'conferencia',
 
             icone: '',
             _icone: '../assets/images/icon_cadastro.fw.png',

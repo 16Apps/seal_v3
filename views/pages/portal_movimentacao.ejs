@@ -118,6 +118,57 @@
     margin-bottom: 0.15rem;
   }
 
+  .portal-combobox-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1056;
+    max-height: 220px;
+    overflow-y: auto;
+    margin-top: 0.25rem;
+    border-radius: 0.375rem;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.28);
+  }
+
+  .portal-combobox-menu .list-group-item {
+    cursor: pointer;
+    border-left: 0;
+    border-right: 0;
+    background: #f8fafc;
+    color: #0f172a;
+    border-color: #e2e8f0;
+  }
+
+  .portal-combobox-menu .list-group-item-action:hover,
+  .portal-combobox-menu .list-group-item-action:focus {
+    background: #e2e8f0;
+    color: #0f172a;
+  }
+
+  .portal-combobox-menu .list-group-item:first-child {
+    border-top: 0;
+  }
+
+  .portal-combobox-menu .list-group-item.text-muted {
+    background: #f1f5f9;
+    color: #64748b !important;
+  }
+
+  .portal-combobox-label--invalid {
+    color: var(--bs-danger) !important;
+  }
+
+  .portal-combobox-input--invalid {
+    border-color: var(--bs-danger) !important;
+  }
+
+  .portal-combobox-input--invalid:focus {
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+  }
+
   .portal-metric-value {
     font-size: 1rem;
     font-weight: 600;
@@ -210,10 +261,10 @@
       <button type="button" ng-click="onAbrirConfigPosto()" class="btn btn-outline-primary btn-sm">
         <i class="bi bi-pc-display me-1"></i>Coletores deste PC
       </button>
-      <button type="button" ng-click="onCarregaGateways()" class="btn btn-link btn-sm text-primary text-decoration-none px-2">
+      <!-- <button type="button" ng-click="onCarregaGateways()" class="btn btn-link btn-sm text-primary text-decoration-none px-2">
         <i class="bi bi-arrow-clockwise me-1"></i>Atualizar
-      </button>
-      <div class="dropdown">
+      </button> -->
+      <!-- <div class="dropdown">
         <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
           <i class="bi bi-calendar3 me-1"></i>Últimos 5 minutos
         </button>
@@ -223,7 +274,7 @@
           <li><a class="dropdown-item" href="#">Última hora</a></li>
           <li><a class="dropdown-item" href="#">Hoje</a></li>
         </ul>
-      </div>
+      </div> -->
     </div>
   </div>
 
@@ -318,6 +369,8 @@
               <small class="text-muted">
                 {{ item.tokem || 'Sem token' }}
                 <span ng-show="item.modo"> · {{ item.modo == 'fixo' ? 'Fixo' : 'Móvel' }}</span>
+                <span ng-show="item.portal_alertas && item.portal_alertas != '0'"> · {{ item.portal_alertas }}</span>
+                <span ng-show="ehChecagemMultipla(item)" class="text-info"> · Checagem múltipla</span>
               </small>
             </div>
           </div>
@@ -333,12 +386,18 @@
           </div>
 
           <div class="col-lg-4 d-flex align-items-center justify-content-lg-end gap-2">
-            <button type="button" class="btn btn-outline-info btn-sm" ng-click="onAbrirChecar(item)">
+            <button type="button" class="btn btn-outline-info btn-sm" ng-click="onAbrirChecar(item)"
+              ng-hide="ehChecagemMultipla(item)">
               <i class="bi bi-clipboard-check me-1"></i>Checar
             </button>
-            <button type="button" class="btn btn-primary btn-sm" ng-click="onAbrirRegistrar(item)">
+            <button type="button" class="btn btn-primary btn-sm" ng-click="onAbrirRegistrar(item)"
+              ng-hide="ehChecagemMultipla(item)">
               <i class="bi bi-box-arrow-in-down me-1"></i>Registrar
             </button>
+            <!-- <button type="button" class="btn btn-outline-secondary btn-sm" ng-click="onResetarColetor(item)" ng-show="item.portal_alertas !=  'itens_fora_ordem'"
+              title="Limpar tags e checagem deste coletor">
+              <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
+            </button> -->
             <a class="portal-coletor-toggle" data-bs-toggle="collapse" href="#coletorDetalhes{{ $index }}" role="button" aria-expanded="false" aria-controls="coletorDetalhes{{ $index }}">
               <i class="bi bi-chevron-down"></i>
             </a>
@@ -351,18 +410,25 @@
         style="border-color: rgba(148,163,184,0.12) !important;">
         <span class="badge bg-info bg-opacity-10 text-info">
           <i class="bi bi-clipboard-check me-1"></i>
-          Checagem: {{ item.checagem.origem == 'posicao' ? ('Doc ' + item.checagem.id_doc) : 'Inventário por localização' }}
+          Checagem: {{ item.checagem.modo_retorno ? ('Retorno Doc ' + item.checagem.id_doc) : (item.checagem.origem == 'posicao' ? ('Doc ' + item.checagem.id_doc) : 'Inventário por localização') }}
         </span>
-        <span class="badge bg-secondary bg-opacity-10 text-secondary">
+        <span class="badge bg-secondary bg-opacity-10 text-secondary" ng-hide="item.checagem.modo_retorno">
           <i class="bi bi-hourglass-split me-1"></i>Pendentes: {{ contaStatus(item, 'pendente') }}
         </span>
-        <span class="badge bg-success bg-opacity-10 text-success">
+        <span class="badge bg-success bg-opacity-10 text-success" ng-hide="item.checagem.modo_retorno">
           <i class="bi bi-check-circle me-1"></i>Encontrados: {{ contaStatus(item, 'encontrado') }}
+        </span>
+        <span class="badge bg-secondary bg-opacity-10 text-secondary" ng-show="item.checagem.modo_retorno">
+          <i class="bi bi-hourglass-split me-1"></i>Retorno pendente: {{ contaStatusDestino(item, 'pendente') }}
+        </span>
+        <span class="badge bg-success bg-opacity-10 text-success" ng-show="item.checagem.modo_retorno">
+          <i class="bi bi-check-circle me-1"></i>Retorno OK: {{ contaStatusDestino(item, 'concluido') }}
         </span>
         <span class="badge bg-danger bg-opacity-10 text-danger">
           <i class="bi bi-plus-circle me-1"></i>Excedentes: {{ contaStatus(item, 'excedente') }}
         </span>
-        <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" ng-click="onCancelarChecagem(item)">
+        <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" ng-click="onCancelarChecagem(item)"
+          ng-show="podeCancelarChecagem(item)">
           <i class="bi bi-x-lg me-1"></i>Cancelar checagem
         </button>
       </div>
@@ -380,7 +446,7 @@
                   <th>Descrição (opcional)</th>
                   <th>Primeira leitura</th>
                   <th>Última leitura</th>
-                  <th>Contagem</th>
+                  <th>RSSI</th>
                   <th class="text-end">Ações</th>
                 </tr>
               </thead>
@@ -398,6 +464,20 @@
                     </span>
                     <span ng-show="tag.status == 'excedente'" class="badge bg-danger bg-opacity-10 text-danger ms-2">
                       <i class="bi bi-plus-circle me-1"></i>Excedente
+                    </span>
+                    <span ng-show="tag.status == 'alerta'" class="badge bg-danger bg-opacity-10 text-danger ms-2">
+                      <i class="bi bi-exclamation-triangle me-1"></i>Em alerta
+                    </span>
+                    <span ng-show="tag.id_doc" class="badge bg-info bg-opacity-10 text-info ms-2"
+                      title="{{ tag.ordem_descricao || tag.id_doc }}">
+                      <i class="bi bi-file-earmark-text me-1"></i>{{ tag.id_doc }}
+                      <span ng-show="tag.ordem_status"> · {{ tag.ordem_status }}</span>
+                    </span>
+                    <span ng-show="item.checagem.modo_retorno && tag.status_destino == 'pendente'" class="badge bg-warning bg-opacity-10 text-warning ms-2">
+                      <i class="bi bi-arrow-return-left me-1"></i>Aguardando retorno
+                    </span>
+                    <span ng-show="item.checagem.modo_retorno && tag.status_destino == 'concluido'" class="badge bg-primary bg-opacity-10 text-primary ms-2">
+                      <i class="bi bi-box-arrow-in-down me-1"></i>Retorno OK
                     </span>
                     <!-- Cadastro -->
                     <span ng-show="!tag.cadastrada" class="badge bg-warning bg-opacity-10 text-warning ms-2">
@@ -424,11 +504,17 @@
                   </td>
                   <td>{{ tag.primeira_leitura || '—' }}</td>
                   <td>{{ tag.ultima_leitura || '—' }}</td>
-                  <td>{{ tag.contagem }}</td>
+                  <td>
+                     <span style="color: #fff3cd">
+                      {{ tag.rssi }}db
+                     </span>
+                
+                    {{ tag.contagem }}x
+                  </td>
                   <td class="text-end">
                     <button type="button" class="btn btn-sm"
                       ng-class="tag.cadastrada ? 'btn-outline-secondary' : 'btn-outline-primary'"
-                      ng-click="onAbrirAssociar(tag)">
+                      ng-click="onAbrirAssociar(tag, item)">
                       <i class="bi bi-link-45deg me-1"></i>{{ tag.cadastrada ? 'Editar' : 'Associar' }}
                     </button>
                   </td>
@@ -474,11 +560,41 @@
 
           <div class="row g-3">
             <div class="col-md-6">
-              <label class="form-label">Item</label>
-              <select class="form-select" ng-model="_assoc.id_item" ng-change="onSelecionaItem()">
-                <option value="">Selecione um item...</option>
-                <option ng-repeat="i in _listItens track by i._id" value="{{ i._id }}">{{ i.descricao }}</option>
-              </select>
+              <label class="form-label"
+                ng-class="{ 'portal-combobox-label--invalid': itemAssocInvalido() }">Item</label>
+              <div class="portal-combobox position-relative">
+                <div class="input-group">
+                  <input type="text" class="form-control"
+                    ng-class="{ 'portal-combobox-input--invalid': itemAssocInvalido() }"
+                    ng-model="_assoc.itemBusca"
+                    ng-change="onBuscaItemAssocChange()"
+                    ng-focus="_assoc._itemDropdownAberto = true"
+                    ng-blur="onFecharListaItensAssoc()"
+                    placeholder="Buscar item..."
+                    autocomplete="off">
+                  <button type="button" class="btn btn-outline-secondary"
+                    ng-click="onLimparItemAssoc()"
+                    ng-show="_assoc.id_item || _assoc.itemBusca"
+                    tabindex="-1">
+                    <i class="bi bi-x-lg"></i>
+                  </button>
+                </div>
+                <div class="portal-combobox-menu list-group"
+                  ng-show="_assoc._itemDropdownAberto && getItensAssocFiltrados().length">
+                  <button type="button" class="list-group-item list-group-item-action text-start"
+                    ng-repeat="i in getItensAssocFiltrados() track by i._id"
+                    ng-mousedown="onSelecionarItemAssoc(i)">
+                    {{ i.descricao }}
+                  </button>
+                </div>
+                <div class="portal-combobox-menu list-group"
+                  ng-show="_assoc._itemDropdownAberto && _assoc.itemBusca && !getItensAssocFiltrados().length">
+                  <div class="list-group-item text-muted small">Nenhum item encontrado.</div>
+                </div>
+              </div>
+              <div class="form-text text-danger small" ng-show="itemAssocInvalido()">
+                Selecione um item válido na lista.
+              </div>
             </div>
 
             <div class="col-md-6">
@@ -501,9 +617,9 @@
           </div>
 
           <div class="row g-3">
-            <div class="col-md-6" ng-repeat="lbl in _assoc.labels track by $index">
+            <div class="col-md-6" ng-repeat="lbl in _assoc.labels track by lbl.index">
               <label class="form-label">{{ lbl.label }}</label>
-              <input type="text" class="form-control" ng-model="lbl.valor" placeholder="{{ lbl.label }}">
+              <input type="text" class="form-control" ng-model="lbl.valor" placeholder="{{ lbl.label }}" autocomplete="off">
             </div>
           </div>
 
@@ -511,7 +627,9 @@
 
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="button" class="btn btn-primary" ng-click="onSalvarAssociacao()">
+          <button type="button" class="btn btn-primary"
+            ng-click="onSalvarAssociacao()"
+            ng-disabled="!itemAssocValido()">
             <i class="bi bi-check2 me-1"></i>Salvar associação
           </button>
         </div>
@@ -533,6 +651,16 @@
         </div>
 
         <div class="modal-body">
+
+          <div ng-show="_reg._modo == 'retorno_fora_ordem'"
+            class="alert py-2 px-3 small d-flex align-items-center portal-reg-alerta portal-reg-alerta--danger">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <span>
+              Itens fora de ordem (sem documento) —
+              <strong class="mx-1">{{ contaStatus(_regGatewaySel, 'alerta') }}</strong> em alerta.
+              Use <strong>Retornar Ordem</strong> para enviar ao portal inverso. Registrar está bloqueado.
+            </span>
+          </div>
 
           <div ng-show="_reg._modo == 'atualizar'"
             class="alert py-2 px-3 small d-flex align-items-center portal-reg-alerta"
@@ -630,11 +758,13 @@
 
         </div>
 
+
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"
             ng-disabled="_reg._salvando">Cancelar</button>
           <button type="button" class="btn btn-primary" ng-click="onRegistrarPosicao()"
-            ng-disabled="_reg._salvando || !qtdTagsRegistraveis()">
+            ng-disabled="_reg._salvando || !qtdTagsRegistraveis() || temAlertaRegistro() "> 
+            <!-- //|| temAlertaRegistro() -->
             <span ng-if="!_reg._salvando">
               <i class="bi bi-check2 me-1"></i>Registrar
             </span>
@@ -643,6 +773,19 @@
               Registrando...
             </span>
           </button>
+
+          <button type="button" class="btn btn-warning text-dark" ng-click="onRetornarOrdem()"
+            ng-show="podeRetornarOrdem()"
+            ng-disabled="_reg._salvando">
+            <span ng-if="!_reg._salvando">
+              <i class="bi bi-arrow-return-left me-1"></i>Retornar Ordem
+            </span>
+            <span ng-if="_reg._salvando">
+              <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+              Processando...
+            </span>
+          </button>
+
         </div>
 
       </div>

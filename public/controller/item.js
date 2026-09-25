@@ -805,7 +805,7 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService) {
 
     $scope.formataDataHora = function (data) {
         const date = moment(data, 'YYYY-MM-DD HH:mm:ss')
-            .subtract(3, 'hours'); // Remove 3 horas
+            .subtract(0, 'hours'); // Remove 3 horas
     
         return date.format('DDMMM HH[h]mm:ss');
     };
@@ -813,7 +813,7 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService) {
     $scope.formataTempoDesdePermanencia = function (data) {
         const inicio = parseDataPermanencia(data);
         if (!inicio) return '';
-        const agora = moment().subtract(3, 'hours');
+        const agora = moment().subtract(6, 'hours');
         const diffMs = agora.diff(inicio);
         if (diffMs < 0 || diffMs < 60000) return 'agora';
         return formatarDuracaoMs(diffMs);

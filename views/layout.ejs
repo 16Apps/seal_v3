@@ -86,8 +86,12 @@
 
       <!-- App brand start -->
       <div class="app-brand py-2 d-flex align-items-center">
+        
         <a>
-          <img src="../assets/images/logo.fw.png" class="logo" alt="Admin Templates">
+          <img ng-show="_regConta.plano_monitoramento.software == 'seal'" src="../assets/images/logo_seal.png" class="logo" alt="Admin Templates">
+          <img ng-show="_regConta.plano_monitoramento.software == 'rti'" src="../assets/images/logo_rti.png" class="logo" alt="Admin Templates">
+          <img ng-show="_regConta.plano_monitoramento.software == 'ommi'" src="../assets/images/logo_ommi.png" class="logo" alt="Admin Templates">
+          <img ng-show="_regConta.plano_monitoramento.software == 'tracking'" src="../assets/images/logo_tracking.png" class="logo" alt="Admin Templates">
         </a>
       </div>
       <!-- App brand end -->
@@ -418,7 +422,7 @@
             </li> -->
 
             <li>
-              <a href="/">
+              <a href="/auth/logout">
                 <i class="bi bi-box-arrow-right"></i>
                 <span class="menu-text">Sair</span>
               </a>

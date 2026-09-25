@@ -262,11 +262,11 @@
                                                     N.1
                                                 </div>
                                                 <select ng-model="$ctrl._editCategoria.id_nivel_loc1"
-                                                    ng-change="$ctrl.onCarregaNiveis('02')"
+                                                    ng-change="$ctrl.onMudaNivel('02')"
                                                     class="form-select flex-grow-1" id="basicSelect"
                                                     aria-label="Basic select example">
                                                     <option value="">Todos</option>
-                                                    <option ng-repeat="item in $ctrl._listNivel1"
+                                                    <option ng-repeat="item in $ctrl._listNivel1 track by item._id"
                                                         value="{{ item._id }}">
                                                         {{ item.descricao }}
                                                     </option>
@@ -279,11 +279,11 @@
                                                 </div>
                                                 <select ng-model="$ctrl._editCategoria.id_nivel_loc2"
                                                     ng-disabled="$ctrl._editCategoria.id_nivel_loc1==''"
-                                                    ng-change="$ctrl.onCarregaNiveis('03')"
+                                                    ng-change="$ctrl.onMudaNivel('03')"
                                                     class="form-select flex-grow-1" id="basicSelect"
                                                     aria-label="Basic select example">
                                                     <option value="">Todos</option>
-                                                    <option ng-repeat="item in $ctrl._listNivel2"
+                                                    <option ng-repeat="item in $ctrl._listNivel2 track by item._id"
                                                         value="{{ item._id }}">
                                                         {{ item.descricao }}
                                                     </option>
@@ -296,10 +296,11 @@
                                                 </div>
                                                 <select ng-model="$ctrl._editCategoria.id_nivel_loc3"
                                                     ng-disabled="!$ctrl._editCategoria.id_nivel_loc2"
-                                                    ng-change="$ctrl.onCarregaNiveis('04')"
+                                                    ng-change="$ctrl.onMudaNivel('04')"
                                                     class="form-select flex-grow-1" id="basicSelect"
                                                     aria-label="Basic select example">
-                                                    <option ng-repeat="item in $ctrl._listNivel3"
+                                                    <option value="">Todos</option>
+                                                    <option ng-repeat="item in $ctrl._listNivel3 track by item._id"
                                                         value="{{ item._id }}">
                                                         {{ item.descricao }}
                                                     </option>
@@ -314,7 +315,8 @@
                                                     ng-disabled="!$ctrl._editCategoria.id_nivel_loc3"
                                                     class="form-select flex-grow-1" id="basicSelect"
                                                     aria-label="Basic select example">
-                                                    <option ng-repeat="item in $ctrl._listNivel4"
+                                                    <option value="">Todos</option>
+                                                    <option ng-repeat="item in $ctrl._listNivel4 track by item._id"
                                                         value="{{ item._id }}">
                                                         {{ item.descricao }}
                                                     </option>

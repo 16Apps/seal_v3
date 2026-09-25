@@ -4,11 +4,11 @@ const moment = require('moment');
 
 const Gateway = require('../models/gateway');
 
-const ip_server = 'http://192.168.0.111:3000';
-
+const ip_server = 'http://localhost:3000';
+const ip_middleware = 'http://10.10.20.99:5107';
 
 const INFOR_HOMOLOGACAO = {
-  baseUrl: 'https://connectiot-app.azurewebsites.net',
+  baseUrl: 'http://localhost:3000',
   tokenUrl: 'https://mingle-sso.inforcloudsuite.com:443/BLUELOGISTICA_TST/as/token.oauth2',
   receiptsUrl: 'https://mingle-ionapi.inforcloudsuite.com/BLUELOGISTICA_TST/WM/wmwebservice_rest/BLUELOGISTICA_TST_BLUELOGISTICA_TST_SCE_PRD_0_wmwhse2/receipts',
   rfidUrl: 'https://mingle-ionapi.inforcloudsuite.com/BLUELOGISTICA_TST/APIFLOWS/bluelogistica/rfid',
@@ -19,7 +19,7 @@ const INFOR_HOMOLOGACAO = {
 };
 
 const INFOR = {
-  baseUrl: 'https://connectiot-app.azurewebsites.net',
+  baseUrl: 'http://localhost:3000',
   tokenUrl: 'https://mingle-sso.inforcloudsuite.com:443/BLUELOGISTICA_PRD/as/token.oauth2',
   receiptsUrl: 'https://mingle-ionapi.inforcloudsuite.com/BLUELOGISTICA_PRD/WM/wmwebservice_rest/BLUELOGISTICA_PRD_BLUELOGISTICA_PRD_SCE_PRD_0_wmwhse2/receipts',
   pickdetailsBaseUrl: 'https://mingle-ionapi.inforcloudsuite.com/BLUELOGISTICA_PRD/WM/wmwebservice_rest/BLUELOGISTICA_PRD_BLUELOGISTICA_PRD_SCE_PRD_0_wmwhse2/pickdetails',
@@ -138,6 +138,128 @@ async function postInforComToken(url, payload) {
   });
 }
 
+async function getInforComToken(url) {
+  const accessToken = await obterTokenInfor();
+  return axios.request({
+    method: 'get',
+    maxBodyLength: Infinity,
+    timeout: INFOR.requestTimeoutMs,
+    url,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/json'
+    },
+    validateStatus: () => true
+  });
+}
+
+/** Extrai toids únicos de receiptdetails (inf_compl1 no Seal). Usa linhas com qtyexpected > 0. */
+function extrairToidsDeReceiptdetails(receiptdetails) {
+  const toids = [];
+  for (const det of receiptdetails || []) {
+    const toid = String(det && det.toid != null ? det.toid : '').trim();
+    if (!toid) continue;
+    const qtyExpected = Number(det.qtyexpected) || 0;
+    if (qtyExpected <= 0) continue;
+    toids.push(toid);
+  }
+  return [...new Set(toids)];
+}
+
+async function montarPosicaoPorInfCompl1(id_conta, id_doc, idsUnicos) {
+  const Item = require('../models/item');
+  const Posicao = require('../models/posicao');
+  const shortid = require('shortid');
+
+  if (!idsUnicos.length) {
+    return { itensResposta: [], itensPosicao: [], posicao: null };
+  }
+
+  const itensDb = await Item.find({
+    id_conta,
+    inf_compl1: { $in: idsUnicos }
+  })
+    .select('_id tag id_categoria inf_compl1')
+    .populate('id_categoria', 'descricao ean')
+    .lean();
+
+  const porInfCompl1 = new Map();
+  for (const it of itensDb) {
+    const chave = String(it.inf_compl1 || '').trim();
+    if (chave && !porInfCompl1.has(chave)) {
+      porInfCompl1.set(chave, it);
+    }
+  }
+
+  const agora = new Date();
+  const itensResposta = [];
+  const itensPosicao = [];
+
+  for (const infId of idsUnicos) {
+    const cadastro = porInfCompl1.get(infId);
+    if (!cadastro) {
+      itensResposta.push({
+        id: infId,
+        cadastrado: false,
+        mensagem: 'Item não cadastrado'
+      });
+      continue;
+    }
+
+    const cat = cadastro.id_categoria;
+    const idCategoria = (cat && cat._id) || (typeof cadastro.id_categoria === 'string' ? cadastro.id_categoria : null);
+    const ean = (cat && cat.ean) || '';
+    const descricaoCategoria = (cat && cat.descricao) || '';
+
+    itensResposta.push({
+      id: infId,
+      cadastrado: true,
+      _id: cadastro._id,
+      epc: cadastro.tag || '',
+      id_categoria: idCategoria,
+      ean,
+      descricao_categoria: descricaoCategoria
+    });
+
+    itensPosicao.push({
+      _id: shortid.generate(),
+      id_item: cadastro._id,
+      id_categoria: idCategoria,
+      tag: cadastro.tag || '',
+      ean,
+      rssi: '',
+      inf_compl_1: infId,
+      quantidade: 1,
+      status: 'pendente',
+      status_data: agora,
+      status_destino: 'pendente',
+      status_destino_data: ''
+    });
+  }
+
+  await Posicao.deleteMany({ id_conta, id_doc });
+
+  let posicao = null;
+  if (itensPosicao.length) {
+    posicao = await Posicao.create({
+      _id: shortid.generate(),
+      id_conta,
+      id_colaborador: '',
+      ativo: '1',
+      id_doc,
+      descricao: id_doc,
+      tipo: 'conferencia',
+      status: 'pendente',
+      status_data: agora,
+      partida_data: agora,
+      tolerancia: 30,
+      itens: itensPosicao
+    });
+  }
+
+  return { itensResposta, itensPosicao, posicao };
+}
+
 module.exports = (app) => {
 
   /** Socket exclusivo do log do portal — não altera o fluxo de registro. */
@@ -156,6 +278,88 @@ module.exports = (app) => {
       });
     } catch (e) {
       console.warn('[x_naturgy] emitirLogPortal:', e.message);
+    }
+  }
+
+  function roomPortalConta(idConta) {
+    return 'portal:' + String(idConta || '');
+  }
+
+  /** True se portal_movimentacao está aberto (alguém na room portal:{id_conta}). */
+  function portalOnline(idConta) {
+    try {
+      const io = app.get('io');
+      if (!io || !idConta) return false;
+      const room = io.sockets.adapter.rooms.get(roomPortalConta(idConta));
+      return !!(room && room.size > 0);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Sinaleiro ativo por gateway (nome base): bloqueia nova chamada até expirar o timeout GPO anterior
+  const sinaleiroAtivoPorGateway = new Map(); // name -> { ate: timestamp }
+
+  async function acionarSinaleiro(deviceName, cor, tempo) {
+    // GPO usa o nome base do leitor (P02), não o tokem com sentido (P02-E / P02-S)
+    const name = String(deviceName || '').trim().replace(/-[EeSs]$/, '');
+    const corNum = Number(cor);
+    const tempoNum = Number(tempo);
+    if (!name) throw new Error('Informe deviceName.');
+    if (![1, 2, 4].includes(corNum)) throw new Error('cor inválida (use 1=verde, 2=amarelo, 4=vermelho).');
+    if (!Number.isFinite(tempoNum) || tempoNum < 0) throw new Error('Informe tempo (timeout) válido.');
+
+    const agora = Date.now();
+    const ativo = sinaleiroAtivoPorGateway.get(name);
+    if (ativo && agora < ativo.ate) {
+      return {
+        ok: true,
+        ignored: true,
+        reason: 'sinaleiro ainda ativo neste gateway',
+        gateway: name,
+        restanteMs: ativo.ate - agora
+      };
+    }
+
+    const payload = {
+      command: 'WriteGPO',
+      device: { name: name },
+      data: { value: corNum, timeout: tempoNum }
+    };
+
+    const response = await axios.post(ip_middleware, payload, {
+      timeout: 5000,
+      headers: { 'Content-Type': 'application/json' },
+      validateStatus: () => true
+    });
+
+    const ok = response.status >= 200 && response.status < 300;
+    if (ok) {
+      sinaleiroAtivoPorGateway.set(name, { ate: Date.now() + tempoNum });
+    }
+
+    return {
+      ok,
+      status: response.status,
+      enviado: payload,
+      resposta: response.data
+    };
+  }
+
+  async function sinaleiroSePortalFechado(gateway) {
+    if (!gateway || !gateway.tokem) return;
+    if (portalOnline(gateway.id_conta)) return;
+
+    try {
+      const r = await acionarSinaleiro(gateway.tokem, 4, 10000);
+      if (r.ignored) return;
+      console.log('[x_naturgy] sinaleiro portal fechado:', {
+        tokem: gateway.tokem,
+        ok: r.ok,
+        status: r.status
+      });
+    } catch (e) {
+      console.warn('[x_naturgy] sinaleiro portal fechado:', e.message);
     }
   }
 
@@ -200,6 +404,7 @@ module.exports = (app) => {
       console.log('[x_naturgy/pickdetails] url:', url);
 
       const response = await postInforComToken(url, '');
+
       const sucesso = response.status >= 200 && response.status < 300;
 
       if (!sucesso) {
@@ -324,6 +529,74 @@ module.exports = (app) => {
     }
   });
 
+
+  /**
+   * GET /x_naturgy/receiptdetails/:id?id_conta=...
+   * Consulta receipt na Infor (receiptkey), extrai toid de receiptdetails,
+   * cruza com item.inf_compl1 da conta e grava/recria Posicao com id_doc = receiptkey.
+   */
+  app.get('/x_naturgy/receiptdetails/:id', async (req, res) => {
+    try {
+      const id = String(req.params.id || '').trim();
+      const id_conta = String(req.query.id_conta || '').trim();
+
+      if (!id) {
+        return res.status(400).json({
+          ok: false,
+          error: 'Informe o id (receiptkey).'
+        });
+      }
+
+      if (!id_conta) {
+        return res.status(400).json({
+          ok: false,
+          error: 'Informe id_conta.'
+        });
+      }
+
+      const url = `${INFOR.receiptsUrl}/${encodeURIComponent(id)}`;
+      console.log('[x_naturgy/receiptdetails] url:', url);
+
+      const response = await getInforComToken(url);
+      console.log('[x_naturgy/receiptdetails] status:', response.status);
+      const sucesso = response.status >= 200 && response.status < 300;
+
+      if (!sucesso) {
+        return res.status(response.status).json({
+          ok: false,
+          error: 'API Infor retornou erro ao consultar receipt.',
+          details: response.data
+        });
+      }
+
+      const raw = response.data;
+      const receiptdetails = raw && Array.isArray(raw.receiptdetails) ? raw.receiptdetails : [];
+      let idsUnicos = extrairToidsDeReceiptdetails(receiptdetails);
+      console.log('idsUnicos:', idsUnicos);
+
+      // if(idsUnicos.length == 0){
+      //   idsUnicos = ["NS001", "NS002"]
+      // }
+
+      console.log('idsUnicos:', idsUnicos);
+
+      if (!idsUnicos.length) {
+        return res.status(200).json({ ok: true, itens: [], posicao: null });
+      }
+
+      const { itensResposta, posicao } = await montarPosicaoPorInfCompl1(id_conta, id, idsUnicos);
+
+      return res.status(200).json({
+        ok: true,
+        itens: itensResposta,
+        posicao
+      });
+    } catch (error) {
+      console.error('[x_naturgy/receiptdetails] Erro:', error.response?.data || error.message);
+      return responderErroInfor(res, error, 'API receipts');
+    }
+  });
+
   app.get('/x_naturgy/:id_posicao', async (req, res) => {
     try {
       const { id_posicao } = req.params;
@@ -352,18 +625,14 @@ module.exports = (app) => {
 
         for (const item of posicao.itens) {
 
-          console.log("item.inf_compl_1: " + item.inf_compl_1)
-
           _naturgyEntrada.receiptdetails.push({
             receiptkey: posicao.id_doc,
             sku: item.ean,
-            qtyreceived: item.quantidade,
+            qtyreceived: 1, // item.quantidade,
             toid: item.inf_compl_1,
-            lottable02: posicao.descricao
+            lottable02: posicao.descricao  == 'testeceg' ? 'TESTE178502' : posicao.descricao
           });
         }
-
-        console.log("naturgyEntrada: " + JSON.stringify(_naturgyEntrada));
 
         const response = await axios.request({
           method: 'post',
@@ -374,21 +643,18 @@ module.exports = (app) => {
           validateStatus: () => true
         });
 
-        // console.log("response: " + JSON.stringify(response));
+        let json = {
+          status: response.status,
+          retorno: response.data.data,
+          payload: _naturgyEntrada,
+        }
 
-        console.log('Recebimento:', {
-          url: INFOR.baseUrl + '/x_naturgy/receipts',
-          statusInterno: response.status,
-          statusCliente: response.data?.status,
-          sucesso: response.data?.ok
-        });
+        if (response.status == 200) {
+          return res.status(200).json(json);
+        } else {
+          return res.status(response.data.status).json(json);
+        }
 
-        return res.status(response.status >= 200 && response.status < 300 ? 200 : response.status).json({
-          ok: response.status >= 200 && response.status < 300,
-          status_naturgy: response.data?.status || response.status,
-          data: _naturgyEntrada,
-          resposta: response.data
-        });
       }
 
       // Saída
@@ -448,38 +714,52 @@ module.exports = (app) => {
    */
   app.post('/x_naturgy/receipts', async (req, res) => {
     try {
-      const payload = req.body;
-      console.log('[x_naturgy/receipts] payload:', payload);
 
-      if (!bodyJsonValido(payload)) {
-        return res.status(400).json({
-          ok: false,
-          error: 'Body inválido. Envie um JSON com receiptkey e receiptdetails.'
-        });
-      }
+        const payload = req.body;
 
-      if (!payload.receiptkey || !Array.isArray(payload.receiptdetails)) {
-        return res.status(400).json({
-          ok: false,
-          error: 'Body inválido. Informe receiptkey e receiptdetails (array).'
-        });
-      }
+        if (!bodyJsonValido(payload)) {
+            return res.status(400).json({
+                ok: false,
+                error: 'Body inválido. Envie um JSON com receiptkey e receiptdetails.'
+            });
+        }
 
-      const response = await postInforComToken(INFOR.receiptsUrl, payload);
-      const sucesso = response.status >= 200 && response.status < 300;
+        if (!payload.receiptkey || !Array.isArray(payload.receiptdetails)) {
+            return res.status(400).json({
+                ok: false,
+                error: 'Body inválido. Informe receiptkey e receiptdetails (array).'
+            });
+        }
 
+        const response = await postInforComToken(
+            INFOR.receiptsUrl,
+            payload
+        );
 
-      return res.status(response.status).json({
-        ok: sucesso,
-        status: response.status,
-        data: response.data,
-        ...(sucesso ? {} : { error: 'API Infor retornou erro no receipt.' })
-      });
+        console.log('STATUS INFOR:', response.status);
+        console.log('DATA INFOR:', response.data);
+
+        let json = {
+          status: response.status,
+          data: response.data.message
+        }
+
+        console.log('JSON INFOR:', json);
+
+        return res.status(response.status).json(json);
+
     } catch (error) {
-      console.error('[x_naturgy/receipts] Erro:', error.response?.data || error.message);
-      return responderErroInfor(res, error, 'API de receipts');
+
+        console.error(
+            '[x_naturgy/receipts] Erro:',
+            error.response?.data || error.message
+        );
+
+        return res.status(500).json({
+            error: error.message
+        });
     }
-  });
+});
 
   /**
    * POST /x_naturgy/rfid
@@ -760,6 +1040,10 @@ module.exports = (app) => {
             err.response?.data || err.message
           );
         }
+      }
+
+      if (enviados > 0) {
+        await sinaleiroSePortalFechado(gateway);
       }
 
       if (requeue.length) {
@@ -1157,6 +1441,8 @@ module.exports = (app) => {
       throw err;
     }
 
+    await sinaleiroSePortalFechado(gateway);
+
     return res.status(200).json({
       ok: true,
       gateway: gateway,
@@ -1170,8 +1456,7 @@ module.exports = (app) => {
   app.post('/x_naturgy/registro/cadastro', async (req, res) => {
 
     const payload = req.body;
-
-
+    
     const tokemPortal = payload.Devicename;
 
     const gateway = await Gateway.findOne({ tokem: tokemPortal, ativo: 1 });
@@ -1216,5 +1501,26 @@ module.exports = (app) => {
 
   });
 
+  // Sinaleiro GPO: deviceName + cor (1 verde, 2 amarelo, 4 vermelho) + tempo (timeout)
+  app.post('/x_naturgy/sinaleiro', async (req, res) => {
+    try {
+      const deviceName = String(req.body?.deviceName || req.body?.Devicename || '').trim();
+      const cor = Number(req.body?.cor);
+      const tempo = Number(req.body?.tempo);
+      const resultado = await acionarSinaleiro(deviceName, cor, tempo);
+      return res.status(200).json(resultado);
+    } catch (error) {
+      const msg = error.message || String(error);
+      if (
+        msg.includes('Informe deviceName') ||
+        msg.includes('cor inválida') ||
+        msg.includes('Informe tempo')
+      ) {
+        return res.status(400).json({ ok: false, error: msg });
+      }
+      console.error('[x_naturgy/sinaleiro]', msg);
+      return res.status(502).json({ ok: false, error: msg });
+    }
+  });
 
 };

@@ -133,7 +133,10 @@ module.exports = (app, dbConnection) => {
 
     app.get('/relatorio/associacao-reg/:id_conta', async (req, res) => {
       const { id_conta } = req.params;
-      const { data_inicio, data_fim } = req.query;
+      const { data_inicio, data_fim, tag, pesquisa } = req.query;
+      const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+      const limit = Math.min(500, Math.max(1, parseInt(req.query.limit, 10) || 100));
+      const skip = (page - 1) * limit;
 
       try {
         const query = { id_conta };
@@ -167,41 +170,29 @@ module.exports = (app, dbConnection) => {
           query.data_registro = filtroData;
         }
 
+        const textoBusca = String(tag || pesquisa || '').trim();
+        if (textoBusca) {
+          query.tag = { $regex: textoBusca.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
+        }
+
         const result = await AssociacaoRegistro.find(query)
-          .populate('id_conta')
           .populate({
             path: 'id_registro',
+            select: 'id_nivel_loc1 id_nivel_loc2 id_nivel_loc3 id_nivel_loc4',
             populate: [
               { path: 'id_nivel_loc1', select: 'descricao' },
               { path: 'id_nivel_loc2', select: 'descricao' },
               { path: 'id_nivel_loc3', select: 'descricao' },
-              { path: 'id_nivel_loc4', select: 'descricao' },
-              { path: 'id_nivel_loc1_final', select: 'descricao' },
-              { path: 'id_nivel_loc2_final', select: 'descricao' },
-              { path: 'id_nivel_loc3_final', select: 'descricao' },
-              { path: 'id_nivel_loc4_final', select: 'descricao' }
+              { path: 'id_nivel_loc4', select: 'descricao' }
             ]
           })
-          .populate('id_colaborador')
-          .populate('id_gateway')
-          .populate('id_item')
-          .populate('id_categoria')
-          .populate({
-            path: 'associados.id_registro',
-            populate: [
-              { path: 'id_nivel_loc1', select: 'descricao' },
-              { path: 'id_nivel_loc2', select: 'descricao' },
-              { path: 'id_nivel_loc3', select: 'descricao' },
-              { path: 'id_nivel_loc4', select: 'descricao' },
-              { path: 'id_nivel_loc1_final', select: 'descricao' },
-              { path: 'id_nivel_loc2_final', select: 'descricao' },
-              { path: 'id_nivel_loc3_final', select: 'descricao' },
-              { path: 'id_nivel_loc4_final', select: 'descricao' }
-            ]
-          })
-          .populate('associados.id_item')
-          .populate('associados.id_categoria')
-          .sort({ data_registro: -1, createdAt: -1 });
+          .populate({ path: 'id_gateway', select: 'descricao tokem' })
+          .populate({ path: 'id_categoria', select: 'descricao' })
+          .populate({ path: 'associados.id_categoria', select: 'descricao' })
+          .sort({ data_registro: -1, createdAt: -1 })
+          .skip(skip)
+          .limit(limit)
+          .lean();
 
         return res.status(200).json(result);
       } catch (err) {

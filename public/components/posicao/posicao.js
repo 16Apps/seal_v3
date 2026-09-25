@@ -66,9 +66,9 @@ app.component('posicao', {
 
       await $ctrl.onCarregaNiveis('01');
       await $ctrl.onCarregaNiveisDestino('01')
-      await $ctrl.onCarregaItens();
       await $ctrl.onCarregaCategorias();
       await $ctrl.onCarregaCategoriasTipos();
+      // Itens: não carrega lista completa — só os da ordem (ensureItensDaPosicao)
 
       const tabTrigger = document.querySelector('#categorias-a-tab');
       const tab = new bootstrap.Tab(tabTrigger);
@@ -174,6 +174,7 @@ app.component('posicao', {
 
       };
 
+      await $ctrl.ensureItensDaPosicao(($ctrl._editPosicao && $ctrl._editPosicao.itens) || []);
       $ctrl.atualizarAnalisePosicao();
 
     };
@@ -214,22 +215,124 @@ app.component('posicao', {
         });
     };
 
-    $ctrl.onCarregaItens = async function () {
+    $ctrl._mapItensPorId = {};
+    $ctrl._buscandoItemId = {};
 
-      let _url = '/_bd?c=item&id_conta=' + $ctrl._regConta._id
-      _url += '&pop=id_categoria';
+    /** Busca item por _id (1 request). Usado na conferência sem carregar a lista inteira. */
+    $ctrl.carregarItemPorId = async function (idItem) {
+      if (!idItem) return null;
+      if ($ctrl._mapItensPorId[idItem]) return $ctrl._mapItensPorId[idItem];
+      if ($ctrl._buscandoItemId[idItem]) return $ctrl._buscandoItemId[idItem];
 
-      await uteisService.getBase(_url)
-        .then((res) => {
+      const idConta = ($ctrl._regConta && $ctrl._regConta._id) || '';
+      const url = '/_bd?c=item&id_conta=' + encodeURIComponent(idConta)
+        + '&_id=' + encodeURIComponent(idItem)
+        + '&pop=id_categoria&pop=id_categoria_reg1&limit=1';
 
-          $timeout(() => {
-            $ctrl._listItens = res
-          }, 10);
+      const promessa = (async () => {
+        try {
+          const res = await uteisService.getBase(url).catch(() => []);
+          const item = (Array.isArray(res) && res[0]) ? res[0] : null;
+          if (item) {
+            $ctrl._mapItensPorId[item._id] = item;
+            // Mantém _listItens sincronizado para add/select (só o necessário)
+            $ctrl._listItens = $ctrl._listItens || [];
+            if (!$ctrl._listItens.find((i) => i._id == item._id)) {
+              $ctrl._listItens.push(item);
+            }
+          }
+          return item;
+        } finally {
+          delete $ctrl._buscandoItemId[idItem];
+        }
+      })();
 
-        })
-        .catch((error) => {
-          uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
+      $ctrl._buscandoItemId[idItem] = promessa;
+      return promessa;
+    };
+
+    /** Carrega só os itens referenciados na ordem (batch por ids). */
+    $ctrl.ensureItensDaPosicao = async function (itens) {
+      const ids = [...new Set((itens || []).map((it) => it && it.id_item).filter(Boolean))];
+      const faltando = ids.filter((id) => !$ctrl._mapItensPorId[id]);
+      if (!faltando.length) return;
+
+      const idConta = ($ctrl._regConta && $ctrl._regConta._id) || '';
+      const url = '/_bd?c=item&id_conta=' + encodeURIComponent(idConta)
+        + '&_id*in=' + encodeURIComponent(JSON.stringify(faltando))
+        + '&pop=id_categoria&pop=id_categoria_reg1&limit=' + faltando.length;
+
+      try {
+        const res = await uteisService.getBase(url).catch(() => []);
+        (Array.isArray(res) ? res : []).forEach((item) => {
+          if (!item || !item._id) return;
+          $ctrl._mapItensPorId[item._id] = item;
+          $ctrl._listItens = $ctrl._listItens || [];
+          if (!$ctrl._listItens.find((i) => i._id == item._id)) {
+            $ctrl._listItens.push(item);
+          }
         });
+        // Fallback individual se *in não retornou todos
+        const aindaFaltando = faltando.filter((id) => !$ctrl._mapItensPorId[id]);
+        if (aindaFaltando.length) {
+          await Promise.all(aindaFaltando.map((id) => $ctrl.carregarItemPorId(id)));
+        }
+        $timeout(() => { }, 0);
+      } catch (e) {
+        await Promise.all(faltando.map((id) => $ctrl.carregarItemPorId(id)));
+      }
+    };
+
+    // Não carrega mais a lista completa de itens (limite 3500). Só sob demanda.
+    $ctrl.onCarregaItens = async function () {
+      $ctrl._listItens = $ctrl._listItens || [];
+      $ctrl._mapItensPorId = $ctrl._mapItensPorId || {};
+    };
+
+    $ctrl.onCarregaItensInventario = async function () {
+      if ($ctrl._editPosicao.tipo !== 'inventario') return;
+      if (!$ctrl._editPosicao.id_nivel_loc1) {
+        $ctrl._editPosicao.itens = [];
+        return;
+      }
+
+      let _url = '/_bd?c=item&id_conta=' + $ctrl._regConta._id;
+      _url += '&pop=id_categoria';
+      _url += '&id_nivel_loc1=' + encodeURIComponent($ctrl._editPosicao.id_nivel_loc1);
+
+      if ($ctrl._editPosicao.id_nivel_loc2) {
+        _url += '&id_nivel_loc2=' + encodeURIComponent($ctrl._editPosicao.id_nivel_loc2);
+      }
+      if ($ctrl._editPosicao.id_nivel_loc3) {
+        _url += '&id_nivel_loc3=' + encodeURIComponent($ctrl._editPosicao.id_nivel_loc3);
+      }
+      if ($ctrl._editPosicao.id_nivel_loc4) {
+        _url += '&id_nivel_loc4=' + encodeURIComponent($ctrl._editPosicao.id_nivel_loc4);
+      }
+
+      try {
+        const res = await uteisService.getBase(_url);
+        const itensEncontrados = Array.isArray(res) ? res : [];
+        const existentes = {};
+
+        ($ctrl._editPosicao.itens || []).forEach((item) => {
+          if (item && item.id_item) existentes[item.id_item] = item;
+        });
+
+        $ctrl._editPosicao.itens = itensEncontrados.map((item) => {
+          if (existentes[item._id]) return existentes[item._id];
+          return montarItemPosicao(item);
+        });
+
+        $timeout(() => {
+          itensEncontrados.forEach((it) => {
+            if (it && it._id) $ctrl._mapItensPorId[it._id] = it;
+          });
+          $ctrl._listItens = itensEncontrados;
+        }, 10);
+      } catch (error) {
+        uteisService.onToast('Não foi possível carregar os itens do endereço.', 'error', 2000, 'top-end');
+      }
     };
 
     const getIdRef = (obj) => (obj && obj._id ? obj._id : (obj || ''));
@@ -295,49 +398,6 @@ app.component('posicao', {
     $ctrl.onNivelLocDestinoChange = async function (nivel) {
       limparNiveisFilhosDestino(nivel);
       await $ctrl.onCarregaNiveisDestino(nivel);
-    };
-
-    $ctrl.onCarregaItensInventario = async function () {
-      if ($ctrl._editPosicao.tipo !== 'inventario') return;
-      if (!$ctrl._editPosicao.id_nivel_loc1) {
-        $ctrl._editPosicao.itens = [];
-        return;
-      }
-
-      let _url = '/_bd?c=item&id_conta=' + $ctrl._regConta._id;
-      _url += '&pop=id_categoria';
-      _url += '&id_nivel_loc1=' + encodeURIComponent($ctrl._editPosicao.id_nivel_loc1);
-
-      if ($ctrl._editPosicao.id_nivel_loc2) {
-        _url += '&id_nivel_loc2=' + encodeURIComponent($ctrl._editPosicao.id_nivel_loc2);
-      }
-      if ($ctrl._editPosicao.id_nivel_loc3) {
-        _url += '&id_nivel_loc3=' + encodeURIComponent($ctrl._editPosicao.id_nivel_loc3);
-      }
-      if ($ctrl._editPosicao.id_nivel_loc4) {
-        _url += '&id_nivel_loc4=' + encodeURIComponent($ctrl._editPosicao.id_nivel_loc4);
-      }
-
-      try {
-        const res = await uteisService.getBase(_url);
-        const itensEncontrados = Array.isArray(res) ? res : [];
-        const existentes = {};
-
-        ($ctrl._editPosicao.itens || []).forEach((item) => {
-          if (item && item.id_item) existentes[item.id_item] = item;
-        });
-
-        $ctrl._editPosicao.itens = itensEncontrados.map((item) => {
-          if (existentes[item._id]) return existentes[item._id];
-          return montarItemPosicao(item);
-        });
-
-        $timeout(() => {
-          $ctrl._listItens = itensEncontrados;
-        }, 10);
-      } catch (error) {
-        uteisService.onToast('Não foi possível carregar os itens do endereço.', 'error', 2000, 'top-end');
-      }
     };
 
     $ctrl.onCarregaNiveis = async function (nivel) {
@@ -429,11 +489,17 @@ app.component('posicao', {
     $ctrl.onDefineLocal = async function (_setar) {
 
       if (_setar) {
-        let iFind = $ctrl._listItens.findIndex((item) => item._id == $ctrl._regAddItem.id_item)
-        $ctrl._editPosicao.id_nivel_loc1 = $ctrl._listItens[iFind].id_nivel_loc1
-        $ctrl._editPosicao.id_nivel_loc2 = $ctrl._listItens[iFind].id_nivel_loc2
-        $ctrl._editPosicao.id_nivel_loc3 = $ctrl._listItens[iFind].id_nivel_loc3
-        $ctrl._editPosicao.id_nivel_loc4 = $ctrl._listItens[iFind].id_nivel_loc4
+        let item = $ctrl._mapItensPorId[$ctrl._regAddItem.id_item]
+          || ($ctrl._listItens || []).find((i) => i._id == $ctrl._regAddItem.id_item);
+        if (!item) {
+          item = await $ctrl.carregarItemPorId($ctrl._regAddItem.id_item);
+        }
+        if (!item) return;
+
+        $ctrl._editPosicao.id_nivel_loc1 = item.id_nivel_loc1
+        $ctrl._editPosicao.id_nivel_loc2 = item.id_nivel_loc2
+        $ctrl._editPosicao.id_nivel_loc3 = item.id_nivel_loc3
+        $ctrl._editPosicao.id_nivel_loc4 = item.id_nivel_loc4
 
         if ($ctrl._editPosicao.id_nivel_loc1) {
 
@@ -466,7 +532,15 @@ app.component('posicao', {
       if ($ctrl._regAddItem.id_ref == 'item') {
 
         let iFind = $ctrl._editPosicao.itens.findIndex((item) => item.id_item == $ctrl._regAddItem.id_item)
-        let iFindItem = $ctrl._listItens.findIndex((item) => item._id == $ctrl._regAddItem.id_item)
+        let itemCad = $ctrl._mapItensPorId[$ctrl._regAddItem.id_item]
+          || ($ctrl._listItens || []).find((i) => i._id == $ctrl._regAddItem.id_item);
+        if (!itemCad) {
+          itemCad = await $ctrl.carregarItemPorId($ctrl._regAddItem.id_item);
+        }
+        if (!itemCad) {
+          uteisService.onToast('Item não encontrado.', 'warning', 2000, 'top-end');
+          return;
+        }
    
         if (iFind == -1) {
           $ctrl._editPosicao.itens.push({
@@ -474,25 +548,24 @@ app.component('posicao', {
             id_item: $ctrl._regAddItem.id_item,
             id_categoria: '',
 
-            tag: $ctrl._listItens[iFindItem].tag,
+            tag: itemCad.tag,
             ean: '',
             rssi: '',
 
-            quantidade: 1,
+            quantidade: $ctrl._regAddItem.quantidade || 1,
             status: 'pendente',
             status_data: '',
             id_gatweway: '',
             id_colaborador: '',
 
-            inf_compl_1: $ctrl._listItens[iFindItem].inf_compl1,
-            inf_compl_2: $ctrl._listItens[iFindItem].inf_compl2,
-            inf_compl_3: $ctrl._listItens[iFindItem].inf_compl3,
-            inf_compl_4: $ctrl._listItens[iFindItem].inf_compl4,
-            inf_compl_5: $ctrl._listItens[iFindItem].inf_compl5,
+            inf_compl_1: itemCad.inf_compl1,
+            inf_compl_2: itemCad.inf_compl2,
+            inf_compl_3: itemCad.inf_compl3,
+            inf_compl_4: itemCad.inf_compl4,
+            inf_compl_5: itemCad.inf_compl5,
 
             status_destino: '',
             status_destino_data: '',
-
           })
         } else {
           $ctrl._editPosicao.itens[iFind].quantidade = $ctrl._regAddItem.quantidade
@@ -553,7 +626,6 @@ app.component('posicao', {
 
     $ctrl.onSalvar = function () {
 
-      alert($ctrl._editPosicao.tipo);
 
       if ($ctrl._editPosicao.id_doc == '') {
         uteisService.onToast('Informe um iD para identificar o Documento.', 'warning', 3000, 'top-end');
@@ -632,45 +704,57 @@ app.component('posicao', {
 
     $ctrl.idItemDescricao = function (_idItem, _idCategoria, desc) {
 
-      if (_idItem != '') {
-        let iFind = $ctrl._listItens.findIndex((item) => item._id == _idItem)
-        if (iFind != -1) {
+      if (_idItem) {
+        const item = $ctrl._mapItensPorId[_idItem]
+          || ($ctrl._listItens || []).find((i) => i._id == _idItem)
+          || null;
+
+        if (item) {
           if (desc) {
-            return $ctrl._listItens[iFind].id_categoria.descricao;
-          } else {
-            return $ctrl._listItens[iFind].tag
+            const cat = item.id_categoria;
+            return (cat && cat.descricao) || item.descricao || 'SKU';
           }
-        } else {
-          return 'SKU N/A'
+          return item.tag || _idItem;
         }
 
-      } else {
-        let iFind = $ctrl._listCategorias.findIndex((item) => item._id == _idCategoria)
+        // Ainda não no cache: dispara carga individual (ensureItensDaPosicao no open cobre o lote)
+        if (!$ctrl._buscandoItemId[_idItem]) {
+          $ctrl.carregarItemPorId(_idItem).then(() => $timeout(() => { }, 0));
+        }
+        return '…';
+      }
+
+      if (_idCategoria) {
+        let iFind = ($ctrl._listCategorias || []).findIndex((item) => item._id == _idCategoria)
         if (iFind != -1) {
           if (desc) {
             return $ctrl._listCategorias[iFind].descricao;
-          } else {
-            return $ctrl._listCategorias[iFind].ean
           }
-        } else {
-          return 'Item N/A'
+          return $ctrl._listCategorias[iFind].ean
         }
+        return 'Item N/A'
+      }
 
-      };
-
+      return 'SKU N/A';
     };
 
     $ctrl.idItemTipoDescricao = function (_idItem) {
-
-      let iFind = $ctrl._listItens.findIndex((item) => item._id == _idItem)
-      let iFindTipo = $ctrl._listCategoriasTipos.findIndex((item) => item._id == $ctrl._listItens[iFind].id_categoria_reg1)
+      if (!_idItem) return 'Tipo de Item N/A';
+      const item = $ctrl._mapItensPorId[_idItem]
+        || ($ctrl._listItens || []).find((i) => i._id == _idItem)
+        || null;
+      if (!item) {
+        if (!$ctrl._buscandoItemId[_idItem]) {
+          $ctrl.carregarItemPorId(_idItem).then(() => $timeout(() => { }, 0));
+        }
+        return '…';
+      }
+      const idTipo = item.id_categoria_reg1 && (item.id_categoria_reg1._id || item.id_categoria_reg1);
+      let iFindTipo = ($ctrl._listCategoriasTipos || []).findIndex((t) => t._id == idTipo)
       if (iFindTipo != -1) {
         return $ctrl._listCategoriasTipos[iFindTipo].descricao
-      } else {
-        return 'Tipo de Item N/A'
       }
-
-
+      return 'Tipo de Item N/A'
     }
 
     $ctrl.formataDataHora = function (data) {

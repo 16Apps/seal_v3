@@ -3,12 +3,13 @@ app.service('uteisService', ['$rootScope', '$http', function ($rootScope, $http)
   moment.locale('pt-br');
 
   const service = this;
-  service.ipAPI = 'http://192.168.0.111:3000';
+  service.ipAPI = 'http://localhost:3000';
   //service.ipAPI = 'https://sealairtracking-3d3268c3e73f.herokuapp.com'
   // service.ipAPI = 'https://connectiot-app.azurewebsites.net'
 
 
   // api
+  
   //  -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_
 
   this.options = {
@@ -322,12 +323,14 @@ app.service('uteisService', ['$rootScope', '$http', function ($rootScope, $http)
     // Verifica e inicializa plano_monitoramento
     if (!regConta.plano_monitoramento) {
       regConta.plano_monitoramento = {
+        software: 'seal',
         posicao_esperada: 0,
         painel_alertas: 0,
         interacao: 0
       };
     } else {
       // Garante que os valores sejam números
+      regConta.plano_monitoramento.software = regConta.plano_monitoramento.software || 'seal';
       regConta.plano_monitoramento.posicao_esperada = parseInt(regConta.plano_monitoramento.posicao_esperada) || 0;
       regConta.plano_monitoramento.painel_alertas = parseInt(regConta.plano_monitoramento.painel_alertas) || 0;
       regConta.plano_monitoramento.interacao = parseInt(regConta.plano_monitoramento.interacao) || 0;

@@ -67,6 +67,7 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService,  $l
 
         _url += '&pop=id_nivel_loc1&pop=id_nivel_loc2&pop=id_nivel_loc3&pop=id_nivel_loc4';
         _url += '&pop=id_nivel_loc1_destino&pop=id_nivel_loc2_destino&pop=id_nivel_loc3_destino&pop=id_nivel_loc4_destino';
+        _url += '&pop=id_colaborador';
 
         await uteisService.getBase(_url)
             .then((res) => {

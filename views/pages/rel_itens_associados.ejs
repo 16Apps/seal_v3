@@ -11,23 +11,33 @@
           <a class="text-decoration-none">Relatórios</a>
         </li>
         <li class="breadcrumb-item" aria-current="page">Itens Associados</li>
-        <li class="breadcrumb-item text-info" aria-current="page">Total: {{ _listItens.length }}</li>
+        <li class="breadcrumb-item text-info" aria-current="page">
+          Página {{ _paginacao.page }} · {{ _listItens.length }} de {{ _paginacao.totalNaPagina }} (máx. {{ _paginacao.limit }}/página)
+        </li>
       </ol>
       <!-- Breadcrumb end -->
 
       <!-- Filter start -->
-      <div class="ms-auto d-flex flex-row gap-1 ">
+      <div class="ms-auto d-flex flex-row gap-1 flex-wrap justify-content-end">
         <div class="search-container d-lg-flex d-none">
-          <input ng-model="_pesquisa" ng-change="onPesquisa()" type="text" class="form-control" id="searchData"
-            placeholder="Pesquisar">
+          <input ng-model="_filtro.data_de" id="filtro_data_de" ng-change="onFiltroServidor()" type="date" class="form-control" title="Data inicial">
+          <i class="bi bi-calendar3"></i>
+        </div>
+        <div class="search-container d-lg-flex d-none">
+          <input ng-model="_filtro.data_a" id="filtro_data_a" ng-change="onFiltroServidor()" type="date" class="form-control" title="Data final">
+          <i class="bi bi-calendar3"></i>
+        </div>
+        <div class="search-container d-lg-flex d-none">
+          <input ng-model="_pesquisa" ng-model-options="{ debounce: 400 }" ng-change="onPesquisa()" type="text" class="form-control" id="searchData"
+            placeholder="Pesquisar tag">
           <i class="bi bi-search"></i>
         </div>
-        <button ng-click="onCarregaRegistros()" type="button" class="btn btn-secondary btn-sm ms-2"
-          title="Atualizar lista">
-          <i class="bi bi-arrow-clockwise"></i>
+        <button ng-click="onCarregaRegistros(_paginacao.page)" type="button" ng-disabled="_carregando"
+          class="btn btn-secondary btn-sm ms-2" title="Atualizar lista">
+          <i class="bi" ng-class="_carregando ? 'bi-arrow-repeat' : 'bi-arrow-clockwise'"></i>
         </button>
-        <button ng-click="onExportarCSV()" type="button"
-          class="btn btn-success btn-sm ms-2" title="Exportar lista para CSV">
+        <button ng-click="onExportarCSV()" type="button" ng-disabled="_carregando"
+          class="btn btn-success btn-sm ms-2" title="Exportar página atual para CSV">
           <i class="bi bi-file-earmark-arrow-down"></i>
         </button>
       </div>
@@ -50,56 +60,63 @@
         <div class="col-xxl-12">
           <div class="card mb-3">
             <div class="card-body">
+              <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3" ng-show="_carregando">
+                <div class="text-muted small">
+                  <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                  Carregando registros…
+                </div>
+              </div>
+
               <div class="table-responsive">
                 <div class="table-outer">
                   <table class="table align-middle table-hover m-0">
                     <thead>
                       <tr>
-                        <th class="w-5">
-                        </th>
-                        <th class="w-10" ng-click="sortBy('categoria.descricao')" class="sortable">Item
+                        <th class="w-5"></th>
+                        <th class="w-10 sortable" ng-click="sortBy('id_categoria.descricao')">Item
                           <i class="bi" ng-class="{
-              'bi-caret-up-fill': sortField=='categoria.descricao' && !sortReverse,
-              'bi-caret-down-fill': sortField=='categoria.descricao' && sortReverse
+              'bi-caret-up-fill': sortField=='id_categoria.descricao' && !sortReverse,
+              'bi-caret-down-fill': sortField=='id_categoria.descricao' && sortReverse
         }"></i>
                         </th>
 
-                        <th class="w-10 sortable" ng-click="sortBy('id_categoria_reg1.descricao')">
+                        <th class="w-10 sortable" ng-click="sortBy('quantidade_encontrada')">
                           Checado
                           <i class="bi" ng-class="{
-              'bi-caret-up-fill': sortField=='id_categoria_reg1.descricao' && !sortReverse,
-              'bi-caret-down-fill': sortField=='id_categoria_reg1.descricao' && sortReverse
+              'bi-caret-up-fill': sortField=='quantidade_encontrada' && !sortReverse,
+              'bi-caret-down-fill': sortField=='quantidade_encontrada' && sortReverse
         }"></i>
                         </th>
 
-                        <th class="w-60 sortable" ng-click="sortBy('data_permanecia')">
+                        <th class="w-60 sortable" ng-click="sortBy('data_registro')">
                           Registro
                           <i class="bi" ng-class="{
-              'bi-caret-up-fill': sortField=='data_permanecia' && !sortReverse,
-              'bi-caret-down-fill': sortField=='data_permanecia' && sortReverse
+              'bi-caret-up-fill': sortField=='data_registro' && !sortReverse,
+              'bi-caret-down-fill': sortField=='data_registro' && sortReverse
         }"></i>
                         </th>
 
-                        <th class="w-10 sortable" ng-click="sortBy('tag')">
+                        <th class="w-10 sortable" ng-click="sortBy('id_gateway.descricao')">
                           Coletor
                           <i class="bi" ng-class="{
-              'bi-caret-up-fill': sortField=='tag' && !sortReverse,
-              'bi-caret-down-fill': sortField=='tag' && sortReverse
+              'bi-caret-up-fill': sortField=='id_gateway.descricao' && !sortReverse,
+              'bi-caret-down-fill': sortField=='id_gateway.descricao' && sortReverse
         }"></i>
                         </th>
-                        <th class="w-10 sortable" ng-click="sortBy('tag')">
+                        <th class="w-10 sortable" ng-click="sortBy('id_registro.id_nivel_loc1.descricao')">
                           Endereço
                           <i class="bi" ng-class="{
-              'bi-caret-up-fill': sortField=='tag' && !sortReverse,
-              'bi-caret-down-fill': sortField=='tag' && sortReverse
+              'bi-caret-up-fill': sortField=='id_registro.id_nivel_loc1.descricao' && !sortReverse,
+              'bi-caret-down-fill': sortField=='id_registro.id_nivel_loc1.descricao' && sortReverse
         }"></i>
                         </th>
-
-                        
-
+                      </tr>
                     </thead>
                     <tbody>
-                      <tr ng-repeat="item in _listItens | orderBy:sortField:sortReverse"">
+                      <tr ng-if="!_carregando && (!_listItens || !_listItens.length)">
+                        <td colspan="6" class="text-center text-muted py-4">Nenhum registro nesta página.</td>
+                      </tr>
+                      <tr ng-repeat="item in _listItens | orderBy:sortField:sortReverse track by item._id">
                       <td class="align-top">
                           <div class=" d-inline-flex align-items-center justify-content-center rounded-circle me-2"
                         style="width: 48px; height: 48px;"
@@ -132,8 +149,8 @@
                 </td>
 
                 <td class="align-top">
-                  <div ng-repeat="associado in item.associados track by $index"
-                    class="mb-2 pb-2  border-light border-opacity-10"> <!-- border-bottom -->
+                  <div ng-repeat="associado in item.associados track by (associado._id || $index)"
+                    class="mb-2 pb-2  border-light border-opacity-10">
                     <div>
                       {{ associado.id_categoria.descricao || 'Categoria N/A' }}
                     </div>
@@ -175,6 +192,27 @@
                 </table>
               </div>
             </div>
+
+              <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-3">
+                <div class="text-muted small">
+                  Ordenado por data de registro (mais recente primeiro) · {{ _paginacao.limit }} por página
+                </div>
+                <div class="btn-group" role="group" aria-label="Paginação">
+                  <button type="button" class="btn btn-outline-secondary btn-sm"
+                    ng-click="onPaginaAnterior()"
+                    ng-disabled="_carregando || _paginacao.page <= 1">
+                    <i class="bi bi-chevron-left"></i> Anterior
+                  </button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm" disabled>
+                    Página {{ _paginacao.page }}
+                  </button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm"
+                    ng-click="onPaginaProxima()"
+                    ng-disabled="_carregando || !_paginacao.temProxima">
+                    Próxima <i class="bi bi-chevron-right"></i>
+                  </button>
+                </div>
+              </div>
           </div>
         </div>
       </div>

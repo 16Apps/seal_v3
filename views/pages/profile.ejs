@@ -833,6 +833,21 @@
                         </div>
                       </div>
 
+                      <div class="mt-5 mb-2 bg-success bg-opacity-10 text-success p-2 rounded-2">
+                        Regra Intervalo PDI
+                      </div>
+
+                      <div class="col-sm-2">
+                        <div class="mb-3">
+                          <label for="nomenclaturaEnderecos" class="form-label">
+                            <i class="bi bi-clock me-1"></i>Minutos
+                          </label>
+                          <input  ng-model="_regConta.interval_pdi"
+                            type="text" class="form-control form-control-sm" placeholder="Ex: 30, 60">
+                        </div>
+                      </div>
+
+
                     </div>
                   </div>
                 </div>
@@ -1064,14 +1079,30 @@
                             <div class="col-sm-2">
                               <div class="mb-3">
                                 <label for="posicaoEsperada" class="form-label">
-                                  <i class="bi bi-geo-alt me-1"></i>Posição Esperada
+                                  <i class="bi bi-geo-alt me-1"></i>iD Software
+                                </label>
+                                <select id="posicaoEsperada" ng-model="_regConta.plano_monitoramento.software"
+                                  class="form-select form-select-sm">
+                                  <option value="seal">Seal</option>
+                                  <option value="rti">Connect RTI</option>
+                                  <option value="ommi">Connect OMMI</option>
+                                  <option value="tracking">AirTracking</option>
+                                </select>
+                                <small class="text-muted">Checagem de Ordens e Inventário por Localização</small>
+                              </div>
+                            </div>
+
+                            <div class="col-sm-2">
+                              <div class="mb-3">
+                                <label for="posicaoEsperada" class="form-label">
+                                  <i class="bi bi-geo-alt me-1"></i>Conferência e Inventário
                                 </label>
                                 <select id="posicaoEsperada" ng-model="_regConta.plano_monitoramento.posicao_esperada"
                                   class="form-select form-select-sm">
                                   <option value="0">Desabilitado</option>
                                   <option value="1">Habilitado</option>
                                 </select>
-                                <small class="text-muted">Rastreamento de posição esperada dos itens</small>
+                                <small class="text-muted">Checagem de Ordens e Inventário por Localização</small>
                               </div>
                             </div>
                             <div class="col-sm-2">

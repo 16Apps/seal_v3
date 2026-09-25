@@ -23,8 +23,9 @@ const readline = require('readline');
 const axios = require('axios'); // se for enviar via HTTP
 const moment = require('moment');
 
-const baseUrl = 'https://connectiot-app.azurewebsites.net';
-//  const baseUrl = 'http://localhost:3000';
+// const baseUrl = 'https://connectiot-app.azurewebsites.net';
+const baseUrl = 'http://localhost:3000';
+// const baseUrl = 'http://10.10.20.101:3000';
 
 module.exports = (app, dbConnection) => {
 
@@ -281,79 +282,62 @@ module.exports = (app, dbConnection) => {
                 }
             );
 
+
+
             if (req.params.collection === 'posicao') {
 
 
+                // A acao ocorre antes de atualizar o registro, entao está sendo sobrescrita abaixa
+                //analizar melhor esse ponto, ou já realizar a checagem previamente 
+                // await atualizarPosicaoConcluida(documento);
 
-                await atualizarPosicaoConcluida(documento);
+
                 await atualizarStatusItensInventario(documento);
 
                 const Conta = require('../models/conta');
                 const conta = await Conta.findById(documento.id_conta);
 
+
                 if (conta?.id_api?.trim()) {
+
+                    // Ordens internas de retorno/recebimento: não enviam para o cliente
+                    const idDoc = String(documento.id_doc || '');
+                    if (idDoc.includes('-RET') || idDoc.includes('-REC')) {
+                        console.log('[posicao] Integração omitida (ordem interna):', idDoc);
+                        return res.status(200).json(documento);
+                    }
 
                     const url = `${baseUrl}/${conta.id_api}/${documento._id}`;
 
-                    console.log('Chamando API:', url);
-
                     try {
 
-                        const response = await axios.get(url);
-
-                        console.log(
-                            'Retorno API:',
-                            response.status,
-                            response.data
-                        );
-
-                        documento = await Collection.findByIdAndUpdate(
-                            documento._id,
-                            {
-                                $set: {
-                                    retorno_api: response.data?.message ||
-                                        JSON.stringify(response.data)
-                                }
-                            },
-                            { new: true }
-                        );
-
-                        let retorno_200 = response.data.status_naturgy === 200 ? 'Recebido OK'  : response.data.status_naturgy ;
-
-                        documento.retorno_api = response.data?.message || retorno_200
-                        return res.status(200).json(documento);
-
-                    } catch (err) {
-
-                        const mensagem =
-                            err.response?.data?.message ||
-                            err.response?.data?.erro ||
-                            err.response?.data?.resposta?.data?.message ||
-                            err.message ||
-                            'Erro desconhecido na integração';
-
-                        console.error('Erro na API:', {
-                            url,
-                            status: err.response?.status,
-                            mensagem,
-                            dados: err.response?.data
+                        const response = await axios.get(url, {
+                            validateStatus: () => true,
+                            timeout: 60000
                         });
 
                         documento = await Collection.findByIdAndUpdate(
                             documento._id,
-                            {
-                                $set: {
-                                    retorno_api: mensagem
-                                }
-                            },
+                            { $set: { retorno_api: JSON.stringify(response.data) } },
                             { new: true }
                         );
 
-                        let retorno_erro = mensagem.includes(':') ? mensagem.split(':')[2] : mensagem;
-                        documento.retorno_api = retorno_erro;
+                        return res.status(200).json(documento);
+
+                    } catch (err) {
+
+
+                        documento = await Collection.findByIdAndUpdate(
+                            documento._id,
+                            { $set: { retorno_api: err } },
+                            { new: true }
+                        );
+
                         return res.status(200).json(documento);
                     }
-                };
+                } else {
+                    return res.status(200).json(documento);
+                }
 
             } else {
 

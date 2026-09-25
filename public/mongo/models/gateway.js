@@ -24,6 +24,7 @@ const GatewaySchema = new mongoose.Schema({
     intervalo_reg_gps: { type: Number, default: 0 },
     intervalo_reg_rssi: { type: Number, default: 0 },
     intervalo_reg_inventario: { type: Number, default: 0 },
+    gera_associao: { type: Number, enum: [0, 1], default: 0 },
 
     id_nivel_loc1: { type: String, ref: 'Localizacao' },
     id_nivel_loc2: { type: String, ref: 'Localizacao' },
@@ -47,6 +48,10 @@ const GatewaySchema = new mongoose.Schema({
     watch_regra: { type: String },
     watch_valor: { type: String },
     leitura_base: { type: Object },
+
+    portal_acao: { type: String },
+    portal_alertas: { type: String },
+    portal_registro_ordem: { type: String },
 
     api_rest: { type: String },
 

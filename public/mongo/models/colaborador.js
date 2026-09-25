@@ -19,6 +19,8 @@ const ColaboradorSchema = new mongoose.Schema({
     celular: { type: String },
     login: { type: String },
     senha: { type: String },
+    token_auth_external: { type: String },
+    tenant_auth_external: { type: String },
     cep: { type: String },
     logradouro: { type: String },
     numero: { type: String },

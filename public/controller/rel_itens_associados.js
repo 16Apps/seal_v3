@@ -1,94 +1,163 @@
-app.controller('itensAssociadosCtrl', function ($scope, $http, params, uteisService) {
+app.controller('itensAssociadosCtrl', function ($scope, $http, params, uteisService, $timeout) {
+
+    const hoje = moment().format('YYYY-MM-DD');
+    const PAGE_SIZE = 10;
 
     $scope._regConta = {};
-    $scope._listItens = []
-    $scope._listItensBase = []
-    $scope._pesquisa = ''
-    $scope.sortField = 'categoria.descricao';
-    $scope.sortReverse = false;
+    $scope._listItens = [];
+    $scope._listItensBase = [];
+    $scope._pesquisa = '';
+    $scope._carregando = false;
+    $scope.sortField = 'data_registro';
+    $scope.sortReverse = true;
 
-    var modalInstance = undefined;
+    $scope._paginacao = {
+        page: 1,
+        limit: PAGE_SIZE,
+        temProxima: false,
+        totalNaPagina: 0
+    };
+
+    $scope._filtro = {
+        data_de: hoje,
+        data_a: hoje
+    };
+
+    function aplicarDatasNosInputs() {
+        const dataDe = $scope._filtro.data_de || hoje;
+        const dataA = $scope._filtro.data_a || hoje;
+        $scope._filtro.data_de = dataDe;
+        $scope._filtro.data_a = dataA;
+
+        const elDe = document.getElementById('filtro_data_de');
+        const elA = document.getElementById('filtro_data_a');
+        if (elDe) elDe.value = dataDe;
+        if (elA) elA.value = dataA;
+    }
+
+    const normaliza = (v) =>
+        (v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
     $scope.$watch('$viewContentLoaded', async function () {
         $scope._regConta = uteisService.getCookie('_conta');
-        $scope._regConta['_logo'] = '../assets/images/logo_default.fw.png'
+        $scope._regConta['_logo'] = '../assets/images/logo_default.fw.png';
         if ($scope._regConta.logo && $scope._regConta.logo.includes('logo_conta') == false) {
             let _url = uteisService.apiUrl_();
             $scope._regConta._logo = _url + '/image/' + $scope._regConta.logo;
-        };
+        }
 
         $scope._regColaborador = uteisService.getCookie('_colaborador');
 
-        $scope.onCarregaRegistros()
+        $timeout(aplicarDatasNosInputs);
+        $scope.onCarregaRegistros(1);
     });
 
-    $scope.onCarregaRegistros = async function () {
+    $scope.onCarregaRegistros = async function (page) {
+        if ($scope._carregando) return;
+
+        const elDe = document.getElementById('filtro_data_de');
+        const elA = document.getElementById('filtro_data_a');
+        if (elDe && elDe.value) $scope._filtro.data_de = elDe.value;
+        if (elA && elA.value) $scope._filtro.data_a = elA.value;
+
+        const pagina = Math.max(1, parseInt(page, 10) || $scope._paginacao.page || 1);
+        $scope._paginacao.page = pagina;
+        $scope._carregando = true;
 
         let _url = '/relatorio/associacao-reg/' + $scope._regConta._id;
+        _url += '?page=' + pagina;
+        _url += '&limit=' + PAGE_SIZE;
 
-        await uteisService.getBase(_url)
-            .then((res) => {
-
-                $scope._listItens = res
-                $scope._listItensBase = res
-
-                console.log(JSON.stringify(res))
-                $scope.$apply();
-            })
-            .catch((error) => {
-                uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
-            });
-    };
-
-    $scope.onPesquisa = async function () {
-
-        const pesquisa = $scope._pesquisa
-            ? $scope._pesquisa.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-            : '';
-
-        if (pesquisa !== '') {
-            $scope._listItens = $scope._listItensBase.filter((item) => {
-
-                const norm = (v) =>
-                    (v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-
-                // Campos da pesquisa
-                const catDesc = norm(item.id_categoria?.descricao);
-                const catItemDesc = norm(item.id_categoria_reg1?.descricao);
-                const tag = norm(item.tag);
-                const id_externo = norm(item.id_externo);
-                const nv1Desc = norm(item.id_nivel_loc1?.descricao);
-                const nv2Desc = norm(item.id_nivel_loc2?.descricao);
-                const nv3Desc = norm(item.id_nivel_loc3?.descricao);
-                const nv4Desc = norm(item.id_nivel_loc4?.descricao);
-
-                const inf1 = norm(item.inf_compl1);
-                const inf2 = norm(item.inf_compl2);
-                const inf3 = norm(item.inf_compl3);
-                const inf4 = norm(item.inf_compl4);
-
-                return (
-                    catDesc.includes(pesquisa) ||
-                    catItemDesc.includes(pesquisa) ||
-                    id_externo.includes(pesquisa) ||
-                    tag.includes(pesquisa) ||
-                    inf1.includes(pesquisa) ||
-                    inf2.includes(pesquisa) ||
-                    inf3.includes(pesquisa) ||
-                    inf4.includes(pesquisa)||
-                    nv1Desc.includes(pesquisa)||
-                    nv2Desc.includes(pesquisa)||
-                    nv3Desc.includes(pesquisa)||
-                    nv4Desc.includes(pesquisa)
-                );
-            });
-
-        } else {
-            $scope._listItens = $scope._listItensBase;
+        const dataDe = $scope._filtro.data_de;
+        const dataA = $scope._filtro.data_a;
+        if (dataDe) {
+            _url += '&data_inicio=' + encodeURIComponent(moment(dataDe).startOf('day').toISOString());
+        }
+        if (dataA) {
+            _url += '&data_fim=' + encodeURIComponent(moment(dataA).endOf('day').toISOString());
         }
 
-    }
+        const pesquisa = String($scope._pesquisa || '').trim();
+        if (pesquisa) {
+            _url += '&tag=' + encodeURIComponent(pesquisa);
+        }
 
+        try {
+            const res = await uteisService.getBase(_url);
+            const lista = Array.isArray(res) ? res : [];
+            $scope._listItensBase = lista;
+            $scope._paginacao.temProxima = lista.length >= PAGE_SIZE;
+            $scope._paginacao.totalNaPagina = lista.length;
+            $scope.aplicarFiltrosLocais();
+        } catch (error) {
+            $scope._listItensBase = [];
+            $scope._listItens = [];
+            $scope._paginacao.temProxima = false;
+            $scope._paginacao.totalNaPagina = 0;
+            uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
+        } finally {
+            $scope._carregando = false;
+            $scope.$applyAsync();
+        }
+    };
+
+    $scope.onFiltroServidor = function () {
+        $scope.onCarregaRegistros(1);
+    };
+
+    /** Refino local na página (categoria, endereço, associados). Tag já veio do servidor. */
+    $scope.aplicarFiltrosLocais = function () {
+        const pesquisa = $scope._pesquisa
+            ? normaliza($scope._pesquisa)
+            : '';
+
+        if (!pesquisa) {
+            $scope._listItens = $scope._listItensBase || [];
+            return;
+        }
+
+        $scope._listItens = ($scope._listItensBase || []).filter((item) => {
+            const catDesc = normaliza(item.id_categoria?.descricao);
+            const tag = normaliza(item.tag);
+            const gateway = normaliza(item.id_gateway?.descricao);
+            const status = normaliza(item.status);
+            const nv1 = normaliza(item.id_registro?.id_nivel_loc1?.descricao);
+            const nv2 = normaliza(item.id_registro?.id_nivel_loc2?.descricao);
+            const nv3 = normaliza(item.id_registro?.id_nivel_loc3?.descricao);
+            const nv4 = normaliza(item.id_registro?.id_nivel_loc4?.descricao);
+
+            const associadosMatch = (item.associados || []).some((a) =>
+                normaliza(a.id_categoria?.descricao).includes(pesquisa) ||
+                normaliza(a.tag).includes(pesquisa)
+            );
+
+            return (
+                catDesc.includes(pesquisa) ||
+                tag.includes(pesquisa) ||
+                gateway.includes(pesquisa) ||
+                status.includes(pesquisa) ||
+                nv1.includes(pesquisa) ||
+                nv2.includes(pesquisa) ||
+                nv3.includes(pesquisa) ||
+                nv4.includes(pesquisa) ||
+                associadosMatch
+            );
+        });
+    };
+
+    $scope.onPesquisa = function () {
+        $scope.onCarregaRegistros(1);
+    };
+
+    $scope.onPaginaAnterior = function () {
+        if ($scope._paginacao.page <= 1 || $scope._carregando) return;
+        $scope.onCarregaRegistros($scope._paginacao.page - 1);
+    };
+
+    $scope.onPaginaProxima = function () {
+        if (!$scope._paginacao.temProxima || $scope._carregando) return;
+        $scope.onCarregaRegistros($scope._paginacao.page + 1);
+    };
 
     $scope.sortBy = function (field) {
         if ($scope.sortField === field) {
@@ -189,7 +258,7 @@ app.controller('itensAssociadosCtrl', function ($scope, $http, params, uteisServ
         const url = URL.createObjectURL(blob);
 
         const stamp = moment().format('YYYYMMDD_HHmmss');
-        const nomeArquivo = 'itens_associados_' + stamp + '.csv';
+        const nomeArquivo = 'itens_associados_p' + $scope._paginacao.page + '_' + stamp + '.csv';
 
         const a = document.createElement('a');
         a.href = url;
@@ -199,16 +268,14 @@ app.controller('itensAssociadosCtrl', function ($scope, $http, params, uteisServ
         document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(url), 1500);
 
-        uteisService.onToast('Arquivo exportado: ' + nomeArquivo, 'success', 2500, 'top-end');
+        uteisService.onToast('Arquivo exportado (página atual): ' + nomeArquivo, 'success', 2500, 'top-end');
     };
 
     $scope.formataDataHora = function (data) {
         const date = moment(data, 'YYYY-MM-DD HH:mm:ss')
-            .add(params.timeAdd, 'hours'); // Remove 3 horas
-    
+            .add(params.timeAdd, 'hours');
+
         return date.format('DDMMM HH[h]mm:ss');
     };
-    
 
-    
 });
