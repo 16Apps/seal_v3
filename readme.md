@@ -32,4 +32,19 @@
   $ git push heroku master
 
   $ heroku logs --tail -a seal
-  
+
+
+-Deploy Git Ambiente
+git init
+git add .
+git config core.autocrlf true
+git commit -m "first commit"
+git branch -M main
+git remote add origin https://github.com/16Apps/seal_v3.git
+git push -u origin main
+
+
+- deploy GIT
+git add .
+git commit -m "Atualização Seal"
+git push
