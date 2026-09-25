@@ -172,7 +172,7 @@ require('./public/mongo/routes/x_unimed')(app, dbMongo);
 // require('./public/mongo/routes/mqtt')(app, dbMongo);
 // require('./public/mongo/routes/mqtt')(app, dbMongo, server);
 // require('./public/mongo/routes/ble')(app, dbMongo);
-const iaRoute = require('./public/mongo/routes/ia.route');
+// const iaRoute = require('./public/mongo/routes/ia.route');
 iaRoute(app);
 
 
