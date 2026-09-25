@@ -10,7 +10,8 @@ const axios = require('axios'); // se for enviar via HTTP
 const subscriptionKey = 'af737391526e49e8adb171ba54f57b06';
 
 // const url_sepioo_seal = 'http://localhost:3000'
-const url_sepioo_seal  = 'https://connectiot-app.azurewebsites.net'
+// const url_sepioo_seal  = 'https://connectiot-app.azurewebsites.net'
+const url_sepioo_seal = 'https://sealv3-production.up.railway.app'
 
 // Função para gerar valor aleatório com 5 dígitos (letras e números em maiúsculo)
 function gerarIdDocAleatorio() {

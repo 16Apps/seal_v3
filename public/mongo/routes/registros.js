@@ -24,8 +24,10 @@ const { setTimeout: sleep } = require('timers/promises');
 const moment = require('moment')
 const cron = require('node-cron');
 
-let _urlRegistro = 'https://connectiot-app.azurewebsites.net/_bd/registro';
+// let _urlRegistro = 'https://connectiot-app.azurewebsites.net/_bd/registro';
+let _urlRegistro = 'https://sealv3-production.up.railway.app/_bd/registro';
 let _urlRegistroLocal = 'http://localhost:3000/_bd/registro';
+let _urlServer = 'https://sealv3-production.up.railway.app';
 
 module.exports = (app, dbConnection) => {
 
@@ -175,9 +177,6 @@ module.exports = (app, dbConnection) => {
 
                 console.log('/_bd/registro/gateway::' + JSON.stringify(registro))
 
-                //'https://sealairtracking-3d3268c3e73f.herokuapp.com/_bd/registro',\
-                //'http://localhost:5000/_bd/registro',
-
                 // Verifica se deve filtrar por RSSI (aceita apenas sinais fortes o suficiente)
                 const rssiValor = parseFloat(leitura.rssi) * -1 || 0;
                 // const rssiAbsoluto = Math.abs(rssiValor);
@@ -187,7 +186,7 @@ module.exports = (app, dbConnection) => {
                 if (thresholdRSSI === 0 || rssiValor < thresholdRSSI) {
                     try {
                         await axios.post(
-                            'https://connectiot-app.azurewebsites.net/_bd/registro',
+                            _urlRegistro,
                             registro,
                             { timeout: 5000 }
                         );
@@ -471,7 +470,7 @@ module.exports = (app, dbConnection) => {
             await item.save();
 
             try {
-                await axios.get(`https://connectiot-app.azurewebsites.net/_bd/item/preencher-inf-complementares`, {
+                await axios.get(_urlServer + `/_bd/item/preencher-inf-complementares`, {
                     params: { id_item: item._id }
                 });
             } catch (err) {
@@ -1056,7 +1055,7 @@ module.exports = (app, dbConnection) => {
 
         // 🔹 URL correta para OBJECTS
         // const urlSepioo = 'http://localhost:3000/sepioo';
-        const urlSepioo = 'https://connectiot-app.azurewebsites.net/sepioo';
+        const urlSepioo = _urlServer + '/sepioo';
 
         for (let i = 0; i < interacao.acoes.length; i++) {
 
@@ -1577,8 +1576,6 @@ module.exports = (app, dbConnection) => {
         //console.log('_regPosicao:' + posicao + ' >> id_nivel_loc1:' + _reg.id_nivel_loc1 + " >> filtro:" + JSON.stringify(filtro))
 
         // 🔹 URL correta para OBJECTS
-        // const urlSepioo = 'http://localhost:3000/sepioo';
-        // const urlSepioo = 'https://connectiot-app.azurewebsites.net/sepioo';
         if (interacao && Array.isArray(interacao.acoes)) {
 
             for (let i = 0; i < interacao.acoes.length; i++) {

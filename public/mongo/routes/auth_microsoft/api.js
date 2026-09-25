@@ -4,8 +4,9 @@ const axios = require('axios');
 
 const Colaborador = require('../../models/colaborador');
 
-const redirectUri = 'http://localhost:3000';
+// const redirectUri = 'http://localhost:3000';
 // const redirectUri = 'https://connectiot-app.azurewebsites.net'
+const redirectUri = 'https://sealv3-production.up.railway.app'
 
 
 function escaparRegex(texto) {

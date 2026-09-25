@@ -4,7 +4,8 @@ const moment = require('moment');
 
 const Gateway = require('../models/gateway');
 
-const ip_server = 'https://connectiot-app.azurewebsites.net';
+// const ip_server = 'https://connectiot-app.azurewebsites.net';
+const ip_server = 'https://sealv3-production.up.railway.app';
 const REGISTRO_URL = ip_server + '/_bd/registro';
 
 module.exports = (app) => {

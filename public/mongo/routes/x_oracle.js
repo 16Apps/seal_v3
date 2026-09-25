@@ -22,9 +22,12 @@ const ORACLE = {
   bulkShipUsername: process.env.ORACLE_BULK_SHIP_USERNAME || 'rfid.integration',
   bulkShipPassword: process.env.ORACLE_BULK_SHIP_PASSWORD || 'Oracle@2026',
   requestTimeoutMs: Number(process.env.ORACLE_REQUEST_TIMEOUT_MS) || 30000,
+  // registroUrl:
+  //   process.env.CONNECT_REGISTRO_URL ||
+  //   'https://connectiot-app.azurewebsites.net/_bd/registro'
   registroUrl:
     process.env.CONNECT_REGISTRO_URL ||
-    'https://connectiot-app.azurewebsites.net/_bd/registro'
+    'https://sealv3-production.up.railway.app/_bd/registro'
 };
 
 function authorizationBasicOracle() {
