@@ -53,7 +53,12 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService,  $l
         _url += '&tipo=' + $scope._tipo
         
         if($scope._pesquisa.status) {
-            _url += '&status=' + $scope._pesquisa.status
+            if ($scope._pesquisa.status === 'aberta') {
+                // "Abertas" = pendente + parcial
+                _url += '&status*in=' + encodeURIComponent(JSON.stringify(['pendente', 'parcial']));
+            } else {
+                _url += '&status=' + $scope._pesquisa.status;
+            }
         };
 
         if($scope._pesquisa.data_de && $scope._pesquisa.data_a) {
