@@ -10,6 +10,15 @@ var app = angular
 
     });
 
+app.run(['$rootScope', 'uteisService', function ($rootScope, uteisService) {
+    $rootScope.formataDataHora = function (data, formato) {
+        return uteisService.formataDataHora(data, formato);
+    };
+    $rootScope.formataData = function (data, formato) {
+        return uteisService.formataData(data, formato);
+    };
+}]);
+
 app.controller('appCtrl', function ($scope, $http, $location, params, uteisService, $timeout) {
 
     $scope._regConta = undefined

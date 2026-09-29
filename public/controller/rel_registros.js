@@ -351,10 +351,7 @@ app.controller('relRegistrosCtrl', function ($scope, $http, params, uteisService
     };
 
     $scope.formataDataHora = function (data) {
-        const date = moment(data, 'YYYY-MM-DD HH:mm:ss')
-            .add(params.timeAdd, 'hours');
-
-        return date.format('DDMMM HH[h]mm:ss');
+        return uteisService.formataDataHora(data, 'DDMMM HH[h]mm:ss');
     };
 
     $scope.onAbrirModalInteracao = function (interacao) {

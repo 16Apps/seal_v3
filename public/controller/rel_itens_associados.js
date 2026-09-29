@@ -272,10 +272,7 @@ app.controller('itensAssociadosCtrl', function ($scope, $http, params, uteisServ
     };
 
     $scope.formataDataHora = function (data) {
-        const date = moment(data, 'YYYY-MM-DD HH:mm:ss')
-            .add(params.timeAdd, 'hours');
-
-        return date.format('DDMMM HH[h]mm:ss');
+        return uteisService.formataDataHora(data, 'DDMMM HH[h]mm:ss');
     };
 
 });

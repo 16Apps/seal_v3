@@ -180,15 +180,47 @@ app.service('uteisService', ['$rootScope', '$http', function ($rootScope, $http)
   // uteis
   //  -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_
 
-  this.formataDataHora = function (data) {
-    const date = moment(data, 'YYYY-MM-DD');
-    const hour = moment(data, 'HH:mm:ss')
-    return date.format('DD/MM/YYYY') + ' ' + hour.format('HH:mm:ss');
+  /** Offset Brasil (UTC-3). Use na exibição; não altere datas gravadas no banco. */
+  this.UTC_OFFSET_BRASIL = -3;
+
+  this.parseMoment = function (data) {
+    if (data == null || data === '') return null;
+
+    var m = moment(data, [
+      'YYYY-MM-DD HH:mm:ss',
+      'YYYY-MM-DDTHH:mm:ss',
+      'YYYY-MM-DDTHH:mm:ss.SSSZ',
+      'YYYY-MM-DDTHH:mm:ss.SSS',
+      'YYYY-MM-DD',
+      moment.ISO_8601
+    ], true);
+
+    if (!m.isValid()) m = moment(data);
+    return m.isValid() ? m : null;
   };
 
-  this.formataData = function (data) {
-    const date = moment(data, 'YYYY-MM-DD');
-    return date.format('DD/MM/YYYY');
+  /** Converte para horário de Brasília (UTC-3) para exibição. */
+  this.toBrasil = function (data) {
+    var m = this.parseMoment(data);
+    if (!m) return null;
+    return m.utcOffset(this.UTC_OFFSET_BRASIL);
+  };
+
+  /**
+   * Formata data/hora em Brasília.
+   * @param {*} data
+   * @param {string} [formato='DD/MM/YYYY HH:mm:ss']
+   */
+  this.formataDataHora = function (data, formato) {
+    var m = this.toBrasil(data);
+    if (!m) return '-';
+    return m.format(formato || 'DD/MM/YYYY HH:mm:ss');
+  };
+
+  this.formataData = function (data, formato) {
+    var m = this.toBrasil(data);
+    if (!m) return '-';
+    return m.format(formato || 'DD/MM/YYYY');
   };
 
   this.selStatusMovimentacao = function () {

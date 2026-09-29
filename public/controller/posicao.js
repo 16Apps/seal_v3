@@ -275,30 +275,11 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService,  $l
     };
 
 $scope.formataDataHora = function (data) {
-    const date = moment(data, 'YYYY-MM-DD HH:mm:ss')
-        .subtract(3, 'hours'); // Remove 3 horas
-
-    return date.format('DDMMM HH[h]mm');
+    return uteisService.formataDataHora(data, 'DDMMM HH[h]mm');
 };
 
-
 $scope.formataDataHoraString = function (data) {
-    if (!data) return '-';
-
-    // Aceita string em ISO, com milissegundos, com espaço ou Date.
-    var date = moment(data, [
-        'YYYY-MM-DD HH:mm:ss',
-        'YYYY-MM-DDTHH:mm:ss',
-        'YYYY-MM-DDTHH:mm:ss.SSS',
-        moment.ISO_8601
-    ], true);
-
-    if (!date.isValid()) {
-        date = moment(data);
-    }
-
-    if (!date.isValid()) return '-';
-    return date.format('DDMMM HH[h]mm');
+    return uteisService.formataDataHora(data, 'DDMMM HH[h]mm');
 };
 
 });
