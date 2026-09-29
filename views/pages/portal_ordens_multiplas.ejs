@@ -1,0 +1,541 @@
+<%- contentFor('body') %>
+
+<style>
+  .pom-page { margin-bottom: 2rem; }
+
+  .pom-breadcrumb {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    margin-bottom: 0.35rem;
+  }
+  .pom-breadcrumb a { color: #94a3b8; text-decoration: none; }
+  .pom-breadcrumb a:hover { color: #e2e8f0; }
+
+  .pom-title {
+    font-size: 1.55rem;
+    font-weight: 700;
+    color: #f8fafc;
+    margin: 0 0 0.35rem;
+  }
+  .pom-subtitle {
+    font-size: 0.9rem;
+    color: #94a3b8;
+    max-width: 720px;
+    margin: 0;
+  }
+
+  .pom-portal-select {
+    min-width: 220px;
+    background: rgba(15, 23, 42, 0.6);
+    border-color: rgba(148, 163, 184, 0.25);
+    color: #e2e8f0;
+    font-size: 0.85rem;
+  }
+
+  .pom-datetime {
+    font-size: 0.85rem;
+    color: #cbd5e1;
+    text-align: right;
+  }
+  .pom-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    color: #4ade80;
+  }
+  .pom-live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6);
+    animation: pom-pulse 1.8s infinite;
+  }
+  @keyframes pom-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
+    70% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+  }
+
+  .pom-panel {
+    border: 0;
+    border-radius: 0.85rem;
+    background: rgba(30, 41, 59, 0.72);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    height: 100%;
+  }
+  .pom-panel .card-body { padding: 1.1rem 1.25rem; }
+
+  .pom-kpi .icon-box {
+    width: 44px;
+    height: 44px;
+    border-radius: 0.65rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+  }
+  .pom-kpi-blue .icon-box { background: rgba(45, 156, 219, 0.2); color: #38bdf8; }
+  .pom-kpi-green .icon-box { background: rgba(34, 197, 94, 0.18); color: #4ade80; }
+  .pom-kpi-orange .icon-box { background: rgba(245, 158, 11, 0.18); color: #fbbf24; }
+  .pom-kpi-purple .icon-box { background: rgba(155, 81, 224, 0.2); color: #c084fc; }
+
+  .pom-kpi .kpi-val {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #f8fafc;
+    line-height: 1.1;
+  }
+  .pom-kpi .kpi-lbl {
+    font-size: 0.78rem;
+    color: #94a3b8;
+  }
+  .pom-spark {
+    height: 28px;
+    width: 72px;
+    background: linear-gradient(180deg, rgba(56, 189, 248, 0.35) 0%, transparent 100%);
+    border-radius: 4px;
+    margin-top: 0.35rem;
+    clip-path: polygon(0 100%, 15% 60%, 30% 75%, 50% 40%, 70% 55%, 85% 25%, 100% 45%, 100% 100%);
+  }
+
+  .pom-section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #f1f5f9;
+    margin: 0;
+  }
+  .pom-section-sub {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    margin: 0.15rem 0 0;
+  }
+
+  .pom-btn-pausar {
+    font-size: 0.78rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 0.45rem;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    background: rgba(15, 23, 42, 0.5);
+    color: #cbd5e1;
+  }
+  .pom-btn-pausar.active {
+    border-color: #f59e0b;
+    color: #fbbf24;
+  }
+
+  .pom-table {
+    font-size: 0.8rem;
+    color: #e2e8f0;
+    margin-bottom: 0;
+  }
+  .pom-table thead th {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #94a3b8;
+    border-bottom-color: rgba(148, 163, 184, 0.15);
+    white-space: nowrap;
+  }
+  .pom-table tbody td {
+    vertical-align: middle;
+    border-color: rgba(148, 163, 184, 0.08);
+  }
+  .pom-seq {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(148, 163, 184, 0.15);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    color: #cbd5e1;
+  }
+  .pom-epc {
+    font-family: ui-monospace, monospace;
+    font-size: 0.75rem;
+    color: #93c5fd;
+  }
+  .pom-rssi {
+    font-weight: 600;
+    font-size: 0.78rem;
+  }
+  .pom-rssi.rssi-strong { color: #4ade80; }
+  .pom-rssi.rssi-mid { color: #fbbf24; }
+  .pom-rssi.rssi-weak { color: #f87171; }
+
+  .pom-link-more {
+    display: block;
+    text-align: center;
+    padding: 0.75rem;
+    font-size: 0.82rem;
+    color: #94a3b8;
+    text-decoration: none;
+    border-top: 1px solid rgba(148, 163, 184, 0.1);
+  }
+  .pom-link-more:hover { color: #93c5fd; }
+
+  .pom-ordem-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  .pom-select-ordem {
+    font-size: 0.78rem;
+    max-width: 140px;
+    background: rgba(15, 23, 42, 0.5);
+    border-color: rgba(148, 163, 184, 0.25);
+    color: #e2e8f0;
+  }
+  .pom-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-left: auto;
+  }
+  .pom-tab {
+    font-size: 0.72rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    background: transparent;
+    color: #94a3b8;
+    cursor: pointer;
+  }
+  .pom-tab.active { background: rgba(37, 99, 235, 0.25); border-color: #3b82f6; color: #93c5fd; }
+  .pom-tab.tab-pendente.active { border-color: #f59e0b; color: #fbbf24; background: rgba(245, 158, 11, 0.12); }
+  .pom-tab.tab-parcial.active { border-color: #a855f7; color: #c084fc; background: rgba(168, 85, 247, 0.12); }
+  .pom-tab.tab-concluida.active { border-color: #22c55e; color: #4ade80; background: rgba(34, 197, 94, 0.12); }
+
+  .pom-ordem-item {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.85rem 0;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+    cursor: pointer;
+  }
+  .pom-ordem-item:last-child { border-bottom: 0; }
+  .pom-ordem-item:hover { background: rgba(148, 163, 184, 0.04); margin: 0 -0.5rem; padding-left: 0.5rem; padding-right: 0.5rem; border-radius: 0.5rem; }
+
+  .pom-ordem-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 0.55rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .icon-andamento { background: rgba(155, 81, 224, 0.2); color: #c084fc; }
+  .icon-parcial { background: rgba(45, 156, 219, 0.2); color: #38bdf8; }
+  .icon-pendente { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+  .icon-concluida { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
+
+  .pom-ordem-id {
+    font-weight: 600;
+    color: #f8fafc;
+    font-size: 0.88rem;
+  }
+  .pom-ordem-meta {
+    font-size: 0.75rem;
+    color: #94a3b8;
+  }
+
+  .pom-badge {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.55rem;
+    border-radius: 999px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .badge-andamento { background: rgba(155, 81, 224, 0.25); color: #d8b4fe; }
+  .badge-parcial { background: rgba(45, 156, 219, 0.25); color: #7dd3fc; }
+  .badge-pendente { background: rgba(245, 158, 11, 0.25); color: #fcd34d; }
+  .badge-concluida { background: rgba(34, 197, 94, 0.25); color: #86efac; }
+
+  .pom-progress-wrap {
+    min-width: 120px;
+    flex: 1;
+    max-width: 180px;
+  }
+  .pom-progress-text {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.25rem;
+  }
+  .pom-progress {
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.15);
+    overflow: hidden;
+  }
+  .pom-progress-bar {
+    height: 100%;
+    border-radius: 999px;
+  }
+  .bar-andamento { background: linear-gradient(90deg, #9b51e0, #c084fc); }
+  .bar-parcial { background: linear-gradient(90deg, #2563eb, #38bdf8); }
+  .bar-pendente { background: linear-gradient(90deg, #d97706, #fbbf24); }
+  .bar-concluida { background: linear-gradient(90deg, #16a34a, #4ade80); }
+
+  .pom-chevron { color: #64748b; flex-shrink: 0; font-size: 1.1rem; }
+  .pom-chevron.open { color: #93c5fd; }
+
+  .pom-ordem-wrap {
+    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  }
+  .pom-ordem-wrap.is-open {
+    background: rgba(15, 23, 42, 0.35);
+    border-radius: 0.55rem;
+    margin: 0 -0.35rem;
+    padding: 0 0.35rem;
+  }
+
+  .pom-chevron-btn {
+    border: 0;
+    background: transparent;
+    padding: 0.35rem;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: 0.35rem;
+  }
+  .pom-chevron-btn:hover { background: rgba(148, 163, 184, 0.12); }
+
+  .pom-ordem-itens {
+    padding: 0 0.5rem 0.85rem 3.25rem;
+  }
+  .pom-item-row {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.45rem 0;
+    font-size: 0.78rem;
+    border-top: 1px solid rgba(148, 163, 184, 0.08);
+  }
+  .pom-item-row:first-child { border-top: 0; }
+  .pom-item-seq {
+    width: 22px;
+    color: #64748b;
+    flex-shrink: 0;
+  }
+  .pom-item-tag {
+    font-family: ui-monospace, monospace;
+    color: #93c5fd;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .pom-item-ean { color: #94a3b8; font-size: 0.72rem; min-width: 4rem; }
+  .pom-item-st {
+    font-size: 0.68rem;
+    padding: 0.2rem 0.45rem;
+    border-radius: 999px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .item-st-pendente { background: rgba(245, 158, 11, 0.2); color: #fcd34d; }
+  .item-st-concluido { background: rgba(34, 197, 94, 0.2); color: #86efac; }
+  .item-st-excedente { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+  .item-st-nao { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
+</style>
+
+<div ng-controller="portalOrdemMultiplasCtrl" ng-cloak class="app-container pom-page">
+
+  <!-- Header -->
+  <div class="d-flex flex-column flex-xl-row align-items-xl-start justify-content-between gap-3 mb-4">
+    <div>
+      <div class="pom-breadcrumb">
+        <a href="/portal_movimentacao">Portal</a>
+        <span class="mx-1">›</span>
+        <span>Leituras RFID</span>
+      </div>
+      <h1 class="pom-title">Leituras RFID e Ordens</h1>
+      <p class="pom-subtitle">
+        Acompanhe em tempo real as leituras do portal e o andamento dos pedidos associados.
+      </p>
+    </div>
+
+    <div class="d-flex flex-wrap align-items-center gap-3">
+      <select class="form-select form-select-sm pom-portal-select"
+        ng-model="_ui.portalSel"
+        ng-options="p.id as p.label for p in _portais">
+      </select>
+      <div>
+        <div class="pom-datetime">{{ _dataHoraTopo }}</div>
+        <div class="pom-live" ng-if="_ui.tempoReal">
+          <span class="pom-live-dot"></span> Em tempo real
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3" ng-repeat="kpi in _kpis">
+      <div class="card pom-panel pom-kpi" ng-class="kpi.iconClass">
+        <div class="card-body d-flex align-items-start gap-3">
+          <div class="icon-box">
+            <i class="bi" ng-class="kpi.icon"></i>
+          </div>
+          <div>
+            <div class="kpi-val">{{ kpi.valor }}</div>
+            <div class="kpi-lbl">{{ kpi.label }}</div>
+            <div class="pom-spark" ng-if="kpi.spark"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Duas colunas -->
+  <div class="row g-3">
+    <!-- Leituras -->
+    <div class="col-12 col-xl-7">
+      <div class="card pom-panel h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+              <h2 class="pom-section-title">Últimas 30 Leituras</h2>
+              <p class="pom-section-sub">Registro das tags lidas no portal selecionado</p>
+            </div>
+            <button type="button" class="pom-btn-pausar"
+              ng-class="{ active: _ui.pausado }"
+              ng-click="onTogglePausar()">
+              <i class="bi" ng-class="_ui.pausado ? 'bi-play-fill' : 'bi-pause-fill'"></i>
+              {{ _ui.pausado ? 'Retomar' : 'Pausar' }}
+            </button>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-borderless pom-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Data / Hora</th>
+                  <th>Tag (EPC)</th>
+                  <th>Tokem</th>
+                  <th>Antena</th>
+                  <th>RSSI</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr ng-repeat="l in leiturasVisiveis()">
+                  <td><span class="pom-seq">{{ $index + 1 }}</span></td>
+                  <td>{{ l.data_leitura || l.data_hora || '—' }}</td>
+                  <td><span class="pom-epc">{{ l.tag || '—' }}</span></td>
+                  <td>{{ l.tokem || l.token || '—' }}</td>
+                  <td>{{ l.antena != null && l.antena !== '' ? l.antena : '—' }}</td>
+                  <td><span class="pom-rssi">{{ l.rssi != null && l.rssi !== '' ? l.rssi : '—' }}</span></td>
+                </tr>
+                <tr ng-if="!leiturasVisiveis().length">
+                  <td colspan="6" class="text-muted small py-4 text-center">Aguardando leituras do portal…</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <a href="#" class="pom-link-more" ng-if="_ui.limiteLeituras < 30"
+            ng-click="onVerMaisLeituras(); $event.preventDefault();">
+            Ver mais leituras <i class="bi bi-chevron-down"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ordens -->
+    <div class="col-12 col-xl-5">
+      <div class="card pom-panel h-100">
+        <div class="card-body">
+          <div class="mb-2">
+            <h2 class="pom-section-title">Ordens (Pedidos)</h2>
+            <p class="pom-section-sub">Progresso das ordens vinculadas às leituras</p>
+          </div>
+
+          <div class="pom-ordem-toolbar">
+            <select class="form-select form-select-sm pom-select-ordem"
+              ng-model="_ui.ordenacaoOrdem">
+              <option value="ultimas_lidas">Últimas lidas</option>
+              <option value="mais_pendentes">Mais pendentes</option>
+              <option value="id_doc">Nº pedido</option>
+            </select>
+            <div class="pom-tabs">
+              <button type="button" class="pom-tab"
+                ng-repeat="tab in _filtrosOrdem"
+                ng-class="[tab.class, { active: _ui.filtroOrdem === tab.id }]"
+                ng-click="onFiltroOrdem(tab.id)">
+                {{ tab.label }} {{ tab.count }}
+              </button>
+            </div>
+          </div>
+
+          <div class="text-center text-muted py-4" ng-if="_carregandoOrdens">
+            <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
+            <div class="small">Carregando ordens do dia…</div>
+          </div>
+
+          <div class="text-center text-muted py-4" ng-if="!_carregandoOrdens && (!ordensFiltradas() || !ordensFiltradas().length)">
+            <i class="bi bi-inbox d-block fs-4 mb-2"></i>
+            Nenhuma ordem com partida hoje para esta conta.
+          </div>
+
+          <div class="pom-ordem-wrap" ng-repeat="ord in ordensFiltradas()"
+            ng-if="!_carregandoOrdens"
+            ng-class="{ 'is-open': ordemEstaAberta(ord) }">
+
+            <div class="pom-ordem-item">
+              <div class="pom-ordem-icon" ng-class="ord.iconClass">
+                <i class="bi bi-cart3"></i>
+              </div>
+              <div class="flex-grow-1 min-w-0">
+                <div class="pom-ordem-id">{{ ord.id_doc }}</div>
+                <div class="pom-ordem-meta">{{ ord.cliente }} · {{ ord.hora }}</div>
+              </div>
+              <span class="pom-badge" ng-class="ord.badgeClass">{{ ord.statusLabel }}</span>
+              <div class="pom-progress-wrap d-none d-md-block">
+                <div class="pom-progress-text">
+                  <span>{{ ord.lidos }} / {{ ord.total }} itens</span>
+                  <span>{{ ord.pct }}%</span>
+                </div>
+                <div class="pom-progress">
+                  <div class="pom-progress-bar" ng-class="ord.barClass"
+                    ng-style="{ width: ord.pct + '%' }"></div>
+                </div>
+              </div>
+              <button type="button" class="pom-chevron-btn"
+                ng-click="onToggleOrdemExpand(ord, $event)"
+                aria-label="Expandir itens da ordem">
+                <i class="bi pom-chevron"
+                  ng-class="ordemEstaAberta(ord) ? 'bi-chevron-up open' : 'bi-chevron-down'"></i>
+              </button>
+            </div>
+
+            <div class="pom-ordem-itens" ng-show="ordemEstaAberta(ord)">
+              <div class="pom-item-row" ng-repeat="it in ord.itens">
+                <span class="pom-item-seq">{{ it.seq }}</span>
+                <span class="pom-item-tag" title="{{ it.tag }}">{{ it.tag }}</span>
+                <span class="pom-item-ean" ng-if="it.ean && it.ean !== '—'">{{ it.ean }}</span>
+                <span class="pom-item-st" ng-class="it.statusClass">{{ it.statusLabel }}</span>
+              </div>
+              <div class="text-muted small py-2" ng-if="!ord.itens || !ord.itens.length">
+                Nenhum item nesta ordem.
+              </div>
+            </div>
+          </div>
+
+          <a href="#" class="pom-link-more" ng-click="$event.preventDefault();">
+            Ver todas as ordens <i class="bi bi-chevron-down"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

@@ -108,6 +108,9 @@ app.get('/portal_movimentacao', (req, res) => {
 app.get('/portal_endereco', (req, res) => {
   res.render('pages/portal_endereco', { layout: 'layout' });
 });
+app.get('/portal_ordens_multiplas', (req, res) => {
+  res.render('pages/portal_ordens_multiplas', { layout: 'layout' });
+});
 
 
 

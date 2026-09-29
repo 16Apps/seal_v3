@@ -27,7 +27,10 @@ const cron = require('node-cron');
 // let _urlRegistro = 'https://connectiot-app.azurewebsites.net/_bd/registro';
 let _urlRegistro = 'https://sealv3-production.up.railway.app/_bd/registro';
 let _urlRegistroLocal = 'http://localhost:3000/_bd/registro';
+
+
 let _urlServer = 'https://sealv3-production.up.railway.app';
+let _urlServerLocal = 'http://localhost:3000';
 
 module.exports = (app, dbConnection) => {
 
