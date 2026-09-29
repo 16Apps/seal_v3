@@ -1,0 +1,483 @@
+<%- contentFor('body') %>
+
+<style>
+  .pe-page { margin-bottom: 2rem; }
+
+  .pe-breadcrumb {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    margin-bottom: 0.35rem;
+  }
+  .pe-breadcrumb a { color: #94a3b8; text-decoration: none; }
+  .pe-breadcrumb a:hover { color: #e2e8f0; }
+
+  .pe-title {
+    font-size: 1.55rem;
+    font-weight: 700;
+    color: #f8fafc;
+    margin: 0 0 0.35rem;
+  }
+  .pe-subtitle {
+    font-size: 0.9rem;
+    color: #94a3b8;
+    max-width: 640px;
+    margin: 0;
+  }
+
+  .pe-toolbar .form-check-input {
+    width: 2.4em;
+    height: 1.25em;
+    cursor: pointer;
+  }
+  .pe-toolbar .form-check-label {
+    font-size: 0.85rem;
+    color: #cbd5e1;
+    cursor: pointer;
+  }
+
+  .pe-view-switch .btn {
+    font-size: 0.82rem;
+    padding: 0.4rem 0.85rem;
+    border-color: rgba(148, 163, 184, 0.25);
+    color: #cbd5e1;
+    background: rgba(15, 23, 42, 0.35);
+  }
+  .pe-view-switch .btn.active,
+  .pe-view-switch .btn:hover {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #fff;
+  }
+
+  .pe-filtro-locais {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    background: rgba(15, 23, 42, 0.35);
+    font-size: 0.85rem;
+    color: #e2e8f0;
+  }
+
+  .pe-kpi {
+    border: 0;
+    border-radius: 0.85rem;
+    background: rgba(30, 41, 59, 0.72);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    height: 100%;
+  }
+  .pe-kpi .icon-box {
+    width: 44px;
+    height: 44px;
+    border-radius: 0.65rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1.15rem;
+  }
+  .pe-kpi .icon-box.bg-soft-primary { background: rgba(37, 99, 235, 0.18); color: #60a5fa; }
+  .pe-kpi .icon-box.bg-soft-info    { background: rgba(6, 182, 212, 0.18); color: #22d3ee; }
+  .pe-kpi .icon-box.bg-soft-warning { background: rgba(245, 158, 11, 0.18); color: #fbbf24; }
+  .pe-kpi .icon-box.bg-soft-success { background: rgba(34, 197, 94, 0.18); color: #4ade80; }
+  .pe-kpi .kpi-value {
+    font-size: 1.45rem;
+    font-weight: 700;
+    line-height: 1.1;
+    color: #f8fafc;
+  }
+  .pe-kpi .kpi-label {
+    font-size: 0.8rem;
+    color: #94a3b8;
+  }
+  .pe-kpi .kpi-trend {
+    font-size: 0.75rem;
+    color: #4ade80;
+    margin-top: 0.35rem;
+  }
+
+  .pe-loc-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .pe-loc {
+    border-radius: 0.85rem;
+    background: rgba(30, 41, 59, 0.72);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    overflow: hidden;
+    transition: border-color 0.15s ease;
+  }
+  .pe-loc.is-open {
+    border-color: rgba(34, 197, 94, 0.45);
+    box-shadow: inset 3px 0 0 #22c55e;
+  }
+
+  .pe-loc-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.15rem;
+    cursor: pointer;
+    user-select: none;
+  }
+  .pe-loc-header:hover {
+    background: rgba(148, 163, 184, 0.06);
+  }
+
+  .pe-loc-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 0.65rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1.15rem;
+  }
+  .pe-loc-icon.accent-0 { background: rgba(37, 99, 235, 0.18); color: #60a5fa; }
+  .pe-loc-icon.accent-1 { background: rgba(139, 92, 246, 0.18); color: #a78bfa; }
+  .pe-loc-icon.accent-2 { background: rgba(249, 115, 22, 0.18); color: #fb923c; }
+  .pe-loc-icon.accent-3 { background: rgba(34, 197, 94, 0.18); color: #4ade80; }
+  .pe-loc-icon.accent-4 { background: rgba(239, 68, 68, 0.18); color: #f87171; }
+
+  .pe-loc-path {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #f1f5f9;
+    margin: 0;
+  }
+  .pe-loc-addr {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    margin: 0.15rem 0 0;
+  }
+
+  .pe-loc-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem 1.75rem;
+    margin-left: auto;
+    align-items: center;
+  }
+  .pe-metric {
+    min-width: 7.5rem;
+  }
+  .pe-metric-label {
+    font-size: 0.7rem;
+    color: #94a3b8;
+    margin-bottom: 0.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .pe-metric-value {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: #e2e8f0;
+  }
+  .pe-metric-value.text-in { color: #4ade80; }
+  .pe-metric-value.text-out { color: #f87171; }
+
+  .pe-chevron {
+    color: #94a3b8;
+    font-size: 1.1rem;
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+  }
+  .pe-loc.is-open .pe-chevron { transform: rotate(180deg); }
+
+  .pe-loc-body {
+    padding: 0 1.15rem 1.15rem;
+    border-top: 1px solid rgba(148, 163, 184, 0.1);
+  }
+
+  .pe-itens-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.85rem;
+    padding-top: 1rem;
+  }
+
+  .pe-item-card {
+    background: rgba(15, 23, 42, 0.55);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .pe-item-img {
+    height: 110px;
+    background: #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .pe-item-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .pe-item-img .placeholder-icon {
+    font-size: 2.2rem;
+    color: #64748b;
+  }
+  .pe-item-body {
+    padding: 0.7rem 0.75rem 0.85rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  .pe-item-name {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #f8fafc;
+    margin: 0 0 0.35rem;
+    line-height: 1.25;
+  }
+  .pe-item-sku {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 0.15rem;
+  }
+  .pe-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+  .pe-dot.ok { background: #22c55e; }
+  .pe-dot.info { background: #3b82f6; }
+  .pe-dot.warn { background: #f59e0b; }
+  .pe-item-ean {
+    font-size: 0.72rem;
+    color: #64748b;
+    margin-bottom: 0.45rem;
+  }
+  .pe-item-times {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.72rem;
+    color: #94a3b8;
+    margin-bottom: 0.55rem;
+  }
+  .pe-item-times .in { color: #4ade80; }
+  .pe-item-times .out { color: #f87171; }
+  .pe-item-badge {
+    margin-top: auto;
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.55rem;
+    border-radius: 999px;
+    background: rgba(37, 99, 235, 0.22);
+    color: #93c5fd;
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+
+  .pe-ver-todos {
+    border: 1.5px dashed rgba(148, 163, 184, 0.35);
+    background: transparent;
+    border-radius: 0.75rem;
+    min-height: 220px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+  }
+  .pe-ver-todos:hover {
+    border-color: #60a5fa;
+    color: #93c5fd;
+    background: rgba(37, 99, 235, 0.08);
+  }
+  .pe-ver-todos i { font-size: 1.75rem; }
+  .pe-ver-todos span { font-size: 0.85rem; font-weight: 500; }
+
+  @media (max-width: 991.98px) {
+    .pe-loc-header { flex-wrap: wrap; }
+    .pe-loc-metrics {
+      margin-left: 0;
+      width: 100%;
+      padding-left: 3.5rem;
+    }
+  }
+</style>
+
+<div ng-controller="portalEnderecoCtrl" ng-cloak class="app-container pe-page">
+
+  <!-- Header -->
+  <div class="d-flex flex-column flex-xl-row align-items-xl-start justify-content-between gap-3 mb-4">
+    <div>
+      <div class="pe-breadcrumb">
+        <a href="/portal_movimentacao">Portal</a>
+        <span class="mx-1">›</span>
+        <span>Itens em Tempo Real</span>
+      </div>
+      <h1 class="pe-title">Itens por Endereço (Tempo Real)</h1>
+      <p class="pe-subtitle">
+        Visualize onde seus SKUs estão alocados, com contagem, tempo de permanência e histórico de entradas e saídas.
+      </p>
+    </div>
+
+    <div class="pe-toolbar d-flex flex-wrap align-items-center gap-3">
+      <div class="form-check form-switch m-0 d-flex align-items-center gap-2">
+        <input class="form-check-input" type="checkbox" id="peAutoUpdate"
+          ng-model="_ui.atualizacaoAutomatica">
+        <label class="form-check-label" for="peAutoUpdate">Atualização automática</label>
+      </div>
+
+      <div class="btn-group pe-view-switch" role="group">
+        <button type="button" class="btn"
+          ng-class="{ active: _ui.view === 'lista' }"
+          ng-click="_ui.view = 'lista'">Lista</button>
+        <button type="button" class="btn"
+          ng-class="{ active: _ui.view === 'mapa' }"
+          ng-click="_ui.view = 'mapa'">Mapa</button>
+        <button type="button" class="btn"
+          ng-class="{ active: _ui.view === 'hierarquia' }"
+          ng-click="_ui.view = 'hierarquia'">Hierarquia</button>
+      </div>
+
+      <div class="pe-filtro-locais">
+        <span>Todos os locais</span>
+        <div class="form-check form-switch m-0">
+          <input class="form-check-input" type="checkbox" id="peTodosLocais"
+            ng-model="_ui.todosLocais">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-md-6 col-xl-3" ng-repeat="kpi in _kpis">
+      <div class="card pe-kpi">
+        <div class="card-body d-flex align-items-start gap-3">
+          <div class="icon-box" ng-class="kpi.iconClass">
+            <i class="bi" ng-class="kpi.icon"></i>
+          </div>
+          <div>
+            <div class="kpi-value">{{ kpi.valor }}</div>
+            <div class="kpi-label">{{ kpi.label }}</div>
+            <div class="kpi-trend" ng-if="kpi.trend">
+              <i class="bi bi-arrow-up-short"></i>{{ kpi.trend }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lista (visão ativa) -->
+  <div ng-show="_ui.view === 'lista'" class="pe-loc-list">
+    <div class="text-center text-muted py-5" ng-if="_carregando">
+      <div class="spinner-border text-primary mb-2" role="status"></div>
+      <div>Carregando itens por endereço…</div>
+    </div>
+
+    <div class="text-center text-muted py-5" ng-if="!_carregando && (!_enderecos || !_enderecos.length)">
+      <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+      Nenhum item localizado para esta conta.
+    </div>
+
+    <div class="pe-loc" ng-repeat="loc in _enderecos"
+      ng-if="!_carregando"
+      ng-class="{ 'is-open': loc.aberto }">
+
+      <div class="pe-loc-header" ng-click="onToggleEndereco(loc)">
+        <div class="pe-loc-icon" ng-class="'accent-' + ($index % 5)">
+          <i class="bi bi-building"></i>
+        </div>
+
+        <div class="flex-grow-1 min-w-0">
+          <p class="pe-loc-path text-truncate">{{ loc.caminho }}</p>
+          <p class="pe-loc-addr text-truncate">{{ loc.endereco }}</p>
+        </div>
+
+        <div class="pe-loc-metrics">
+          <div class="pe-metric">
+            <div class="pe-metric-label"><i class="bi bi-box-seam"></i> Itens presentes</div>
+            <div class="pe-metric-value">{{ loc.itensPresentes }}</div>
+          </div>
+          <div class="pe-metric">
+            <div class="pe-metric-label"><i class="bi bi-clock"></i> Tempo médio</div>
+            <div class="pe-metric-value">{{ loc.tempoMedio }}</div>
+          </div>
+          <div class="pe-metric">
+            <div class="pe-metric-label"><i class="bi bi-box-arrow-in-down text-success"></i> Primeira entrada</div>
+            <div class="pe-metric-value text-in">{{ loc.primeiraEntrada }}</div>
+          </div>
+          <div class="pe-metric">
+            <div class="pe-metric-label"><i class="bi bi-box-arrow-up text-danger"></i> Última saída</div>
+            <div class="pe-metric-value text-out">{{ loc.ultimaSaida }}</div>
+          </div>
+        </div>
+
+        <i class="bi bi-chevron-down pe-chevron"></i>
+      </div>
+
+      <div class="pe-loc-body" ng-show="loc.aberto">
+        <div class="pe-itens-grid">
+          <div class="pe-item-card" ng-repeat="item in loc.itens | limitTo: loc.limiteExibicao">
+            <div class="pe-item-img">
+              <img ng-if="item.foto" ng-src="{{ item.foto }}" alt="{{ item.nome }}">
+              <i ng-if="!item.foto" class="bi bi-box-seam placeholder-icon"></i>
+            </div>
+            <div class="pe-item-body">
+              <p class="pe-item-name">{{ item.nome }}</p>
+              <div class="pe-item-sku">
+                <span class="pe-dot" ng-class="item.statusDot"></span>
+                {{ item.sku }}
+              </div>
+              <div class="pe-item-ean"># {{ item.ean }}</div>
+              <div class="pe-item-times">
+                <span class="in"><i class="bi bi-box-arrow-in-down"></i> {{ item.entrada }}</span>
+                <span class="out"><i class="bi bi-box-arrow-up"></i> {{ item.saida || '—' }}</span>
+              </div>
+              <span class="pe-item-badge">
+                <i class="bi bi-clock"></i> {{ item.permanencia }}
+              </span>
+            </div>
+          </div>
+
+          <div class="pe-ver-todos" ng-if="loc.itens.length > loc.limiteExibicao"
+            ng-click="onVerTodos(loc); $event.stopPropagation();">
+            <i class="bi bi-plus-lg"></i>
+            <span>Ver todos ({{ loc.itens.length }} itens)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Placeholders outras visões -->
+  <div ng-show="_ui.view === 'mapa'" class="card pe-kpi">
+    <div class="card-body text-center text-muted py-5">
+      <i class="bi bi-map fs-1 d-block mb-2"></i>
+      Visão Mapa em breve.
+    </div>
+  </div>
+  <div ng-show="_ui.view === 'hierarquia'" class="card pe-kpi">
+    <div class="card-body text-center text-muted py-5">
+      <i class="bi bi-diagram-3 fs-1 d-block mb-2"></i>
+      Visão Hierarquia em breve.
+    </div>
+  </div>
+
+</div>

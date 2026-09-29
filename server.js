@@ -105,6 +105,9 @@ app.get('/interacao', (req, res) => {
 app.get('/portal_movimentacao', (req, res) => {
   res.render('pages/portal_movimentacao', { layout: 'layout' });
 });
+app.get('/portal_endereco', (req, res) => {
+  res.render('pages/portal_endereco', { layout: 'layout' });
+});
 
 
 

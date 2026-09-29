@@ -542,4 +542,268 @@ module.exports = (app, dbConnection) => {
         }
       });
 
+    /**
+     * Portal Endereço: itens da collection Item agrupados por endereço (loc1..loc4).
+     * Permanência = agora − updatedAt (do item).
+     * GET /portal/itens-por-endereco?id_conta=...
+     */
+    app.get('/portal/itens-por-endereco', async (req, res) => {
+        try {
+            const { id_conta, id_nivel_loc1, id_nivel_loc2, id_nivel_loc3, id_nivel_loc4 } = req.query;
+
+            if (!id_conta) {
+                return res.status(400).json({ ok: false, erro: 'id_conta é obrigatório' });
+            }
+
+            const match = { id_conta: String(id_conta) };
+            if (id_nivel_loc4) match.id_nivel_loc4 = String(id_nivel_loc4);
+            else if (id_nivel_loc3) match.id_nivel_loc3 = String(id_nivel_loc3);
+            else if (id_nivel_loc2) match.id_nivel_loc2 = String(id_nivel_loc2);
+            else if (id_nivel_loc1) match.id_nivel_loc1 = String(id_nivel_loc1);
+
+            const LocalizacaoColl = mongoose.model('Localizacao').collection.name;
+            const CategoriaColl = mongoose.model('Categoria').collection.name;
+            const CategoriaItemColl = mongoose.model('CategoriaItem').collection.name;
+
+            const agora = new Date();
+            const inicioHoje = moment().utcOffset(-3).startOf('day').toDate();
+
+            function formatarDuracao(ms) {
+                if (ms == null || isNaN(ms) || ms < 0) return '—';
+                const totalMin = Math.floor(ms / 60000);
+                const dias = Math.floor(totalMin / (60 * 24));
+                const horas = Math.floor((totalMin % (60 * 24)) / 60);
+                const mins = totalMin % 60;
+                if (dias > 0) return `${dias}d ${horas}h ${mins}min`;
+                if (horas > 0) return `${horas}h ${mins}min`;
+                return `${mins}min`;
+            }
+
+            function formatarMomento(data) {
+                if (!data) return '—';
+                const m = moment(data).utcOffset(-3);
+                if (!m.isValid()) return '—';
+                const hoje = moment().utcOffset(-3).startOf('day');
+                const ontem = hoje.clone().subtract(1, 'day');
+                if (m.clone().startOf('day').isSame(hoje)) return `Hoje ${m.format('HH:mm')}`;
+                if (m.clone().startOf('day').isSame(ontem)) return `Ontem ${m.format('HH:mm')}`;
+                return m.format('DD/MM HH:mm');
+            }
+
+            function formatarEntradaCurta(data) {
+                if (!data) return '—';
+                const m = moment(data).utcOffset(-3);
+                if (!m.isValid()) return '—';
+                return m.format('HH:mm DD/MM');
+            }
+
+            function montarEnderecoTexto(loc) {
+                if (!loc) return '';
+                const partes = [];
+                if (loc.logradouro) {
+                    let linha = loc.logradouro;
+                    if (loc.numero) linha += ', ' + loc.numero;
+                    partes.push(linha);
+                }
+                const cidadeUf = [loc.cidade, loc.estado].filter(Boolean).join('/');
+                if (cidadeUf) partes.push(cidadeUf);
+                if (!partes.length && loc.descricao) return loc.descricao;
+                return partes.join(' — ');
+            }
+
+            function statusDot(status) {
+                const s = String(status || '').toLowerCase();
+                if (s === 'ativo') return 'ok';
+                if (s === 'emtransporte' || s === 'pendente') return 'info';
+                if (s === 'manutencao' || s === 'ausente') return 'warn';
+                return 'ok';
+            }
+
+            const pipeline = [
+                { $match: match },
+                {
+                    $lookup: {
+                        from: CategoriaColl,
+                        localField: 'id_categoria',
+                        foreignField: '_id',
+                        as: 'categoria'
+                    }
+                },
+                { $unwind: { path: '$categoria', preserveNullAndEmptyArrays: true } },
+                {
+                    $lookup: {
+                        from: CategoriaItemColl,
+                        localField: 'id_categoria_reg1',
+                        foreignField: '_id',
+                        as: 'categoria_reg1'
+                    }
+                },
+                { $unwind: { path: '$categoria_reg1', preserveNullAndEmptyArrays: true } },
+                { $lookup: { from: LocalizacaoColl, localField: 'id_nivel_loc1', foreignField: '_id', as: 'loc1' } },
+                { $lookup: { from: LocalizacaoColl, localField: 'id_nivel_loc2', foreignField: '_id', as: 'loc2' } },
+                { $lookup: { from: LocalizacaoColl, localField: 'id_nivel_loc3', foreignField: '_id', as: 'loc3' } },
+                { $lookup: { from: LocalizacaoColl, localField: 'id_nivel_loc4', foreignField: '_id', as: 'loc4' } },
+                { $unwind: { path: '$loc1', preserveNullAndEmptyArrays: true } },
+                { $unwind: { path: '$loc2', preserveNullAndEmptyArrays: true } },
+                { $unwind: { path: '$loc3', preserveNullAndEmptyArrays: true } },
+                { $unwind: { path: '$loc4', preserveNullAndEmptyArrays: true } },
+                {
+                    $addFields: {
+                        permanencia_ms: {
+                            $subtract: [agora, { $ifNull: ['$updatedAt', '$createdAt'] }]
+                        },
+                        chave_endereco: {
+                            $concat: [
+                                { $ifNull: ['$id_nivel_loc1', ''] }, '|',
+                                { $ifNull: ['$id_nivel_loc2', ''] }, '|',
+                                { $ifNull: ['$id_nivel_loc3', ''] }, '|',
+                                { $ifNull: ['$id_nivel_loc4', ''] }
+                            ]
+                        }
+                    }
+                },
+                { $sort: { updatedAt: -1 } },
+                {
+                    $group: {
+                        _id: '$chave_endereco',
+                        id_nivel_loc1: { $first: '$id_nivel_loc1' },
+                        id_nivel_loc2: { $first: '$id_nivel_loc2' },
+                        id_nivel_loc3: { $first: '$id_nivel_loc3' },
+                        id_nivel_loc4: { $first: '$id_nivel_loc4' },
+                        loc1: { $first: '$loc1' },
+                        loc2: { $first: '$loc2' },
+                        loc3: { $first: '$loc3' },
+                        loc4: { $first: '$loc4' },
+                        total_itens: { $sum: 1 },
+                        soma_permanencia_ms: { $sum: '$permanencia_ms' },
+                        min_updatedAt: { $min: '$updatedAt' },
+                        max_updatedAt: { $max: '$updatedAt' },
+                        itens: {
+                            $push: {
+                                _id: '$_id',
+                                sku: {
+                                    $ifNull: [
+                                        '$id_externo',
+                                        { $ifNull: ['$tag', { $ifNull: ['$categoria.descricao', ''] }] }
+                                    ]
+                                },
+                                ean: { $ifNull: ['$categoria.ean', { $ifNull: ['$tag_secundaria', ''] }] },
+                                tag: { $ifNull: ['$tag', ''] },
+                                foto: {
+                                    $cond: [
+                                        { $gt: [{ $strLenCP: { $ifNull: ['$foto', ''] } }, 0] },
+                                        '$foto',
+                                        { $ifNull: ['$categoria.foto', ''] }
+                                    ]
+                                },
+                                status: { $ifNull: ['$status', 'ativo'] },
+                                categoria: { $ifNull: ['$categoria.descricao', ''] },
+                                categoria_reg1: { $ifNull: ['$categoria_reg1.descricao', ''] },
+                                nome: {
+                                    $ifNull: [
+                                        '$categoria.descricao',
+                                        { $ifNull: ['$descricao', { $ifNull: ['$tag', 'Item'] }] }
+                                    ]
+                                },
+                                descricao: { $ifNull: ['$descricao', ''] },
+                                updatedAt: '$updatedAt',
+                                createdAt: '$createdAt',
+                                permanencia_ms: '$permanencia_ms'
+                            }
+                        }
+                    }
+                },
+                { $sort: { total_itens: -1 } }
+            ];
+
+            const grupos = await item.aggregate(pipeline).allowDiskUse(true);
+
+            let totalItens = 0;
+            let somaPermanenciaGeral = 0;
+            let movimentacoesHoje = 0;
+
+            const enderecos = grupos.map((g, idx) => {
+                const caminho = [g.loc1, g.loc2, g.loc3, g.loc4]
+                    .map((l) => (l && l.descricao) || '')
+                    .filter(Boolean)
+                    .join(' › ') || 'Sem endereço';
+
+                const enderecoTexto = montarEnderecoTexto(g.loc1)
+                    || montarEnderecoTexto(g.loc2)
+                    || '';
+
+                const mediaMs = g.total_itens > 0
+                    ? Math.floor(g.soma_permanencia_ms / g.total_itens)
+                    : 0;
+
+                totalItens += g.total_itens;
+                somaPermanenciaGeral += g.soma_permanencia_ms;
+
+                const itens = (g.itens || []).map((it) => {
+                    if (it.updatedAt && new Date(it.updatedAt) >= inicioHoje) {
+                        movimentacoesHoje += 1;
+                    }
+                    return {
+                        _id: it._id,
+                        nome: it.nome,
+                        sku: it.sku,
+                        ean: it.ean,
+                        tag: it.tag,
+                        foto: it.foto,
+                        status: it.status,
+                        statusDot: statusDot(it.status),
+                        categoria: it.categoria,
+                        categoria_reg1: it.categoria_reg1,
+                        entrada: formatarEntradaCurta(it.updatedAt),
+                        saida: '',
+                        permanencia: formatarDuracao(it.permanencia_ms),
+                        permanencia_ms: it.permanencia_ms,
+                        updatedAt: it.updatedAt
+                    };
+                });
+
+                return {
+                    chave: g._id,
+                    id_nivel_loc1: g.id_nivel_loc1 || null,
+                    id_nivel_loc2: g.id_nivel_loc2 || null,
+                    id_nivel_loc3: g.id_nivel_loc3 || null,
+                    id_nivel_loc4: g.id_nivel_loc4 || null,
+                    caminho,
+                    endereco: enderecoTexto,
+                    itensPresentes: g.total_itens,
+                    tempoMedio: formatarDuracao(mediaMs),
+                    tempoMedio_ms: mediaMs,
+                    primeiraEntrada: formatarMomento(g.min_updatedAt),
+                    ultimaSaida: formatarMomento(g.max_updatedAt),
+                    aberto: idx === 0,
+                    limiteExibicao: 7,
+                    itens
+                };
+            });
+
+            const mediaGeralMs = totalItens > 0
+                ? Math.floor(somaPermanenciaGeral / totalItens)
+                : 0;
+
+            return res.json({
+                ok: true,
+                kpis: {
+                    total_itens: totalItens,
+                    total_enderecos: enderecos.length,
+                    tempo_medio_permanencia: formatarDuracao(mediaGeralMs),
+                    tempo_medio_permanencia_ms: mediaGeralMs,
+                    movimentacoes_hoje: movimentacoesHoje
+                },
+                enderecos
+            });
+        } catch (err) {
+            console.error('[portal/itens-por-endereco]', err);
+            return res.status(500).json({
+                ok: false,
+                erro: 'Erro ao listar itens por endereço',
+                detalhe: err.message
+            });
+        }
+    });
+
 }
