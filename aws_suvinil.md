@@ -14,6 +14,7 @@ sudo npm install -g pm2
 #Deploy Git Ambiente
 git init
 git add .
+git config core.autocrlf true
 git commit -m "first commit"
 git branch -M main
 git remote add origin https://github.com/16Apps/seal_v3.git

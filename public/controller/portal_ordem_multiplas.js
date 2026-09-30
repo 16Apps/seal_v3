@@ -21,10 +21,10 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, uteisServ
     ];
 
     $scope._kpis = [
-        { valor: '0', label: 'Últimas leituras', icon: 'bi-broadcast', iconClass: 'pom-kpi-blue', spark: true },
-        { valor: '0', label: 'Ordens em andamento', icon: 'bi-cart3', iconClass: 'pom-kpi-green' },
-        { valor: '0', label: 'Ordens pendentes', icon: 'bi-clock', iconClass: 'pom-kpi-orange' },
-        { valor: '0', label: 'Ordens concluídas', icon: 'bi-check-circle', iconClass: 'pom-kpi-purple' }
+        { valor: '0', label: 'Total de Ordens', icon: 'bi-file-earmark-text', iconClass: 'pom-kpi-blue', spark: false },
+        { valor: '0', label: 'Pendentes', icon: 'bi-app', iconClass: 'pom-kpi-purple' },
+        { valor: '0', label: 'Parciais', icon: 'bi-clock', iconClass: 'pom-kpi-orange' },
+        { valor: '0', label: 'Concluídas', icon: 'bi-check-circle', iconClass: 'pom-kpi-green' }
     ];
 
     $scope._dataHoraTopo = moment().format('DD MMM YYYY - HH:mm:ss');
@@ -37,8 +37,13 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, uteisServ
     };
 
     var MAX_LEITURAS = 30;
+    var IDLE_FECHA_LOTE_MS = 10000; // teste: 10s; produção ~25000
+    var MAX_LOTES = 20;
 
     $scope._leituras = [];
+    $scope._lotes = [];
+    $scope._loteAtual = null;
+    $scope._seqLoteDia = 0;
     $scope.socket = null;
     $scope._ordens = [];
 
@@ -235,12 +240,8 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, uteisServ
 
         leituras.forEach(function (leitura) {
             if (leitura == null) return;
-            $scope._leituras.unshift(leitura);
+            $scope.onTagSocket(leitura);
         });
-        if ($scope._leituras.length > MAX_LEITURAS) {
-            $scope._leituras.length = MAX_LEITURAS;
-        }
-        $scope._kpis[0].valor = String($scope._leituras.length);
     }
 
     $scope.onIniciarSocketLeituras = function () {
@@ -301,6 +302,9 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, uteisServ
 
     $scope.onTogglePausar = function () {
         $scope._ui.pausado = !$scope._ui.pausado;
+        if ($scope._ui.pausado && $scope._loteAtual && $scope._loteAtual.status === 'aberto') {
+            fecharLote($scope._loteAtual);
+        }
     };
 
     $scope.onVerMaisLeituras = function () {
@@ -356,6 +360,10 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, uteisServ
     $scope.$on('$destroy', function () {
         if (_tickRelogio) $timeout.cancel(_tickRelogio);
         if (_timerOrdens) $timeout.cancel(_timerOrdens);
+        if ($scope._loteAtual && $scope._loteAtual.status === 'aberto') {
+            fecharLote($scope._loteAtual);
+        }
+        cancelarIdleLote($scope._loteAtual);
         if ($scope.socket) {
             if ($scope._regConta && $scope._regConta._id) {
                 $scope.socket.emit('portal_leave', { id_conta: $scope._regConta._id });
@@ -374,5 +382,146 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, uteisServ
         await $scope.onCarregaOrdens();
         iniciarAutoOrdens();
     });
+
+    // ------------------------------------------------------------------
+    // Lotes (pallet): abertura / idle por TAG NOVA / fechamento
+    // TESTE: não altera registro de ordens no banco
+    // ------------------------------------------------------------------
+
+    function normalizaTag(valor) {
+        if (valor == null) return '';
+        return String(valor).replace(/[^0-9A-Za-z]/g, '').toUpperCase();
+    }
+
+    function cancelarIdleLote(lote) {
+        if (lote && lote._timerIdle) {
+            $timeout.cancel(lote._timerIdle);
+            lote._timerIdle = null;
+        }
+    }
+
+    function abrirLote() {
+        $scope._seqLoteDia += 1;
+        var lote = {
+            id: 'L' + moment().format('HHmmss') + '-' + $scope._seqLoteDia,
+            seq: $scope._seqLoteDia,
+            inicio: new Date(),
+            fim: null,
+            status: 'aberto',
+            tagsMap: {},
+            tags: [],
+            qtdTags: 0,
+            _timerIdle: null
+        };
+        $scope._loteAtual = lote;
+        $scope._lotes.unshift(lote);
+        if ($scope._lotes.length > MAX_LOTES) {
+            $scope._lotes.length = MAX_LOTES;
+        }
+
+        console.log('[lote] ABERTO', lote.id, 'P' + lote.seq);
+        uteisService.onToast('Lote P' + lote.seq + ' iniciado', 'info', 1800, 'top-end');
+        return lote;
+    }
+
+    /**
+     * Fecha o lote após silêncio de tag nova.
+     * Sem patch/persistência de ordens — apenas log e UI.
+     */
+    function fecharLote(lote) {
+        if (!lote || lote.status !== 'aberto') return;
+
+        cancelarIdleLote(lote);
+        lote.status = 'fechado';
+        lote.fim = new Date();
+        lote.duracaoSeg = Math.round((lote.fim - lote.inicio) / 1000);
+
+        if ($scope._loteAtual && $scope._loteAtual.id === lote.id) {
+            $scope._loteAtual = null;
+        }
+
+        console.log('[lote] FECHADO', {
+            id: lote.id,
+            seq: lote.seq,
+            qtdTags: lote.qtdTags,
+            duracaoSeg: lote.duracaoSeg,
+            tags: lote.tags.map(function (t) { return t.tag; })
+        });
+        uteisService.onToast(
+            'Lote P' + lote.seq + ' fechado · ' + lote.qtdTags + ' tags · ' + lote.duracaoSeg + 's',
+            'success',
+            2500,
+            'top-end'
+        );
+
+        // TODO (próximo passo): processarTagsDoLote(lote) — casar tags × ordens e patch
+    }
+
+    function agendarFechamentoLote(lote) {
+        cancelarIdleLote(lote);
+        lote._timerIdle = $timeout(function () {
+            fecharLote(lote);
+        }, IDLE_FECHA_LOTE_MS);
+    }
+
+    /**
+     * Entrada única por leitura do socket.
+     * - Abre lote se necessário
+     * - Tag nova: lista + reinicia idle
+     * - Releitura: só atualiza RSSI/hora (não reinicia idle)
+     * - Não altera ordens no banco
+     */
+    $scope.onTagSocket = function (leitura) {
+        if (!leitura || $scope._ui.pausado) return;
+
+        var tagRaw = leitura.tag || '';
+        var chave = normalizaTag(tagRaw);
+        if (!chave) return;
+
+        var lote = $scope._loteAtual;
+        if (!lote || lote.status !== 'aberto') {
+            lote = abrirLote();
+        }
+
+        var ehNovaNoLote = !lote.tagsMap[chave];
+
+        var linha = Object.assign({}, leitura, {
+            tag: tagRaw,
+            id_lote: lote.id,
+            lote_seq: lote.seq,
+            lote_nova: ehNovaNoLote,
+            _chave: chave,
+            _recebidoEm: new Date()
+        });
+
+        if (ehNovaNoLote) {
+            lote.tagsMap[chave] = true;
+            lote.tags.push({
+                tag: tagRaw,
+                chave: chave,
+                rssi: leitura.rssi,
+                data_leitura: leitura.data_leitura || linha._recebidoEm
+            });
+            lote.qtdTags = lote.tags.length;
+
+            $scope._leituras.unshift(linha);
+            if ($scope._leituras.length > MAX_LEITURAS) {
+                $scope._leituras.length = MAX_LEITURAS;
+            }
+
+            agendarFechamentoLote(lote);
+        } else {
+            var existente = ($scope._leituras || []).find(function (l) {
+                return l.id_lote === lote.id && l._chave === chave;
+            });
+            if (existente) {
+                existente.rssi = leitura.rssi;
+                existente.data_leitura = leitura.data_leitura || existente.data_leitura;
+                existente._recebidoEm = new Date();
+            }
+        }
+
+        $scope._kpis[0].valor = String(($scope._leituras || []).length);
+    };
 
 });

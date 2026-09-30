@@ -29,6 +29,7 @@ let _urlRegistro = 'https://sealv3-production.up.railway.app/_bd/registro';
 let _urlRegistroLocal = 'http://localhost:3000/_bd/registro';
 
 
+// let _urlServer = 'https://connectiot-app.azurewebsites.net';
 let _urlServer = 'https://sealv3-production.up.railway.app';
 let _urlServerLocal = 'http://localhost:3000';
 
@@ -221,6 +222,7 @@ module.exports = (app, dbConnection) => {
 
         console.log("chegou_aqui_no_registro")
         console.log(req.body)
+        salvarLogArquivo('/_bd/registro', req.body);
 
         let retorno;
         let status;
