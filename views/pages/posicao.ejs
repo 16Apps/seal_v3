@@ -13,12 +13,26 @@
         <li class="breadcrumb-item" aria-current="page">
           {{ _tipo == 'conferencia' ? 'Conferências' : 'Inventários' }}
         </li>
-        <li class="breadcrumb-item text-info" aria-current="page">Total: {{ _listPosicoes.length }}</li>
+        <li class="breadcrumb-item text-info" aria-current="page">
+          Total: {{ _ui.modoVisualizacao === 'itens' ? itensExpandidos().length : posicoesFiltradas().length }}
+        </li>
       </ol>
       <!-- Breadcrumb end -->
 
       <!-- Filter start -->
-      <div class="ms-auto d-flex flex-row gap-1 ">
+      <div class="ms-auto d-flex flex-row gap-1 align-items-center flex-wrap justify-content-end">
+        <div class="btn-group btn-group-sm me-1" role="group" aria-label="Modo de visualização">
+          <button type="button" class="btn"
+            ng-class="_ui.modoVisualizacao === 'ordens' ? 'btn-primary' : 'btn-outline-secondary'"
+            ng-click="onModoVisualizacao('ordens')" title="Ver por ordens">
+            <i class="bi bi-list-ul"></i> Ordens
+          </button>
+          <button type="button" class="btn"
+            ng-class="_ui.modoVisualizacao === 'itens' ? 'btn-primary' : 'btn-outline-secondary'"
+            ng-click="onModoVisualizacao('itens')" title="Ver itens de cada ordem">
+            <i class="bi bi-ui-checks"></i> Itens
+          </button>
+        </div>
         <div class="search-container d-lg-flex d-none">
           <select ng-model="_pesquisa.status" class="form-control" id="searchStatus">
             <option value="" selected>Todos</option>
@@ -28,6 +42,14 @@
             <option value="concluido">Concluído</option>
           </select>
           <i class="bi bi-funnel"></i>
+        </div>
+        <div class="search-container d-lg-flex d-none">
+          <select ng-model="_pesquisa.somenteRetorno" class="form-control" id="searchRetorno"
+            title="Filtrar pedidos com itens retornados">
+            <option value="">Todos (retorno)</option>
+            <option value="1">Com retorno</option>
+          </select>
+          <i class="bi bi-arrow-return-left"></i>
         </div>
         <div class="search-container d-lg-flex d-none">
           <input ng-model="_pesquisa.data_de" id="_pesquisa.data_de" type="date" class="form-control" id="searchDataDe" placeholder="data_de">
@@ -74,7 +96,9 @@
             <div class="card-body">
               <div class="table-responsive">
                 <div class="table-outer">
-                  <table class="table align-middle table-hover m-0">
+
+                  <!-- Visão por ORDENS (padrão) -->
+                  <table class="table align-middle table-hover m-0" ng-if="_ui.modoVisualizacao === 'ordens'">
                     <thead>
                       <tr>
 
@@ -121,36 +145,48 @@
 
                         .status-concluido {
                           background-color: #28a745;
-                          /* verde */
                         }
 
                         .status-parcial {
                           background-color: #ffc107;
-                          /* amarelo */
                         }
 
                         .status-pendente {
                           background-color: #6c757d;
-                          /* cinza */
+                        }
+
+                        .badge-retorno-pos {
+                          font-size: 0.7rem;
+                          font-weight: 700;
+                          background: rgba(168, 85, 247, 0.25);
+                          color: #c084fc;
+                          border: 1px solid rgba(168, 85, 247, 0.4);
                         }
                       </style>
-                      <tr ng-repeat="item in _listPosicoes | orderBy:sortField:sortReverse">
+                      <tr ng-repeat="item in posicoesFiltradas() | orderBy:sortField:sortReverse">
                         <td class="align-top">
                     
                           <span ng-class="{
         'status-circle': true,
         'status-concluido': item.status === 'concluido',
         'status-parcial': item.status === 'parcial',
-        'status-pendente': item.status === 'aberta' || item.status === 'partida'
+        'status-pendente': item.status === 'aberta' || item.status === 'partida' || item.status === 'pendente'
       }">
                           </span>
-
-                          <!-- <img class="rounded-circle img-3x me-2" src="{{ item._icone }}" alt="Wrapmarket" /> -->
                         </td>
 
                         <td class="align-top">
-                          <span class="text-white fw-bold">{{ item.id_doc }}</span> <br>
+                          <span class="text-white fw-bold">{{ item.id_doc }}</span>
+                          <span class="badge badge-retorno-pos ms-1" ng-if="item._temRetorno"
+                            title="{{ item._qtdRetorno }} item(ns) com retorno">
+                            <i class="bi bi-arrow-return-left"></i> Retornou
+                          </span>
+                          <br>
                           <span class="text-muted">{{ formataDataHora(item.createdAt) }}</span>
+                          <div class="small text-purple" ng-if="item._temRetorno && item._ultimoRetorno"
+                            style="color:#c084fc;">
+                            Último retorno: {{ formataDataHora(item._ultimoRetorno) }}
+                          </div>
                         </td>
 
                         <td class="align-top">
@@ -163,8 +199,6 @@
                             {{ item.id_nivel_loc4 ? ' - ' + item.id_nivel_loc4.descricao : '' }}
                           </span>
                         </td>
-
-    
 
                         <td class="align-top" ng-show="_tipo == 'conferencia'">
                           <span class="fw-bold"
@@ -183,9 +217,10 @@
 
                         <td class="align-top text-center">
                           <span class="text-white fw-bold">{{ item.itens.length }}</span>
-                          <div class="d-flex justify-content-center gap-1 mt-1">
+                          <div class="d-flex justify-content-center gap-1 mt-1 flex-wrap">
                             <span class="badge bg-success bg-opacity-25 text-success">{{ item._itensConcluido || 0 }}</span>
                             <span class="badge bg-danger bg-opacity-25 text-danger">{{ item._itensPendente || 0 }}</span>
+                            <span class="badge badge-retorno-pos" ng-if="item._temRetorno">{{ item._qtdRetorno }} ret.</span>
                           </div>
                         </td>
 
@@ -195,8 +230,68 @@
                           </a>
                         </td>
                       </tr>
+                      <tr ng-if="!posicoesFiltradas().length">
+                        <td colspan="6" class="text-center text-muted py-4">Nenhum registro encontrado.</td>
+                      </tr>
                     </tbody>
                   </table>
+
+                  <!-- Visão por ITENS -->
+                  <table class="table align-middle table-hover m-0" ng-if="_ui.modoVisualizacao === 'itens'">
+                    <thead>
+                      <tr>
+                        <th class="sortable" ng-click="sortBy('id_doc')">Pedido</th>
+                        <th>Status ordem</th>
+                        <th>Partida</th>
+                        <th>Tag</th>
+                        <th>EAN</th>
+                        <th>Status item</th>
+                        <th>Retorno</th>
+                        <th class="w-10">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr ng-repeat="linha in itensExpandidos()">
+                        <td>
+                          <span class="text-white fw-bold">{{ linha.id_doc }}</span>
+                          <span class="badge badge-retorno-pos ms-1" ng-if="linha.temRetorno">
+                            <i class="bi bi-arrow-return-left"></i>
+                          </span>
+                        </td>
+                        <td>
+                          <span class="badge"
+                            ng-class="{
+                              'bg-success': linha.ordemStatus === 'concluido',
+                              'bg-warning text-dark': linha.ordemStatus === 'parcial',
+                              'bg-secondary': linha.ordemStatus === 'pendente' || linha.ordemStatus === 'aberta' || linha.ordemStatus === 'partida'
+                            }">{{ linha.ordemStatus }}</span>
+                        </td>
+                        <td class="small">{{ formataDataHora(linha.partida_data) }}</td>
+                        <td><code class="text-info">{{ linha.tag }}</code></td>
+                        <td class="small text-muted">{{ linha.ean }}</td>
+                        <td>
+                          <span ng-class="classeStatusItem(linha.itemStatus)">
+                            {{ labelStatusItem(linha.itemStatus) }}
+                          </span>
+                        </td>
+                        <td>
+                          <span ng-if="linha.temRetorno" style="color:#c084fc;" class="fw-semibold small">
+                            {{ formataDataHora(linha.retorno_data) }}
+                          </span>
+                          <span ng-if="!linha.temRetorno" class="text-muted">—</span>
+                        </td>
+                        <td>
+                          <a class="btn btn-info btn-sm" ng-click="onPosicao('edit', linha.posicao)">
+                            <i class="bi bi-pencil"></i>
+                          </a>
+                        </td>
+                      </tr>
+                      <tr ng-if="!itensExpandidos().length">
+                        <td colspan="8" class="text-center text-muted py-4">Nenhum item encontrado.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
                 </div>
               </div>
             </div>

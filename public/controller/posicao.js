@@ -20,7 +20,13 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService,  $l
         data_de: inicioSemanaAtual,
         data_a: fimSemanaAtual,
         pesquisa: '',
-    }
+        somenteRetorno: ''
+    };
+
+    /** ordens = lista atual | itens = lista explícita item a item */
+    $scope._ui = {
+        modoVisualizacao: 'ordens'
+    };
 
     $scope.$watch('$viewContentLoaded', async function () {
 
@@ -100,6 +106,11 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService,  $l
                     item['_itensConcluido'] = contagem.concluido;
                     item['_itensPendente'] = contagem.pendente;
 
+                    var infoRetorno = $scope.infoRetornoPosicao(item);
+                    item['_temRetorno'] = infoRetorno.temRetorno;
+                    item['_qtdRetorno'] = infoRetorno.qtd;
+                    item['_ultimoRetorno'] = infoRetorno.ultimo;
+
                 });
 
 
@@ -111,6 +122,24 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService,  $l
                 uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
             });
 
+    };
+
+    $scope.infoRetornoPosicao = function (posicao) {
+        var itens = (posicao && posicao.itens) || [];
+        if (!Array.isArray(itens)) itens = [];
+        var qtd = 0;
+        var ultimo = null;
+        itens.forEach(function (it) {
+            if (!it || !it.retorno_data) return;
+            qtd += 1;
+            var t = new Date(it.retorno_data).getTime();
+            if (!isNaN(t) && (ultimo == null || t > ultimo)) ultimo = t;
+        });
+        return {
+            temRetorno: qtd > 0,
+            qtd: qtd,
+            ultimo: ultimo != null ? new Date(ultimo) : null
+        };
     };
 
     $scope.contagemItensPosicao = function (posicao) {
@@ -130,6 +159,85 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService,  $l
         return { concluido: concluido, pendente: pendente };
     };
 
+    /** Lista de ordens após filtro de retorno (client-side) */
+    $scope.posicoesFiltradas = function () {
+        var lista = Array.isArray($scope._listPosicoes) ? $scope._listPosicoes : [];
+        if ($scope._pesquisa.somenteRetorno === true || $scope._pesquisa.somenteRetorno === '1') {
+            lista = lista.filter(function (p) { return p && p._temRetorno; });
+        }
+        return lista;
+    };
+
+    /**
+     * Visão por itens: uma linha por item da ordem,
+     * com dados básicos da ordem + status/tag/retorno do item.
+     * Com filtro de retorno, lista só itens que retornaram.
+     */
+    $scope.itensExpandidos = function () {
+        var linhas = [];
+        var soRetorno = $scope._pesquisa.somenteRetorno === true || $scope._pesquisa.somenteRetorno === '1';
+        ($scope.posicoesFiltradas() || []).forEach(function (pos) {
+            var itens = (pos && pos.itens) || [];
+            if (!Array.isArray(itens) || !itens.length) {
+                if (!soRetorno) {
+                    linhas.push({
+                        posicao: pos,
+                        item: null,
+                        id_doc: pos.id_doc,
+                        ordemStatus: pos.status,
+                        partida_data: pos.partida_data,
+                        tag: '—',
+                        ean: '—',
+                        itemStatus: '—',
+                        retorno_data: null,
+                        temRetorno: false
+                    });
+                }
+                return;
+            }
+            itens.forEach(function (it, idx) {
+                if (soRetorno && !(it && it.retorno_data)) return;
+                linhas.push({
+                    posicao: pos,
+                    item: it,
+                    seq: idx + 1,
+                    id_doc: pos.id_doc,
+                    ordemStatus: pos.status,
+                    partida_data: pos.partida_data,
+                    origem: (pos.id_nivel_loc1 && pos.id_nivel_loc1.descricao) || '',
+                    destino: (pos.id_nivel_loc1_destino && pos.id_nivel_loc1_destino.descricao) || '',
+                    tag: (it && it.tag) || '—',
+                    ean: (it && it.ean) || '—',
+                    itemStatus: (it && it.status) || 'pendente',
+                    retorno_data: (it && it.retorno_data) || null,
+                    temRetorno: !!(it && it.retorno_data)
+                });
+            });
+        });
+        return linhas;
+    };
+
+    $scope.labelStatusItem = function (st) {
+        var s = String(st || '').toLowerCase();
+        if (s === 'concluido') return 'Concluído';
+        if (s === 'excedente') return 'Excedente';
+        if (s === 'nao_encontrado') return 'Não encontrado';
+        if (s === 'pendente') return 'Pendente';
+        return st || '—';
+    };
+
+    $scope.classeStatusItem = function (st) {
+        var s = String(st || '').toLowerCase();
+        if (s === 'concluido') return 'text-success';
+        if (s === 'excedente') return 'text-danger';
+        if (s === 'pendente') return 'text-warning';
+        return 'text-secondary';
+    };
+
+    $scope.onModoVisualizacao = function (modo) {
+        $scope._ui.modoVisualizacao = modo === 'itens' ? 'itens' : 'ordens';
+    };
+
     $scope.sortBy = function (field) {
         if ($scope.sortField === field) {
             $scope.sortReverse = !$scope.sortReverse;
@@ -140,7 +248,89 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService,  $l
     };
 
     $scope.onExportarCSV = function () {
-        const lista = Array.isArray($scope._listPosicoes) ? $scope._listPosicoes.slice() : [];
+        const modoItens = $scope._ui && $scope._ui.modoVisualizacao === 'itens';
+        const escapeCSV = (valor) => {
+            const v = valor == null ? '' : String(valor);
+            const precisaAspas = /[";\r\n]/.test(v);
+            const escapado = v.replace(/"/g, '""');
+            return precisaAspas ? `"${escapado}"` : escapado;
+        };
+        const fmtData = (d) => {
+            if (!d) return '';
+            try {
+                return moment(d).format('YYYY-MM-DD HH:mm:ss');
+            } catch (e) {
+                return String(d);
+            }
+        };
+        const baixar = (cabecalho, linhasDados, prefixo) => {
+            if (!linhasDados.length) {
+                uteisService.onToast('Nenhum registro para exportar.', 'warning', 2500, 'top-end');
+                return;
+            }
+            const conteudo = [cabecalho.map(escapeCSV).join(';'), ...linhasDados].join('\r\n');
+            const blob = new Blob(['\uFEFF' + conteudo], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const stamp = moment().format('YYYYMMDD_HHmmss');
+            const nomeArquivo = (prefixo || 'posicoes') + '_' + stamp + '.csv';
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = nomeArquivo;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1500);
+            uteisService.onToast('Arquivo exportado: ' + nomeArquivo, 'success', 2500, 'top-end');
+        };
+
+        if (modoItens) {
+            const lista = ($scope.itensExpandidos() || []).slice();
+            const field = $scope.sortField;
+            const reverse = $scope.sortReverse ? -1 : 1;
+            lista.sort((a, b) => {
+                const va = a && a[field] != null ? a[field] : (a && a.id_doc) || '';
+                const vb = b && b[field] != null ? b[field] : (b && b.id_doc) || '';
+                if (va === vb) return 0;
+                if (va === '' || va == null) return 1 * reverse;
+                if (vb === '' || vb == null) return -1 * reverse;
+                return (String(va).localeCompare(String(vb), 'pt-BR', { numeric: true })) * reverse;
+            });
+
+            const cabecalho = [
+                'Pedido',
+                'Status Ordem',
+                'Partida',
+                'Origem N1',
+                'Destino N1',
+                'Tag',
+                'EAN',
+                'Status Item',
+                'Retornou',
+                'Retorno (Data)'
+            ];
+
+            const linhas = lista.map((linha) => {
+                const pos = linha.posicao || {};
+                return [
+                    linha.id_doc || '',
+                    linha.ordemStatus || '',
+                    fmtData(linha.partida_data),
+                    (pos.id_nivel_loc1 && pos.id_nivel_loc1.descricao) || linha.origem || '',
+                    (pos.id_nivel_loc1_destino && pos.id_nivel_loc1_destino.descricao) || linha.destino || '',
+                    linha.tag || '',
+                    linha.ean === '—' ? '' : (linha.ean || ''),
+                    $scope.labelStatusItem(linha.itemStatus),
+                    linha.temRetorno ? 'Sim' : 'Não',
+                    linha.temRetorno ? fmtData(linha.retorno_data) : ''
+                ].map(escapeCSV).join(';');
+            });
+
+            baixar(cabecalho, linhas, 'posicoes_itens');
+            return;
+        }
+
+        // Modo ordens (padrão) — respeita filtro de retorno
+        const lista = ($scope.posicoesFiltradas() || []).slice();
         if (!lista.length) {
             uteisService.onToast('Nenhum registro para exportar.', 'warning', 2500, 'top-end');
             return;
@@ -177,6 +367,11 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService,  $l
             'Origem Nivel 3',
             'Origem Nivel 4',
             'Qtd Itens',
+            'Itens Concluidos',
+            'Itens Pendentes',
+            'Com Retorno',
+            'Qtd Retorno',
+            'Ultimo Retorno',
             'Chegada Prevista',
             'Chegada Real',
             'Destino Nivel 1',
@@ -184,22 +379,6 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService,  $l
             'Destino Nivel 3',
             'Destino Nivel 4'
         ];
-
-        const escapeCSV = (valor) => {
-            const v = valor == null ? '' : String(valor);
-            const precisaAspas = /[";\r\n]/.test(v);
-            const escapado = v.replace(/"/g, '""');
-            return precisaAspas ? `"${escapado}"` : escapado;
-        };
-
-        const fmtData = (d) => {
-            if (!d) return '';
-            try {
-                return moment(d).format('YYYY-MM-DD HH:mm:ss');
-            } catch (e) {
-                return String(d);
-            }
-        };
 
         const linhas = lista.map((item) => {
             const qtdItens = Array.isArray(item.itens) ? item.itens.length : 0;
@@ -213,6 +392,11 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService,  $l
                 item.id_nivel_loc3?.descricao || '',
                 item.id_nivel_loc4?.descricao || '',
                 qtdItens,
+                item._itensConcluido || 0,
+                item._itensPendente || 0,
+                item._temRetorno ? 'Sim' : 'Não',
+                item._qtdRetorno || 0,
+                item._temRetorno ? fmtData(item._ultimoRetorno) : '',
                 fmtData(item.previsao_chegada_data),
                 item._previsao_chegada_data_status ? fmtData(item._previsao_chegada_data) : '',
                 item.id_nivel_loc1_destino?.descricao || '',
@@ -222,22 +406,7 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService,  $l
             ].map(escapeCSV).join(';');
         });
 
-        const conteudo = [cabecalho.map(escapeCSV).join(';'), ...linhas].join('\r\n');
-        const blob = new Blob(['\uFEFF' + conteudo], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-
-        const stamp = moment().format('YYYYMMDD_HHmmss');
-        const nomeArquivo = 'posicoes_' + stamp + '.csv';
-
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = nomeArquivo;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 1500);
-
-        uteisService.onToast('Arquivo exportado: ' + nomeArquivo, 'success', 2500, 'top-end');
+        baixar(cabecalho, linhas, 'posicoes_ordens');
     };
 
 
