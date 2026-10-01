@@ -1,4 +1,4 @@
-app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, uteisService) {
+app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, uteisService) {
 
     $scope._regConta = {};
     $scope._regColaborador = [];
@@ -11,7 +11,9 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, uteisServ
         filtroOrdem: 'todas',
         ordenacaoOrdem: 'ultimas_lidas',
         limiteLeituras: 10,
-        ordemExpandidaId: null
+        ordemExpandidaId: null,
+        modoRetorno: false,
+        finalizandoRetorno: false
     };
 
     $scope._portais = [
@@ -20,6 +22,7 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, uteisServ
         { id: 'recebimento01', label: 'Portal - Recebimento 01' }
     ];
 
+    
     $scope._kpis = [
         { valor: '0', label: 'Total de Ordens', icon: 'bi-file-earmark-text', iconClass: 'pom-kpi-blue', spark: false },
         { valor: '0', label: 'Pendentes', icon: 'bi-app', iconClass: 'pom-kpi-purple' },
@@ -46,6 +49,15 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, uteisServ
     $scope._seqLoteDia = 0;
     $scope.socket = null;
     $scope._ordens = [];
+    /** Cursor ISO do maior createdAt já carregado — refresh só pede ordens depois disso */
+    $scope._ordensCursorCreatedAt = null;
+
+    /** Sessão de retorno (modo retorno) — só front até Finalizar */
+    $scope._retorno = {
+        tagsMap: {},
+        tags: [],
+        qtd: 0
+    };
 
     $scope._filtrosOrdem = [
         { id: 'todas', label: 'Todas', count: 0, class: 'tab-todas' },
@@ -89,13 +101,17 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, uteisServ
     function montarItensLinha(pos) {
         return (pos.itens || []).map(function (it, idx) {
             var st = labelStatusItem(it && it.status);
+            var retornoData = it && it.retorno_data ? it.retorno_data : null;
             return {
                 seq: idx + 1,
                 tag: (it && it.tag) || '—',
                 ean: (it && it.ean) || '—',
                 status: (it && it.status) || 'pendente',
                 statusLabel: st.label,
-                statusClass: st.cls
+                statusClass: st.cls,
+                retorno_data: retornoData,
+                retornoHora: retornoData ? $scope.formatHoraLeitura(retornoData) : null,
+                retornou: !!retornoData
             };
         });
     }
@@ -111,6 +127,23 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, uteisServ
         if (m.clone().startOf('day').isSame(ontem)) return 'Ontem ' + m.format('HH:mm');
         return m.format('DD/MM HH:mm');
     }
+
+    /** Exibe só hora da leitura (HH:mm:ss), fuso Brasília */
+    $scope.formatHoraLeitura = function (valor) {
+        if (valor == null || valor === '') return '—';
+        // Já veio como "HH:mm:ss"
+        if (typeof valor === 'string' && /^\d{1,2}:\d{2}(:\d{2})?$/.test(valor.trim())) {
+            var p = valor.trim().split(':');
+            return (p[0].length === 1 ? '0' + p[0] : p[0]) + ':' + p[1] + ':' + (p[2] || '00');
+        }
+        var m = moment(valor);
+        if (!m.isValid()) {
+            // "YYYY-MM-DD HH:mm:ss"
+            m = moment(valor, ['YYYY-MM-DD HH:mm:ss', 'DD/MM/YYYY HH:mm:ss'], true);
+        }
+        if (!m.isValid()) return '—';
+        return m.utcOffset(-3).format('HH:mm:ss');
+    };
 
     function montarOrdemView(pos) {
         var cnt = contagemItens(pos);
@@ -133,6 +166,14 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, uteisServ
 
         var refData = pos.status_data || pos.partida_data || pos.updatedAt || pos.createdAt;
 
+        var itensView = montarItensLinha(pos);
+        var ultimoRetorno = null;
+        (pos.itens || []).forEach(function (it) {
+            if (!it || !it.retorno_data) return;
+            var t = new Date(it.retorno_data).getTime();
+            if (!isNaN(t) && (ultimoRetorno == null || t > ultimoRetorno)) ultimoRetorno = t;
+        });
+
         return {
             _id: pos._id,
             id_doc: idDoc,
@@ -148,7 +189,9 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, uteisServ
             total: total,
             pct: pct,
             _sortStatusData: refData ? new Date(refData).getTime() : 0,
-            itens: montarItensLinha(pos),
+            itens: itensView,
+            retornou: ultimoRetorno != null,
+            retornoHora: ultimoRetorno != null ? $scope.formatHoraLeitura(new Date(ultimoRetorno)) : null,
             _posicao: pos
         };
     }
@@ -167,8 +210,9 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, uteisServ
             else if (o.status === 'concluida') nConcluida += 1;
         });
 
-        $scope._kpis[1].valor = String(nAndamento + nParcial);
-        $scope._kpis[2].valor = String(nPendente);
+        $scope._kpis[0].valor = String(ordens.length);
+        $scope._kpis[1].valor = String(nPendente);
+        $scope._kpis[2].valor = String(nParcial + nAndamento);
         $scope._kpis[3].valor = String(nConcluida);
 
         $scope._filtrosOrdem[0].count = ordens.length;
@@ -177,30 +221,81 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, uteisServ
         $scope._filtrosOrdem[3].count = nConcluida;
     }
 
-    $scope.onCarregaOrdens = async function () {
+    function avancarCursorOrdens(docs) {
+        (docs || []).forEach(function (pos) {
+            if (!pos || !pos.createdAt) return;
+            var t = new Date(pos.createdAt).getTime();
+            if (isNaN(t)) return;
+            var atual = $scope._ordensCursorCreatedAt
+                ? new Date($scope._ordensCursorCreatedAt).getTime()
+                : 0;
+            if (t > atual) {
+                $scope._ordensCursorCreatedAt = new Date(pos.createdAt).toISOString();
+            }
+        });
+    }
+
+    /**
+     * Carrega ordens do dia.
+     * - Primeira carga (ou forcarCompleto): lista completa do dia.
+     * - Poll: só createdAt > cursor (operator *gt no /_bd) — append sem limpar a lista.
+     */
+    $scope.onCarregaOrdens = async function (forcarCompleto) {
         if (!$scope._regConta || !$scope._regConta._id) return;
 
-        $scope._carregandoOrdens = true;
+        var cargaCompleta = !!forcarCompleto || !$scope._ordensCursorCreatedAt;
+        var listaVazia = !($scope._ordens && $scope._ordens.length);
+
+        // Spinner só na 1ª carga (evita “piscar” a lista no poll)
+        if (cargaCompleta && listaVazia) {
+            $scope._carregandoOrdens = true;
+        }
+
         try {
             var hoje = moment().format('YYYY-MM-DD');
             var url = '/_bd?c=posicao&id_conta=' + encodeURIComponent($scope._regConta._id)
                 + '&tipo=conferencia'
                 + '&partida_data=*dtP' + hoje + '|' + hoje
-                + '&_sort=status_data'
+                + '&_sort=createdAt'
                 + '&pop=id_colaborador';
+
+            if (!cargaCompleta && $scope._ordensCursorCreatedAt) {
+                url += '&createdAt=*gt' + encodeURIComponent($scope._ordensCursorCreatedAt);
+            }
 
             var res = await uteisService.getBase(url).catch(function () { return []; });
             if (!Array.isArray(res)) res = [];
 
-            var expandidaAntes = $scope._ui.ordemExpandidaId;
-            $scope._ordens = res.map(montarOrdemView);
-            if (expandidaAntes && !$scope._ordens.some(function (o) { return o._id === expandidaAntes; })) {
-                $scope._ui.ordemExpandidaId = null;
+            if (cargaCompleta) {
+                $scope._ordens = res.map(montarOrdemView);
+                $scope._ordensCursorCreatedAt = null;
+                avancarCursorOrdens(res);
+                if (!res.length) {
+                    // Sem ordens: polls seguintes usam *gt desde o início do dia
+                    $scope._ordensCursorCreatedAt = moment().startOf('day').toISOString();
+                }
+            } else if (res.length) {
+                var idsExistentes = {};
+                ($scope._ordens || []).forEach(function (o) {
+                    if (o && o._id) idsExistentes[String(o._id)] = true;
+                });
+                // res vem _sort=createdAt desc; inserir no topo preservando array (sem recriar lista inteira)
+                var adicionadas = [];
+                for (var i = res.length - 1; i >= 0; i--) {
+                    var pos = res[i];
+                    if (!pos || !pos._id || idsExistentes[String(pos._id)]) continue;
+                    $scope._ordens.unshift(montarOrdemView(pos));
+                    adicionadas.push(pos);
+                }
+                avancarCursorOrdens(adicionadas.length ? adicionadas : res);
             }
+
             atualizarKpisEAbas($scope._ordens);
         } catch (e) {
-            $scope._ordens = [];
-            atualizarKpisEAbas([]);
+            if (cargaCompleta && listaVazia) {
+                $scope._ordens = [];
+                atualizarKpisEAbas([]);
+            }
             uteisService.onToast('Não foi possível carregar as ordens do dia.', 'warning', 2500, 'top-end');
         } finally {
             $scope._carregandoOrdens = false;
@@ -300,10 +395,160 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, uteisServ
 
     $scope.$watch('_ui.ordenacaoOrdem', function () { /* re-render via ordensFiltradas */ });
 
-    $scope.onTogglePausar = function () {
-        $scope._ui.pausado = !$scope._ui.pausado;
-        if ($scope._ui.pausado && $scope._loteAtual && $scope._loteAtual.status === 'aberto') {
-            fecharLote($scope._loteAtual);
+    /** Bloqueia iniciar retorno se houver lote aberto ou persistindo */
+    $scope.retornoBloqueadoPorLote = function () {
+        if ($scope._loteAtual && $scope._loteAtual.status === 'aberto') return true;
+        return ($scope._lotes || []).some(function (l) {
+            return l && (l.persistindo || l.status === 'aberto');
+        });
+    };
+
+    $scope.podeIniciarRetorno = function () {
+        return !$scope._ui.modoRetorno
+            && !$scope._ui.finalizandoRetorno
+            && !$scope.retornoBloqueadoPorLote();
+    };
+
+    function resetSessaoRetorno() {
+        $scope._retorno = { tagsMap: {}, tags: [], qtd: 0 };
+    }
+
+    $scope.onIniciarRetorno = function () {
+        if (!$scope.podeIniciarRetorno()) {
+            uteisService.onToast('Aguarde o lote atual finalizar antes do retorno.', 'warning', 2200, 'top-end');
+            return;
+        }
+        resetSessaoRetorno();
+        $scope._ui.modoRetorno = true;
+        uteisService.onToast('Modo retorno ativo — leia as tags.', 'info', 2200, 'top-end');
+    };
+
+    $scope.onCancelarRetorno = function () {
+        if (!$scope._ui.modoRetorno) return;
+
+        ($scope._retorno.tags || []).forEach(function (t) {
+            if (!t || !t.id_ordem) return;
+            var ordem = ($scope._ordens || []).find(function (o) { return o._id === t.id_ordem; });
+            if (!ordem) return;
+            var item = (ordem.itens || []).find(function (it) {
+                return normalizaTag(it.tag) === t.chave;
+            });
+            if (!item) return;
+
+            if (t.reverteuStatus && t.statusAntes) {
+                var st = labelStatusItem(t.statusAntes);
+                item.status = t.statusAntes;
+                item.statusLabel = st.label;
+                item.statusClass = st.cls;
+            }
+            if (item._retornoSessao) {
+                item.retorno_data = t.retornoDataAnterior || null;
+                item.retornoHora = item.retorno_data ? $scope.formatHoraLeitura(item.retorno_data) : null;
+                item.retornou = !!item.retorno_data;
+            }
+            item._retornoSessao = false;
+            recalcularOrdemLocal(ordem);
+            atualizarFlagRetornoOrdem(ordem);
+        });
+
+        // Remove leituras desta sessão de retorno da lista
+        $scope._leituras = ($scope._leituras || []).filter(function (l) {
+            return !l || !l.retornoSessao;
+        });
+
+        resetSessaoRetorno();
+        $scope._ui.modoRetorno = false;
+        $scope._ui.finalizandoRetorno = false;
+        atualizarKpisEAbas($scope._ordens);
+        uteisService.onToast('Retorno cancelado.', 'warning', 2000, 'top-end');
+    };
+
+    function atualizarFlagRetornoOrdem(ordem) {
+        if (!ordem) return;
+        var ultimo = null;
+        (ordem.itens || []).forEach(function (it) {
+            if (!it || !it.retorno_data) return;
+            var t = new Date(it.retorno_data).getTime();
+            if (!isNaN(t) && (ultimo == null || t > ultimo)) ultimo = t;
+        });
+        ordem.retornou = ultimo != null;
+        ordem.retornoHora = ultimo != null ? $scope.formatHoraLeitura(new Date(ultimo)) : null;
+    }
+
+    $scope.onFinalizarRetorno = async function () {
+        if (!$scope._ui.modoRetorno || $scope._ui.finalizandoRetorno) return;
+
+        var aPersistir = ($scope._retorno.tags || []).filter(function (t) {
+            return t && t.id_ordem && t.tag && !t.excedente;
+        });
+
+        if (!aPersistir.length) {
+            uteisService.onToast('Nenhuma tag de retorno para gravar.', 'warning', 2200, 'top-end');
+            resetSessaoRetorno();
+            $scope._ui.modoRetorno = false;
+            return;
+        }
+
+        var idConta = ($scope._regConta && $scope._regConta._id) || '';
+        if (!idConta) {
+            uteisService.onToast('Conta não identificada.', 'warning', 2200, 'top-end');
+            return;
+        }
+
+        $scope._ui.finalizandoRetorno = true;
+        try {
+            var resHttp = await $http.post(
+                uteisService.apiUrl_() + '/posicao/retorno-tags',
+                {
+                    id_conta: idConta,
+                    itens: aPersistir.map(function (t) {
+                        return {
+                            id_posicao: t.id_ordem,
+                            tag: t.tag,
+                            retorno_data: t.retorno_data
+                        };
+                    })
+                },
+                { headers: { 'Content-Type': 'application/json' } }
+            );
+            var res = resHttp && resHttp.data ? resHttp.data : null;
+            if (!res || res.ok === false) {
+                uteisService.onToast('Falha ao gravar retorno.', 'error', 2500, 'top-end');
+            } else {
+                aPersistir.forEach(function (t) {
+                    var ordem = ($scope._ordens || []).find(function (o) { return o._id === t.id_ordem; });
+                    if (!ordem) return;
+                    var item = (ordem.itens || []).find(function (it) {
+                        return normalizaTag(it.tag) === t.chave;
+                    });
+                    if (item) item._retornoSessao = false;
+                    atualizarFlagRetornoOrdem(ordem);
+                    if (res.resultados) {
+                        var r = res.resultados.find(function (x) {
+                            return x && normalizaTag(x.tag) === t.chave;
+                        });
+                        if (r && r.posicao) {
+                            marcarItemPersistidoLocal(t.chave, { posicao: r.posicao });
+                        } else {
+                            recalcularOrdemLocal(ordem);
+                        }
+                    }
+                });
+                uteisService.onToast(
+                    'Retorno gravado · ' + (res.retornos || aPersistir.length) + ' tag(s)',
+                    'success',
+                    2800,
+                    'top-end'
+                );
+            }
+        } catch (err) {
+            console.error('[retorno] finalizar', err);
+            uteisService.onToast('Erro de rede ao gravar retorno.', 'error', 2500, 'top-end');
+        } finally {
+            resetSessaoRetorno();
+            $scope._ui.modoRetorno = false;
+            $scope._ui.finalizandoRetorno = false;
+            $timeout(function () { }, 0);
         }
     };
 
@@ -349,12 +594,13 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, uteisServ
     function iniciarAutoOrdens() {
         if (_timerOrdens) $timeout.cancel(_timerOrdens);
         if (!$scope._ui.tempoReal || $scope._ui.pausado) return;
+        var INTERVALO_ORDENS_MS = 10000;
         _timerOrdens = $timeout(async function tick() {
-            await $scope.onCarregaOrdens();
+            await $scope.onCarregaOrdens(false);
             if ($scope._ui.tempoReal && !$scope._ui.pausado) {
-                _timerOrdens = $timeout(tick, 30000);
+                _timerOrdens = $timeout(tick, INTERVALO_ORDENS_MS);
             }
-        }, 30000);
+        }, INTERVALO_ORDENS_MS);
     }
 
     $scope.$on('$destroy', function () {
@@ -379,7 +625,7 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, uteisServ
         $scope._regColaborador = uteisService.getCookie('_colaborador') || [];
         iniciarRelogio();
         $scope.onIniciarSocketLeituras();
-        await $scope.onCarregaOrdens();
+        await $scope.onCarregaOrdens(true);
         iniciarAutoOrdens();
     });
 
@@ -420,13 +666,12 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, uteisServ
         }
 
         console.log('[lote] ABERTO', lote.id, 'P' + lote.seq);
-        uteisService.onToast('Lote P' + lote.seq + ' iniciado', 'info', 1800, 'top-end');
+        // uteisService.onToast('Lote P' + lote.seq + ' iniciado', 'info', 1800, 'top-end');
         return lote;
     }
 
     /**
-     * Fecha o lote após silêncio de tag nova.
-     * Sem patch/persistência de ordens — apenas log e UI.
+     * Fecha o lote após silêncio de tag nova e persiste tags casadas na posição.
      */
     function fecharLote(lote) {
         if (!lote || lote.status !== 'aberto') return;
@@ -447,14 +692,137 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, uteisServ
             duracaoSeg: lote.duracaoSeg,
             tags: lote.tags.map(function (t) { return t.tag; })
         });
-        uteisService.onToast(
-            'Lote P' + lote.seq + ' fechado · ' + lote.qtdTags + ' tags · ' + lote.duracaoSeg + 's',
-            'success',
-            2500,
-            'top-end'
-        );
+        // uteisService.onToast(
+        //     'Lote P' + lote.seq + ' fechado · ' + lote.qtdTags + ' tags · ' + lote.duracaoSeg + 's',
+        //     'success',
+        //     2500,
+        //     'top-end'
+        // );
 
-        // TODO (próximo passo): processarTagsDoLote(lote) — casar tags × ordens e patch
+        processarTagsDoLote(lote);
+    }
+
+    /**
+     * Persiste no banco (posição) as tags do lote que casaram com ordem.
+     * Usa POST /posicao/atender-tags em batch com id_posicao (O(1) por ordem).
+     */
+    async function processarTagsDoLote(lote) {
+        if (!lote || !Array.isArray(lote.tags) || !lote.tags.length) return;
+
+        var idConta = ($scope._regConta && $scope._regConta._id) || '';
+        if (!idConta) {
+            uteisService.onToast('Conta não identificada — lote não persistido.', 'warning', 2500, 'top-end');
+            return;
+        }
+
+        var aPersistir = lote.tags.filter(function (t) {
+            return t && !t.excedente && t.precisaPersistir && t.tag && t.id_ordem;
+        });
+
+        if (!aPersistir.length) {
+            console.log('[lote] P' + lote.seq + ' sem tags para persistir (só excedentes ou já gravadas)');
+            return;
+        }
+
+        lote.persistindo = true;
+        var ok = 0;
+        var falha = 0;
+        var notFound = 0;
+
+        var payload = {
+            id_conta: idConta,
+            itens: aPersistir.map(function (t) {
+                return {
+                    id_posicao: t.id_ordem,
+                    tag: t.tag,
+                    rssi: t.rssi != null ? t.rssi : ''
+                };
+            })
+        };
+
+        try {
+            var resHttp = await $http.post(
+                uteisService.apiUrl_() + '/posicao/atender-tags',
+                payload,
+                { headers: { 'Content-Type': 'application/json' } }
+            );
+            var res = resHttp && resHttp.data ? resHttp.data : null;
+
+            if (!res || res.ok === false) {
+                falha = aPersistir.length;
+                console.error('[lote] atender-tags falhou', res);
+            } else {
+                ok = res.atendidos || 0;
+                notFound = res.not_found || 0;
+                falha = res.erros || 0;
+
+                var porTag = {};
+                (res.resultados || []).forEach(function (r) {
+                    if (!r || !r.tag) return;
+                    porTag[normalizaTag(r.tag)] = r;
+                });
+
+                aPersistir.forEach(function (t) {
+                    var r = porTag[t.chave] || porTag[normalizaTag(t.tag)];
+                    if (!r) {
+                        t.persistResultado = 'sem_retorno';
+                        return;
+                    }
+                    t.persistResultado = r.resultado;
+                    if (r.resultado === 'atendido') {
+                        t.precisaPersistir = false;
+                        t.id_posicao = r.id_posicao || t.id_ordem;
+                        marcarItemPersistidoLocal(t.chave, r);
+                    } else if (r.resultado === 'not_found') {
+                        t.excedente = true;
+                        t.precisaPersistir = false;
+                    }
+                });
+            }
+        } catch (err) {
+            falha = aPersistir.length;
+            console.error('[lote] erro ao persistir batch', err);
+        }
+
+        lote.persistindo = false;
+        lote.persistResumo = { ok: ok, falha: falha, notFound: notFound };
+
+        console.log('[lote] P' + lote.seq + ' persistência batch', lote.persistResumo);
+
+        var msg = 'Lote P' + lote.seq + ' · ' + ok + ' tag(s) gravada(s)';
+        if (notFound) msg += ' · ' + notFound + ' não encontrada(s)';
+        if (falha) msg += ' · ' + falha + ' erro(s)';
+        uteisService.onToast(msg, falha ? 'warning' : 'success', 3200, 'top-end');
+        $timeout(function () { }, 0);
+    }
+
+    function marcarItemPersistidoLocal(chave, resApi) {
+        var hit = localizarItemPorTag(chave);
+        if (!hit) return;
+        hit.item._pendentePersistir = false;
+        hit.item._persistido = true;
+        if (resApi && resApi.posicao) {
+            var stApi = String(resApi.posicao.status || '').toLowerCase();
+            if (stApi === 'concluido' || stApi === 'parcial' || stApi === 'pendente') {
+                // Alinha UI com status real do pedido após o update atômico
+                var total = resApi.posicao.total_itens;
+                var concluidos = resApi.posicao.concluidos;
+                if (typeof total === 'number' && typeof concluidos === 'number') {
+                    hit.ordem.lidos = concluidos;
+                    hit.ordem.total = total;
+                    hit.ordem.pct = total > 0 ? Math.round((concluidos / total) * 100) : 0;
+                }
+                var statusUi = statusUiFromPosicao(stApi);
+                var st = STATUS_UI[statusUi] || STATUS_UI.pendente;
+                hit.ordem.status = statusUi;
+                hit.ordem.statusRaw = stApi;
+                hit.ordem.statusLabel = st.label;
+                hit.ordem.badgeClass = st.badge;
+                hit.ordem.barClass = st.bar;
+                hit.ordem.iconClass = st.icon;
+                atualizarKpisEAbas($scope._ordens);
+            }
+        }
     }
 
     function agendarFechamentoLote(lote) {
@@ -464,15 +832,257 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, uteisServ
         }, IDLE_FECHA_LOTE_MS);
     }
 
+    function recalcularOrdemLocal(ordem) {
+        if (!ordem) return;
+        var total = (ordem.itens || []).length;
+        var lidos = 0;
+        (ordem.itens || []).forEach(function (it) {
+            if (it && String(it.status || '').toLowerCase() === 'concluido') lidos += 1;
+        });
+        ordem.lidos = lidos;
+        ordem.total = total;
+        ordem.pct = total > 0 ? Math.round((lidos / total) * 100) : 0;
+
+        var statusUi = 'pendente';
+        if (lidos > 0 && lidos < total) statusUi = 'parcial';
+        else if (total > 0 && lidos >= total) statusUi = 'concluida';
+
+        var st = STATUS_UI[statusUi] || STATUS_UI.pendente;
+        ordem.status = statusUi;
+        ordem.statusRaw = statusUi === 'concluida' ? 'concluido' : statusUi;
+        ordem.statusLabel = st.label;
+        ordem.badgeClass = st.badge;
+        ordem.barClass = st.bar;
+        ordem.iconClass = st.icon;
+        ordem._sortStatusData = Date.now();
+        atualizarKpisEAbas($scope._ordens);
+    }
+
+    /**
+     * Localiza item pela tag nas ordens em memória.
+     * Prefere ordens abertas e itens ainda pendentes (sem gravar no banco).
+     */
+    function localizarItemPorTag(chave) {
+        if (!chave) return null;
+        var candidatos = [];
+        ($scope._ordens || []).forEach(function (ord) {
+            (ord.itens || []).forEach(function (item, idx) {
+                if (!item) return;
+                if (normalizaTag(item.tag) !== chave) return;
+                candidatos.push({ ordem: ord, item: item, idx: idx });
+            });
+        });
+        if (!candidatos.length) return null;
+
+        candidatos.sort(function (a, b) {
+            function score(c) {
+                var s = 0;
+                if (c.ordem.status !== 'concluida') s += 10;
+                if (String(c.item.status || '').toLowerCase() !== 'concluido') s += 5;
+                return s;
+            }
+            return score(b) - score(a);
+        });
+        return candidatos[0];
+    }
+
+    /**
+     * Aplica leitura só na UI: item → concluido; ordem → pendente/parcial/concluida.
+     * Tag fora de qualquer ordem → excedente (roxo). Sem persistência (isso no fechar lote).
+     * @returns {{ excedente: boolean, precisaPersistir: boolean, id_ordem: string|null }}
+     */
+    function aplicarTagNasOrdens(chave, tagRaw, linha) {
+        var hit = localizarItemPorTag(chave);
+        if (!hit) {
+            linha.excedente = true;
+            linha.match = 'excedente';
+            linha.matchLabel = 'Excedente';
+            return { excedente: true, precisaPersistir: false, id_ordem: null };
+        }
+
+        var item = hit.item;
+        var ordem = hit.ordem;
+        var precisaPersistir = false;
+        var st = labelStatusItem('concluido');
+
+        if (String(item.status || '').toLowerCase() !== 'concluido') {
+            item.status = 'concluido';
+            item.statusLabel = st.label;
+            item.statusClass = st.cls;
+            item._pendentePersistir = true;
+            precisaPersistir = true;
+        } else if (item._pendentePersistir && !item._persistido) {
+            precisaPersistir = true;
+        }
+
+        linha.excedente = false;
+        linha.match = 'ok';
+        linha.matchLabel = ordem.id_doc || ordem._id;
+        linha.id_ordem = ordem._id;
+
+        ($scope._ordens || []).forEach(function (o) {
+            if (o) o._hitLocal = false;
+        });
+        ordem._hitLocal = true;
+        recalcularOrdemLocal(ordem);
+        $scope._ui.ordemExpandidaId = ordem._id;
+        $scope._ui.ordenacaoOrdem = 'ultimas_lidas';
+        return { excedente: false, precisaPersistir: precisaPersistir, id_ordem: ordem._id };
+    }
+
+    function localizarItemPorTagRetorno(chave) {
+        if (!chave) return null;
+        var candidatos = [];
+        ($scope._ordens || []).forEach(function (ord) {
+            (ord.itens || []).forEach(function (item, idx) {
+                if (!item) return;
+                if (normalizaTag(item.tag) !== chave) return;
+                candidatos.push({ ordem: ord, item: item, idx: idx });
+            });
+        });
+        if (!candidatos.length) return null;
+        // No retorno, prioriza item ainda concluído (será reaberto na UI)
+        candidatos.sort(function (a, b) {
+            function score(c) {
+                var s = 0;
+                if (String(c.item.status || '').toLowerCase() === 'concluido') s += 10;
+                if (c.ordem.status === 'concluida') s += 3;
+                return s;
+            }
+            return score(b) - score(a);
+        });
+        return candidatos[0];
+    }
+
+    /**
+     * Modo retorno (só UI até Finalizar):
+     * - concluido → pendente
+     * - pendente → mantém
+     * - grava retorno_data local em todos os itens lidos
+     */
+    function aplicarTagRetorno(chave, tagRaw, linha) {
+        var hit = localizarItemPorTagRetorno(chave);
+        if (!hit) {
+            linha.excedente = true;
+            linha.match = 'excedente';
+            linha.matchLabel = 'Excedente';
+            linha.retorno = true;
+            return { excedente: true, id_ordem: null };
+        }
+
+        var item = hit.item;
+        var ordem = hit.ordem;
+        var agora = new Date();
+        var statusAntes = String(item.status || 'pendente').toLowerCase();
+        var retornoDataAnterior = item.retorno_data || null;
+        var reverteuStatus = false;
+
+        if (statusAntes === 'concluido') {
+            var stPend = labelStatusItem('pendente');
+            item._retornoBackup = {
+                status: 'concluido',
+                statusLabel: item.statusLabel,
+                statusClass: item.statusClass
+            };
+            item.status = 'pendente';
+            item.statusLabel = stPend.label;
+            item.statusClass = stPend.cls;
+            reverteuStatus = true;
+        }
+
+        item.retorno_data = agora;
+        item.retornoHora = $scope.formatHoraLeitura(agora);
+        item.retornou = true;
+        item._retornoSessao = true;
+
+        linha.excedente = false;
+        linha.match = 'retorno';
+        linha.matchLabel = (ordem.id_doc || ordem._id) + ' · retorno';
+        linha.id_ordem = ordem._id;
+        linha.retorno = true;
+
+        ($scope._ordens || []).forEach(function (o) {
+            if (o) o._hitLocal = false;
+        });
+        ordem._hitLocal = true;
+        recalcularOrdemLocal(ordem);
+        atualizarFlagRetornoOrdem(ordem);
+        $scope._ui.ordemExpandidaId = ordem._id;
+
+        return {
+            excedente: false,
+            id_ordem: ordem._id,
+            statusAntes: statusAntes,
+            reverteuStatus: reverteuStatus,
+            retorno_data: agora,
+            retornoDataAnterior: retornoDataAnterior
+        };
+    }
+
+    function onTagSocketRetorno(leitura) {
+        var tagRaw = leitura.tag || '';
+        var chave = normalizaTag(tagRaw);
+        if (!chave) return;
+
+        var ehNova = !$scope._retorno.tagsMap[chave];
+        var linha = Object.assign({}, leitura, {
+            tag: tagRaw,
+            id_lote: 'RET',
+            lote_seq: 'R',
+            lote_nova: ehNova,
+            _chave: chave,
+            _recebidoEm: new Date(),
+            excedente: false,
+            match: null,
+            matchLabel: null,
+            retorno: true,
+            retornoSessao: true
+        });
+
+        if (ehNova) {
+            var info = aplicarTagRetorno(chave, tagRaw, linha);
+            $scope._retorno.tagsMap[chave] = true;
+            $scope._retorno.tags.push({
+                tag: tagRaw,
+                chave: chave,
+                rssi: leitura.rssi,
+                excedente: !!(info && info.excedente),
+                id_ordem: (info && info.id_ordem) || null,
+                statusAntes: (info && info.statusAntes) || null,
+                reverteuStatus: !!(info && info.reverteuStatus),
+                retorno_data: (info && info.retorno_data) || new Date(),
+                retornoDataAnterior: (info && info.retornoDataAnterior) || null
+            });
+            $scope._retorno.qtd = $scope._retorno.tags.length;
+
+            $scope._leituras.unshift(linha);
+            if ($scope._leituras.length > MAX_LEITURAS) {
+                $scope._leituras.length = MAX_LEITURAS;
+            }
+        } else {
+            var existente = ($scope._leituras || []).find(function (l) {
+                return l.retornoSessao && l._chave === chave;
+            });
+            if (existente) {
+                existente.rssi = leitura.rssi;
+                existente.data_leitura = leitura.data_leitura || existente.data_leitura;
+                existente._recebidoEm = new Date();
+            }
+        }
+    }
+
     /**
      * Entrada única por leitura do socket.
-     * - Abre lote se necessário
-     * - Tag nova: lista + reinicia idle
-     * - Releitura: só atualiza RSSI/hora (não reinicia idle)
-     * - Não altera ordens no banco
+     * - Modo retorno: trata à parte (sem lote de saída)
+     * - Senão: abre lote + match local + persiste no fechar
      */
     $scope.onTagSocket = function (leitura) {
         if (!leitura || $scope._ui.pausado) return;
+
+        if ($scope._ui.modoRetorno) {
+            onTagSocketRetorno(leitura);
+            return;
+        }
 
         var tagRaw = leitura.tag || '';
         var chave = normalizaTag(tagRaw);
@@ -491,16 +1101,25 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, uteisServ
             lote_seq: lote.seq,
             lote_nova: ehNovaNoLote,
             _chave: chave,
-            _recebidoEm: new Date()
+            _recebidoEm: new Date(),
+            excedente: false,
+            match: null,
+            matchLabel: null,
+            retorno: false
         });
 
         if (ehNovaNoLote) {
+            var matchInfo = aplicarTagNasOrdens(chave, tagRaw, linha);
+
             lote.tagsMap[chave] = true;
             lote.tags.push({
                 tag: tagRaw,
                 chave: chave,
                 rssi: leitura.rssi,
-                data_leitura: leitura.data_leitura || linha._recebidoEm
+                data_leitura: leitura.data_leitura || linha._recebidoEm,
+                excedente: !!(matchInfo && matchInfo.excedente),
+                precisaPersistir: !!(matchInfo && matchInfo.precisaPersistir),
+                id_ordem: (matchInfo && matchInfo.id_ordem) || null
             });
             lote.qtdTags = lote.tags.length;
 
@@ -519,9 +1138,10 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, uteisServ
                 existente.data_leitura = leitura.data_leitura || existente.data_leitura;
                 existente._recebidoEm = new Date();
             }
+            var tagLote = (lote.tags || []).find(function (t) { return t.chave === chave; });
+            if (tagLote && leitura.rssi != null) tagLote.rssi = leitura.rssi;
         }
 
-        $scope._kpis[0].valor = String(($scope._leituras || []).length);
     };
 
 });

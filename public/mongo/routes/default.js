@@ -134,7 +134,29 @@ module.exports = (app, dbConnection) => {
                 }
             });
 
-        } else if (!value.includes('*')) {
+        } else if (typeof value === 'string' && value.startsWith('*gte')) {
+            // Ex.: createdAt=*gte2026-10-01T15:00:00.000Z → { createdAt: { $gte: Date } }
+            const raw = value.slice(4);
+            const parsed = moment(raw);
+            const date = parsed.isValid() ? parsed.toDate() : new Date(raw);
+            if (!isNaN(date.getTime())) {
+                findReg.$and.push({
+                    [key]: { $gte: date }
+                });
+            }
+
+        } else if (typeof value === 'string' && value.startsWith('*gt')) {
+            // Ex.: createdAt=*gt2026-10-01T15:00:00.000Z → { createdAt: { $gt: Date } }
+            const raw = value.slice(3);
+            const parsed = moment(raw);
+            const date = parsed.isValid() ? parsed.toDate() : new Date(raw);
+            if (!isNaN(date.getTime())) {
+                findReg.$and.push({
+                    [key]: { $gt: date }
+                });
+            }
+
+        } else if (!String(value).includes('*')) {
             if (value === 'null') {
                 findReg.$and.push({ [key]: null });
             } else {

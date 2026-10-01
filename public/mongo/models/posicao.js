@@ -53,6 +53,8 @@ const PosicaoSchema = new mongoose.Schema({
 
         status_destino: { type: String, enum: ['pendente',  'concluido'	], default: 'pendente' },
         status_destino_data: { type: Date },
+
+        retorno_data: { type: Date },
     }],
 
     id_nivel_loc1_destino: { type: String, ref: 'Localizacao' },
@@ -67,5 +69,11 @@ const PosicaoSchema = new mongoose.Schema({
     versionKey: false,
     timestamps: true
 });
+
+// Índices para portal / atender-tag em bases grandes (ex.: 1M+)
+PosicaoSchema.index({ id_conta: 1, 'itens.tag': 1 });
+PosicaoSchema.index({ id_conta: 1, 'itens.tag': 1, 'itens.status': 1 });
+PosicaoSchema.index({ id_conta: 1, tipo: 1, partida_data: 1, createdAt: -1 });
+PosicaoSchema.index({ id_conta: 1, status: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Posicao', PosicaoSchema);

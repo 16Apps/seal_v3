@@ -164,6 +164,66 @@
       color: #cbd5e1;
     }
 
+    .pom-btn-pausar:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .pom-btn-retorno-finalizar {
+      font-size: 0.78rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 0.45rem;
+      border: 1px solid rgba(239, 68, 68, 0.55);
+      background: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+      font-weight: 600;
+    }
+
+    .pom-btn-retorno-cancelar {
+      font-size: 0.78rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 0.45rem;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: transparent;
+      color: #94a3b8;
+    }
+
+    .pom-lote-banner.pom-retorno-banner {
+      border-color: rgba(168, 85, 247, 0.45);
+      background: rgba(168, 85, 247, 0.12);
+      color: #e9d5ff;
+    }
+
+    .pom-badge-retorno {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 0.2rem 0.45rem;
+      border-radius: 0.35rem;
+      background: rgba(168, 85, 247, 0.22);
+      color: #d8b4fe;
+      white-space: nowrap;
+    }
+
+    .pom-ordem-meta-retorno {
+      color: #d8b4fe;
+      font-size: 0.72rem;
+      font-weight: 600;
+      margin-top: 0.15rem;
+    }
+
+    tr.pom-leitura-retorno td {
+      background: rgba(168, 85, 247, 0.08);
+    }
+
+    .pom-match-retorno {
+      color: #d8b4fe;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
     .pom-btn-pausar.active {
       border-color: #f59e0b;
       color: #fbbf24;
@@ -539,13 +599,38 @@
     }
 
     .item-st-excedente {
-      background: rgba(239, 68, 68, 0.2);
-      color: #fca5a5;
+      background: rgba(168, 85, 247, 0.22);
+      color: #d8b4fe;
     }
 
     .item-st-nao {
       background: rgba(148, 163, 184, 0.2);
       color: #cbd5e1;
+    }
+
+    tr.pom-leitura-excedente td {
+      background: rgba(168, 85, 247, 0.12);
+    }
+
+    tr.pom-leitura-excedente .pom-epc {
+      color: #d8b4fe;
+    }
+
+    .pom-match-ok {
+      color: #86efac;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+
+    .pom-match-excedente {
+      color: #d8b4fe;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    .pom-ordem-wrap.is-hit .pom-ordem-item {
+      box-shadow: inset 3px 0 0 #a855f7;
+      background: rgba(168, 85, 247, 0.06);
     }
   </style>
 
@@ -651,19 +736,42 @@
         <div class="col-12 col-xl-7">
           <div class="card pom-panel h-100">
             <div class="card-body">
-              <div class="d-flex justify-content-between align-items-start mb-3">
+              <div class="d-flex justify-content-between align-items-start mb-3 gap-2">
                 <div>
                   <h2 class="pom-section-title">Últimas 30 Leituras</h2>
                   <p class="pom-section-sub">Registro das tags lidas no portal selecionado</p>
                 </div>
-                <button type="button" class="pom-btn-pausar" ng-class="{ active: _ui.pausado }"
-                  ng-click="onTogglePausar()">
-                  <i class="bi" ng-class="_ui.pausado ? 'bi-play-fill' : 'bi-pause-fill'"></i>
-                  {{ _ui.pausado ? 'Retomar' : 'Pausar' }}
-                </button>
+                <div class="d-flex flex-wrap gap-2 justify-content-end">
+                  <button type="button" class="pom-btn-pausar"
+                    ng-if="!_ui.modoRetorno"
+                    ng-disabled="!podeIniciarRetorno()"
+                    ng-click="onIniciarRetorno()">
+                    <i class="bi bi-arrow-return-left me-1"></i>
+                    Registrar Retorno
+                  </button>
+                  <button type="button" class="pom-btn-retorno-finalizar"
+                    ng-if="_ui.modoRetorno"
+                    ng-disabled="_ui.finalizandoRetorno || !_retorno.qtd"
+                    ng-click="onFinalizarRetorno()">
+                    <i class="bi bi-check2-circle me-1"></i>
+                    {{ _ui.finalizandoRetorno ? 'Gravando…' : 'Finalizar Retorno' }}
+                  </button>
+                  <button type="button" class="pom-btn-retorno-cancelar"
+                    ng-if="_ui.modoRetorno"
+                    ng-disabled="_ui.finalizandoRetorno"
+                    ng-click="onCancelarRetorno()">
+                    Cancelar
+                  </button>
+                </div>
               </div>
 
-              <div ng-if="_loteAtual && _loteAtual.status === 'aberto'"
+              <div ng-if="_ui.modoRetorno" class="pom-lote-banner pom-retorno-banner py-2 px-3 mb-3">
+                <strong>Modo retorno</strong>
+                · {{ _retorno.qtd || 0 }} tag(s) lida(s)
+                · concluídos voltam a pendente (só na tela até finalizar)
+              </div>
+
+              <div ng-if="!_ui.modoRetorno && _loteAtual && _loteAtual.status === 'aberto'"
                 class="pom-lote-banner py-2 px-3 mb-3">
                 <strong>Pallet #{{ _loteAtual.seq }}</strong> em leitura
                 · {{ _loteAtual.qtdTags }} tags novas
@@ -678,23 +786,34 @@
                       <th>Lote</th>
                       <th>Data / Hora</th>
                       <th>Tag (EPC)</th>
+                      <th>Match</th>
                       <th>Tokem</th>
                       <th>Antena</th>
                       <th>RSSI</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr ng-repeat="l in leiturasVisiveis()">
+                    <tr ng-repeat="l in leiturasVisiveis()"
+                      ng-class="{ 'pom-leitura-excedente': l.excedente, 'pom-leitura-retorno': l.retorno && !l.excedente }">
                       <td><span class="pom-seq">{{ $index + 1 }}</span></td>
-                      <td><span class="pom-lote-badge">P{{ l.lote_seq || '—' }}</span></td>
-                      <td>{{ l.data_leitura || l.data_hora || '—' }}</td>
+                      <td>
+                        <span class="pom-lote-badge" ng-if="!l.retorno">P{{ l.lote_seq || '—' }}</span>
+                        <span class="pom-badge-retorno" ng-if="l.retorno">RET</span>
+                      </td>
+                      <td>{{ formatHoraLeitura(l.data_leitura || l.data_hora || l._recebidoEm) }}</td>
                       <td><span class="pom-epc">{{ l.tag || '—' }}</span></td>
+                      <td>
+                        <span ng-if="l.excedente" class="pom-match-excedente">Excedente</span>
+                        <span ng-if="!l.excedente && l.retorno" class="pom-match-retorno">{{ l.matchLabel || 'Retorno' }}</span>
+                        <span ng-if="!l.excedente && !l.retorno && l.matchLabel" class="pom-match-ok">{{ l.matchLabel }}</span>
+                        <span ng-if="!l.excedente && !l.retorno && !l.matchLabel">—</span>
+                      </td>
                       <td>{{ l.tokem || l.token || '—' }}</td>
                       <td>{{ l.antena != null && l.antena !== '' ? l.antena : '—' }}</td>
                       <td><span class="pom-rssi">{{ l.rssi != null && l.rssi !== '' ? l.rssi : '—' }}</span></td>
                     </tr>
                     <tr ng-if="!leiturasVisiveis().length">
-                      <td colspan="7" class="text-muted small py-4 text-center">Aguardando leituras do portal…</td>
+                      <td colspan="8" class="text-muted small py-4 text-center">Aguardando leituras do portal…</td>
                     </tr>
                   </tbody>
                 </table>
@@ -731,7 +850,8 @@
                 </div>
               </div>
 
-              <div class="text-center text-muted py-4" ng-if="_carregandoOrdens">
+              <div class="text-center text-muted py-4"
+                ng-if="_carregandoOrdens && (!_ordens || !_ordens.length)">
                 <div class="spinner-border spinner-border-sm text-primary mb-2" role="status"></div>
                 <div class="small">Carregando ordens do dia…</div>
               </div>
@@ -742,8 +862,8 @@
                 Nenhuma ordem com partida hoje para esta conta.
               </div>
 
-              <div class="pom-ordem-wrap" ng-repeat="ord in ordensFiltradas()" ng-if="!_carregandoOrdens"
-                ng-class="{ 'is-open': ordemEstaAberta(ord) }">
+              <div class="pom-ordem-wrap" ng-repeat="ord in ordensFiltradas() track by ord._id"
+                ng-class="{ 'is-open': ordemEstaAberta(ord), 'is-hit': ord._hitLocal }">
 
                 <div class="pom-ordem-item">
                   <div class="pom-ordem-icon" ng-class="ord.iconClass">
@@ -752,8 +872,14 @@
                   <div class="flex-grow-1 min-w-0">
                     <div class="pom-ordem-id">{{ ord.id_doc }}</div>
                     <div class="pom-ordem-meta">{{ ord.cliente }} · {{ ord.hora }}</div>
+                    <div class="pom-ordem-meta-retorno" ng-if="ord.retornou">
+                      Retornou {{ ord.retornoHora || '' }}
+                    </div>
                   </div>
                   <span class="pom-badge" ng-class="ord.badgeClass">{{ ord.statusLabel }}</span>
+                  <span class="pom-badge-retorno" ng-if="ord.retornou" title="Itens com retorno">
+                    <i class="bi bi-arrow-return-left"></i> Retornou
+                  </span>
                   <div class="pom-progress-wrap d-none d-md-block">
                     <div class="pom-progress-text">
                       <span>{{ ord.lidos }} / {{ ord.total }} itens</span>
@@ -775,6 +901,9 @@
                     <span class="pom-item-seq">{{ it.seq }}</span>
                     <span class="pom-item-tag" title="{{ it.tag }}">{{ it.tag }}</span>
                     <span class="pom-item-ean" ng-if="it.ean && it.ean !== '—'">{{ it.ean }}</span>
+                    <span class="pom-badge-retorno" ng-if="it.retornou" title="Retorno {{ it.retornoHora }}">
+                      {{ it.retornoHora || 'RET' }}
+                    </span>
                     <span class="pom-item-st" ng-class="it.statusClass">{{ it.statusLabel }}</span>
                   </div>
                   <div class="text-muted small py-2" ng-if="!ord.itens || !ord.itens.length">

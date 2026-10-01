@@ -2959,18 +2959,251 @@ module.exports = (app, dbConnection) => {
     });
 
     /**
-     * Portal checagem_multipla: atende uma tag individualmente na ordem (não carrega a ordem inteira).
+     * Helpers compartilhados: atender-tag / atender-tags
+     */
+    function normalizaTagPosicao(valor) {
+        if (valor == null) return '';
+        return String(valor).replace(/[^0-9A-Za-z]/g, '').toUpperCase();
+    }
+
+    function statusOrdemPorItensPosicao(itens) {
+        const lista = itens || [];
+        const todosConcluidos = lista.length > 0 && lista.every((it) => it.status === 'concluido');
+        const algumConcluido = lista.some((it) => it.status === 'concluido');
+        if (todosConcluidos) return 'concluido';
+        if (algumConcluido) return 'parcial';
+        return 'pendente';
+    }
+
+    function montarResumoPosicaoAtender(posicao, statusOverride) {
+        const itens = (posicao && posicao.itens) || [];
+        return {
+            id_posicao: posicao._id,
+            id_doc: posicao.id_doc || '',
+            descricao: posicao.descricao || '',
+            tipo: posicao.tipo || '',
+            status: statusOverride != null ? statusOverride : posicao.status,
+            total_itens: itens.length,
+            pendentes: itens.filter((it) => it.status === 'pendente').length,
+            concluidos: itens.filter((it) => it.status === 'concluido').length
+        };
+    }
+
+    async function recalcularStatusOrdemAtomico(Posicao, idPosicao) {
+        const atual = await Posicao.findById(idPosicao).lean();
+        if (!atual) return null;
+        const novoStatus = statusOrdemPorItensPosicao(atual.itens);
+        await Posicao.updateOne(
+            { _id: idPosicao },
+            { $set: { status: novoStatus, status_data: new Date() } }
+        );
+        return { ...atual, status: novoStatus };
+    }
+
+    function acharItemPorTagNasPosicao(posicao, chave, tagsCandidatas) {
+        return (posicao.itens || []).find((it) => {
+            const t = normalizaTagPosicao(it.tag);
+            return t && (t === chave || tagsCandidatas.indexOf(String(it.tag || '')) >= 0);
+        }) || null;
+    }
+
+    /**
+     * Se a conta tiver id_api, notifica o adaptador do cliente:
+     * POST {host}/{id_api}/posicao_item  com posição + item concluído (somente).
+     * Fire-and-forget — não altera o fluxo de quem chamou.
+     */
+    function dispararNotificacaoClientePosicaoItem(posicao, item) {
+        Promise.resolve()
+            .then(function () {
+                return notificarClientePosicaoItem(posicao, item);
+            })
+            .catch(function (err) {
+                console.error('[posicao] notificarClientePosicaoItem:', err && err.message ? err.message : err);
+            });
+    }
+
+    async function notificarClientePosicaoItem(posicao, item) {
+        if (!posicao || !item) return;
+        if (String(item.status || '').toLowerCase() !== 'concluido') return;
+
+        const idDoc = String(posicao.id_doc || '');
+        if (idDoc.includes('-RET') || idDoc.includes('-REC')) {
+            console.log('[posicao] Integração item omitida (ordem interna):', idDoc);
+            return;
+        }
+
+        const idConta = posicao.id_conta;
+        if (!idConta) return;
+
+        const Conta = require('../models/conta');
+        const conta = await Conta.findById(idConta).lean();
+        const idApi = conta && String(conta.id_api || '').trim();
+        if (!idApi) return;
+
+        const itemPlain = item && typeof item.toObject === 'function'
+            ? item.toObject()
+            : Object.assign({}, item);
+        const posPlain = posicao && typeof posicao.toObject === 'function'
+            ? posicao.toObject()
+            : Object.assign({}, posicao);
+
+        // Payload compatível com /x_dsv/posicao_item (e futuros /{id_api}/posicao_item)
+        const body = Object.assign({}, posPlain, {
+            itens: [itemPlain]
+        });
+
+        const port = process.env.PORT || 3000;
+        const url = 'http://127.0.0.1:' + port + '/' + idApi + '/posicao_item';
+
+        console.log('[posicao] Notificando cliente:', url, 'tag=', itemPlain.tag);
+        await axios.post(url, body, {
+            timeout: 15000,
+            validateStatus: function () { return true; }
+        });
+    }
+
+    /**
+     * Conclui um item pendente na posição (idempotente se já concluído).
+     * Com id_posicao: O(1) por _id — seguro em bases grandes.
+     */
+    async function concluirItemNaPosicao(Posicao, opts) {
+        const {
+            tag,
+            id_posicao,
+            id_conta,
+            id_gateway,
+            rssi
+        } = opts || {};
+
+        const tagRaw = String(tag || '').trim();
+        if (!tagRaw) {
+            return { ok: false, resultado: 'erro', message: 'Tag não informada.' };
+        }
+
+        const chave = normalizaTagPosicao(tagRaw);
+        const tagsCandidatas = [...new Set([tagRaw, chave].filter(Boolean))];
+        const agora = new Date();
+
+        let posicao = null;
+
+        if (id_posicao) {
+            const filtroId = { _id: String(id_posicao) };
+            if (id_conta) filtroId.id_conta = String(id_conta);
+            posicao = await Posicao.findOne(filtroId).lean();
+        } else {
+            // Fallback: busca tag pendente (usa índice id_conta + itens.tag)
+            for (const tagBusca of tagsCandidatas) {
+                const filtro = { $and: [] };
+                if (id_conta) filtro.$and.push({ id_conta });
+                filtro.$and.push({
+                    status: { $in: ['pendente', 'parcial', 'aberta', 'partida'] }
+                });
+                filtro.$and.push({
+                    itens: { $elemMatch: { tag: tagBusca, status: 'pendente' } }
+                });
+                const query = filtro.$and.length === 1 ? filtro.$and[0] : filtro;
+                posicao = await Posicao.findOne(query).sort({ createdAt: -1 }).lean();
+                if (posicao) break;
+            }
+        }
+
+        if (!posicao) {
+            return {
+                ok: true,
+                resultado: 'not_found',
+                message: 'Nenhuma ordem encontrada para a tag.',
+                tag: tagRaw
+            };
+        }
+
+        const item = acharItemPorTagNasPosicao(posicao, chave, tagsCandidatas);
+        if (!item) {
+            return {
+                ok: true,
+                resultado: 'not_found',
+                message: 'Tag não pertence a esta ordem.',
+                tag: tagRaw,
+                posicao: montarResumoPosicaoAtender(posicao)
+            };
+        }
+
+        const tagMatch = String(item.tag || tagRaw);
+
+        // Já concluído → idempotente (não reabre)
+        if (item.status === 'concluido') {
+            return {
+                ok: true,
+                resultado: 'atendido',
+                message: 'Item já estava concluído.',
+                tag: tagMatch,
+                posicao: montarResumoPosicaoAtender(posicao),
+                item: {
+                    tag: tagMatch,
+                    status: 'concluido',
+                    status_data: item.status_data || agora,
+                    id_item: item.id_item || null
+                }
+            };
+        }
+
+        const setItem = {
+            'itens.$.status': 'concluido',
+            'itens.$.status_data': agora
+        };
+        if (rssi != null && rssi !== '') setItem['itens.$.rssi'] = String(rssi);
+        if (id_gateway) setItem['itens.$.id_gatweway'] = String(id_gateway);
+
+        const upd = await Posicao.updateOne(
+            {
+                _id: posicao._id,
+                itens: { $elemMatch: { tag: tagMatch, status: 'pendente' } }
+            },
+            { $set: setItem }
+        );
+
+        const matched = (upd.matchedCount != null ? upd.matchedCount : upd.n) || 0;
+        const atual = await recalcularStatusOrdemAtomico(Posicao, posicao._id);
+        const itens = (atual && atual.itens) || [];
+        const itemAtual = atual ? acharItemPorTagNasPosicao(atual, chave, tagsCandidatas) : item;
+
+        // Só notifica quando realmente concluiu agora (não reabre / não idempotente)
+        if (matched && itemAtual && String(itemAtual.status || '').toLowerCase() === 'concluido') {
+            dispararNotificacaoClientePosicaoItem(atual || posicao, itemAtual);
+        }
+
+        return {
+            ok: true,
+            resultado: 'atendido',
+            message: matched
+                ? (itens.length > 0 && itens.every((it) => it.status === 'concluido')
+                    ? 'Item atendido. Ordem concluída.'
+                    : 'Item atendido na ordem.')
+                : 'Item já atendido (leitura concorrente).',
+            tag: tagMatch,
+            posicao: montarResumoPosicaoAtender(atual || posicao, atual && atual.status),
+            item: {
+                tag: tagMatch,
+                status: (itemAtual && itemAtual.status) || 'concluido',
+                status_data: (itemAtual && itemAtual.status_data) || agora,
+                id_item: (itemAtual && itemAtual.id_item) || item.id_item || null
+            }
+        };
+    }
+
+    /**
+     * Portal checagem_multipla / lote:
      * POST /posicao/atender-tag
-     * Body: { tag, id_conta, id_nivel_loc1..4, id_gateway, rssi }
-     * - pendente → conclui item (update atômico); recalcula parcial/concluido
-     * - já concluído → reabre como pendente (update atômico) e recalcula o pedido
-     * - não encontrada → not_found (portal trata como excedente visual)
+     * Body: { tag, id_conta, id_posicao?, modo?: 'concluir'|'toggle', id_nivel_loc*, id_gateway, rssi }
+     * - modo=concluir (ou id_posicao): só conclui; já concluído = idempotente (não reabre)
+     * - modo=toggle (default sem id_posicao): pendente→concluido; concluido→pendente (legado portal_movimentacao)
      */
     app.post('/posicao/atender-tag', async (req, res) => {
         const Posicao = require('../models/posicao');
         const {
             tag,
             id_conta,
+            id_posicao,
+            modo,
             id_nivel_loc1,
             id_nivel_loc2,
             id_nivel_loc3,
@@ -2984,57 +3217,39 @@ module.exports = (app, dbConnection) => {
             return res.status(400).json({ ok: false, message: 'Tag não informada.' });
         }
 
-        function normalizaTagPos(valor) {
-            if (valor == null) return '';
-            return String(valor).replace(/[^0-9A-Za-z]/g, '').toUpperCase();
-        }
-
-        const chave = normalizaTagPos(tagRaw);
-        const tagsCandidatas = [...new Set([tagRaw, chave].filter(Boolean))];
-
-        function montarFiltroBase() {
-            const filtro = { $and: [] };
-            if (id_conta) filtro.$and.push({ id_conta });
-            if (id_nivel_loc1) filtro.$and.push({ id_nivel_loc1 });
-            if (id_nivel_loc2) filtro.$and.push({ id_nivel_loc2 });
-            if (id_nivel_loc3) filtro.$and.push({ id_nivel_loc3 });
-            if (id_nivel_loc4) filtro.$and.push({ id_nivel_loc4 });
-            return filtro;
-        }
-
-        function acharItem(posicao) {
-            return (posicao.itens || []).find((it) => {
-                const t = normalizaTagPos(it.tag);
-                return t && (t === chave || tagsCandidatas.indexOf(String(it.tag || '')) >= 0);
-            }) || null;
-        }
-
-        function statusOrdemPorItens(itens) {
-            const lista = itens || [];
-            const todosConcluidos = lista.length > 0 && lista.every((it) => it.status === 'concluido');
-            const algumConcluido = lista.some((it) => it.status === 'concluido');
-            if (todosConcluidos) return 'concluido';
-            if (algumConcluido) return 'parcial';
-            return 'pendente';
-        }
-
-        async function recalcularStatusOrdemAtomico(idPosicao) {
-            const atual = await Posicao.findById(idPosicao).lean();
-            if (!atual) return null;
-            const novoStatus = statusOrdemPorItens(atual.itens);
-            await Posicao.updateOne(
-                { _id: idPosicao },
-                { $set: { status: novoStatus, status_data: new Date() } }
-            );
-            return { ...atual, status: novoStatus };
-        }
+        const modoNorm = String(modo || '').trim().toLowerCase();
+        const soConcluir = modoNorm === 'concluir' || !!id_posicao;
 
         try {
+            if (soConcluir) {
+                const out = await concluirItemNaPosicao(Posicao, {
+                    tag: tagRaw,
+                    id_posicao,
+                    id_conta,
+                    id_gateway,
+                    rssi
+                });
+                return res.status(out.ok === false ? 400 : 200).json(out);
+            }
+
+            // --- modo toggle (legado): busca por tag + reabre se já concluído ---
+            const chave = normalizaTagPosicao(tagRaw);
+            const tagsCandidatas = [...new Set([tagRaw, chave].filter(Boolean))];
+
+            function montarFiltroBase() {
+                const filtro = { $and: [] };
+                if (id_conta) filtro.$and.push({ id_conta });
+                if (id_nivel_loc1) filtro.$and.push({ id_nivel_loc1 });
+                if (id_nivel_loc2) filtro.$and.push({ id_nivel_loc2 });
+                if (id_nivel_loc3) filtro.$and.push({ id_nivel_loc3 });
+                if (id_nivel_loc4) filtro.$and.push({ id_nivel_loc4 });
+                return filtro;
+            }
+
             let posicao = null;
             let item = null;
             let tagMatch = tagRaw;
 
-            // 1) Prefere item ainda pendente
             for (const tagBusca of tagsCandidatas) {
                 const filtro = montarFiltroBase();
                 filtro.$and.push({
@@ -3043,7 +3258,7 @@ module.exports = (app, dbConnection) => {
                 const query = filtro.$and.length === 1 ? filtro.$and[0] : filtro;
                 posicao = await Posicao.findOne(query).sort({ createdAt: -1 }).lean();
                 if (posicao) {
-                    item = acharItem(posicao);
+                    item = acharItemPorTagNasPosicao(posicao, chave, tagsCandidatas);
                     if (item && item.status === 'pendente') {
                         tagMatch = String(item.tag || tagBusca);
                         break;
@@ -3053,7 +3268,6 @@ module.exports = (app, dbConnection) => {
                 }
             }
 
-            // 2) Já lida / qualquer status (reabrir)
             if (!posicao) {
                 for (const tagBusca of tagsCandidatas) {
                     const filtro = montarFiltroBase();
@@ -3063,7 +3277,7 @@ module.exports = (app, dbConnection) => {
                     const query = filtro.$and.length === 1 ? filtro.$and[0] : filtro;
                     posicao = await Posicao.findOne(query).sort({ createdAt: -1 }).lean();
                     if (posicao) {
-                        item = acharItem(posicao);
+                        item = acharItemPorTagNasPosicao(posicao, chave, tagsCandidatas);
                         if (item) {
                             tagMatch = String(item.tag || tagBusca);
                             break;
@@ -3090,7 +3304,6 @@ module.exports = (app, dbConnection) => {
             if (rssi != null && rssi !== '') setItem['itens.$.rssi'] = String(rssi);
             if (id_gateway) setItem['itens.$.id_gatweway'] = String(id_gateway);
 
-            // Relida: item já concluído → reabre como pendente (atômico)
             if (item.status === 'concluido') {
                 setItem['itens.$.status'] = 'pendente';
                 const upd = await Posicao.updateOne(
@@ -3102,23 +3315,13 @@ module.exports = (app, dbConnection) => {
                 );
 
                 if (!upd.matchedCount && !upd.n) {
-                    // Outra request já alterou — relê estado atual
-                    const atual = await recalcularStatusOrdemAtomico(posicao._id);
-                    const itemAtual = atual ? acharItem(atual) : null;
+                    const atual = await recalcularStatusOrdemAtomico(Posicao, posicao._id);
+                    const itemAtual = atual ? acharItemPorTagNasPosicao(atual, chave, tagsCandidatas) : null;
                     return res.status(200).json({
                         ok: true,
                         resultado: itemAtual && itemAtual.status === 'pendente' ? 'reaberto' : 'atendido',
                         message: 'Estado atualizado por outra leitura concorrente.',
-                        posicao: {
-                            id_posicao: posicao._id,
-                            id_doc: (atual && atual.id_doc) || posicao.id_doc || '',
-                            descricao: (atual && atual.descricao) || posicao.descricao || '',
-                            tipo: (atual && atual.tipo) || posicao.tipo || '',
-                            status: (atual && atual.status) || posicao.status,
-                            total_itens: ((atual && atual.itens) || []).length,
-                            pendentes: ((atual && atual.itens) || []).filter((it) => it.status === 'pendente').length,
-                            concluidos: ((atual && atual.itens) || []).filter((it) => it.status === 'concluido').length
-                        },
+                        posicao: montarResumoPosicaoAtender(atual || posicao),
                         item: {
                             tag: tagMatch,
                             status: (itemAtual && itemAtual.status) || 'pendente',
@@ -3129,22 +3332,12 @@ module.exports = (app, dbConnection) => {
                     });
                 }
 
-                const atual = await recalcularStatusOrdemAtomico(posicao._id);
-                const itensReab = (atual && atual.itens) || [];
+                const atual = await recalcularStatusOrdemAtomico(Posicao, posicao._id);
                 return res.status(200).json({
                     ok: true,
                     resultado: 'reaberto',
                     message: 'Item reaberto como pendente. Status do pedido atualizado.',
-                    posicao: {
-                        id_posicao: posicao._id,
-                        id_doc: (atual && atual.id_doc) || posicao.id_doc || '',
-                        descricao: (atual && atual.descricao) || posicao.descricao || '',
-                        tipo: (atual && atual.tipo) || posicao.tipo || '',
-                        status: (atual && atual.status) || 'pendente',
-                        total_itens: itensReab.length,
-                        pendentes: itensReab.filter((it) => it.status === 'pendente').length,
-                        concluidos: itensReab.filter((it) => it.status === 'concluido').length
-                    },
+                    posicao: montarResumoPosicaoAtender(atual || posicao, (atual && atual.status) || 'pendente'),
                     item: {
                         tag: tagMatch,
                         status: 'pendente',
@@ -3155,7 +3348,6 @@ module.exports = (app, dbConnection) => {
                 });
             }
 
-            // Atende item pendente (update atômico no item — evita corrida entre tags)
             setItem['itens.$.status'] = 'concluido';
             const upd = await Posicao.updateOne(
                 {
@@ -3166,63 +3358,311 @@ module.exports = (app, dbConnection) => {
             );
 
             const matched = (upd.matchedCount != null ? upd.matchedCount : upd.n) || 0;
-            if (!matched) {
-                // Já foi concluído por outra request concorrente
-                const atual = await recalcularStatusOrdemAtomico(posicao._id);
-                const itemAtual = atual ? acharItem(atual) : null;
-                const itens = (atual && atual.itens) || [];
-                return res.status(200).json({
-                    ok: true,
-                    resultado: 'atendido',
-                    message: 'Item já atendido (leitura concorrente).',
-                    posicao: {
-                        id_posicao: posicao._id,
-                        id_doc: (atual && atual.id_doc) || posicao.id_doc || '',
-                        descricao: (atual && atual.descricao) || posicao.descricao || '',
-                        tipo: (atual && atual.tipo) || posicao.tipo || '',
-                        status: (atual && atual.status) || posicao.status,
-                        total_itens: itens.length,
-                        pendentes: itens.filter((it) => it.status === 'pendente').length,
-                        concluidos: itens.filter((it) => it.status === 'concluido').length
-                    },
-                    item: {
-                        tag: tagMatch,
-                        status: (itemAtual && itemAtual.status) || 'concluido',
-                        status_data: (itemAtual && itemAtual.status_data) || agora,
-                        id_item: (itemAtual && itemAtual.id_item) || item.id_item || null
-                    }
-                });
-            }
-
-            const atual = await recalcularStatusOrdemAtomico(posicao._id);
+            const atual = await recalcularStatusOrdemAtomico(Posicao, posicao._id);
             const itens = (atual && atual.itens) || [];
+            const itemAtual = atual ? acharItemPorTagNasPosicao(atual, chave, tagsCandidatas) : null;
             const todosConcluidos = itens.length > 0 && itens.every((it) => it.status === 'concluido');
 
             return res.status(200).json({
                 ok: true,
                 resultado: 'atendido',
-                message: todosConcluidos
-                    ? 'Item atendido. Ordem concluída.'
-                    : 'Item atendido na ordem.',
-                posicao: {
-                    id_posicao: posicao._id,
-                    id_doc: (atual && atual.id_doc) || posicao.id_doc || '',
-                    descricao: (atual && atual.descricao) || posicao.descricao || '',
-                    tipo: (atual && atual.tipo) || posicao.tipo || '',
-                    status: (atual && atual.status) || (todosConcluidos ? 'concluido' : 'parcial'),
-                    total_itens: itens.length,
-                    pendentes: itens.filter((it) => it.status === 'pendente').length,
-                    concluidos: itens.filter((it) => it.status === 'concluido').length
-                },
+                message: matched
+                    ? (todosConcluidos ? 'Item atendido. Ordem concluída.' : 'Item atendido na ordem.')
+                    : 'Item já atendido (leitura concorrente).',
+                posicao: montarResumoPosicaoAtender(
+                    atual || posicao,
+                    (atual && atual.status) || (todosConcluidos ? 'concluido' : 'parcial')
+                ),
                 item: {
                     tag: tagMatch,
-                    status: 'concluido',
-                    status_data: agora,
-                    id_item: item.id_item || null
+                    status: (itemAtual && itemAtual.status) || 'concluido',
+                    status_data: (itemAtual && itemAtual.status_data) || agora,
+                    id_item: (itemAtual && itemAtual.id_item) || item.id_item || null
                 }
             });
         } catch (e) {
             console.error('[posicao/atender-tag]', e);
+            return res.status(400).json({ ok: false, message: e.toString() });
+        }
+    });
+
+    /**
+     * Batch para fechamento de lote do portal ordens múltiplas.
+     * POST /posicao/atender-tags
+     * Body: { id_conta, id_gateway?, itens: [{ id_posicao, tag, rssi? }] }
+     * Agrupa por id_posicao: N concludes + 1 recalculo por ordem.
+     */
+    app.post('/posicao/atender-tags', async (req, res) => {
+        const Posicao = require('../models/posicao');
+        const { id_conta, id_gateway, itens } = req.body || {};
+
+        if (!Array.isArray(itens) || !itens.length) {
+            return res.status(400).json({ ok: false, message: 'Informe itens[].' });
+        }
+        if (!id_conta) {
+            return res.status(400).json({ ok: false, message: 'id_conta obrigatório.' });
+        }
+
+        try {
+            const porOrdem = new Map();
+            itens.forEach((it, idx) => {
+                if (!it || !it.tag) return;
+                const idPos = String(it.id_posicao || '').trim();
+                if (!idPos) return;
+                if (!porOrdem.has(idPos)) porOrdem.set(idPos, []);
+                porOrdem.get(idPos).push({ ...it, _idx: idx });
+            });
+
+            const resultados = [];
+            let atendidos = 0;
+            let notFound = 0;
+            let erros = 0;
+
+            for (const [idPosicao, lista] of porOrdem.entries()) {
+                const filtroId = { _id: idPosicao, id_conta: String(id_conta) };
+                let posicao = await Posicao.findOne(filtroId);
+                if (!posicao) {
+                    lista.forEach((it) => {
+                        notFound += 1;
+                        resultados.push({
+                            tag: it.tag,
+                            id_posicao: idPosicao,
+                            resultado: 'not_found',
+                            message: 'Ordem não encontrada.'
+                        });
+                    });
+                    continue;
+                }
+
+                const agora = new Date();
+                let alterou = false;
+                const resultadosDestaOrdem = [];
+                const itensRecemConcluidos = [];
+
+                for (const it of lista) {
+                    const tagRaw = String(it.tag || '').trim();
+                    const chave = normalizaTagPosicao(tagRaw);
+                    const tagsCandidatas = [...new Set([tagRaw, chave].filter(Boolean))];
+                    const item = acharItemPorTagNasPosicao(posicao, chave, tagsCandidatas);
+
+                    if (!item) {
+                        notFound += 1;
+                        const rNf = {
+                            tag: tagRaw,
+                            id_posicao: idPosicao,
+                            resultado: 'not_found',
+                            message: 'Tag não pertence a esta ordem.'
+                        };
+                        resultados.push(rNf);
+                        resultadosDestaOrdem.push(rNf);
+                        continue;
+                    }
+
+                    const tagMatch = String(item.tag || tagRaw);
+
+                    if (item.status === 'concluido') {
+                        atendidos += 1;
+                        const rOk = {
+                            tag: tagMatch,
+                            id_posicao: idPosicao,
+                            resultado: 'atendido',
+                            message: 'Item já estava concluído.'
+                        };
+                        resultados.push(rOk);
+                        resultadosDestaOrdem.push(rOk);
+                        continue;
+                    }
+
+                    item.status = 'concluido';
+                    item.status_data = agora;
+                    if (it.rssi != null && it.rssi !== '') item.rssi = String(it.rssi);
+                    if (id_gateway) item.id_gatweway = String(id_gateway);
+                    alterou = true;
+                    atendidos += 1;
+                    itensRecemConcluidos.push(item);
+                    const rAt = {
+                        tag: tagMatch,
+                        id_posicao: idPosicao,
+                        resultado: 'atendido',
+                        message: 'Item atendido.'
+                    };
+                    resultados.push(rAt);
+                    resultadosDestaOrdem.push(rAt);
+                }
+
+                if (alterou) {
+                    posicao.status = statusOrdemPorItensPosicao(posicao.itens);
+                    posicao.status_data = agora;
+                    await posicao.save();
+                }
+
+                // Integração cliente: só itens que acabaram de concluir
+                if (itensRecemConcluidos.length) {
+                    const posParaNotify = posicao.toObject ? posicao.toObject() : posicao;
+                    itensRecemConcluidos.forEach(function (itConcluido) {
+                        dispararNotificacaoClientePosicaoItem(posParaNotify, itConcluido);
+                    });
+                }
+
+                const resumo = montarResumoPosicaoAtender(posicao.toObject ? posicao.toObject() : posicao);
+                resultadosDestaOrdem.forEach((r) => {
+                    if (r.resultado === 'atendido') r.posicao = resumo;
+                });
+            }
+
+            // Itens sem id_posicao → concluir via fallback (ainda com índice)
+            const semOrdem = itens.filter((it) => it && it.tag && !String(it.id_posicao || '').trim());
+            for (const it of semOrdem) {
+                try {
+                    const out = await concluirItemNaPosicao(Posicao, {
+                        tag: it.tag,
+                        id_conta,
+                        id_gateway,
+                        rssi: it.rssi
+                    });
+                    if (out.resultado === 'atendido') atendidos += 1;
+                    else if (out.resultado === 'not_found') notFound += 1;
+                    else erros += 1;
+                    resultados.push({
+                        tag: it.tag,
+                        id_posicao: (out.posicao && out.posicao.id_posicao) || null,
+                        resultado: out.resultado,
+                        message: out.message,
+                        posicao: out.posicao || undefined
+                    });
+                } catch (eItem) {
+                    erros += 1;
+                    resultados.push({
+                        tag: it.tag,
+                        resultado: 'erro',
+                        message: eItem.toString()
+                    });
+                }
+            }
+
+            return res.status(200).json({
+                ok: true,
+                atendidos,
+                not_found: notFound,
+                erros,
+                total: itens.length,
+                resultados
+            });
+        } catch (e) {
+            console.error('[posicao/atender-tags]', e);
+            return res.status(400).json({ ok: false, message: e.toString() });
+        }
+    });
+
+    /**
+     * Portal modo retorno: grava retorno_data nos itens lidos.
+     * Se o item estava concluido → volta para pendente.
+     * NÃO notifica API do cliente (id_api).
+     * POST /posicao/retorno-tags
+     * Body: { id_conta, itens: [{ id_posicao, tag, retorno_data? }] }
+     */
+    app.post('/posicao/retorno-tags', async (req, res) => {
+        const Posicao = require('../models/posicao');
+        const { id_conta, itens } = req.body || {};
+
+        if (!Array.isArray(itens) || !itens.length) {
+            return res.status(400).json({ ok: false, message: 'Informe itens[].' });
+        }
+        if (!id_conta) {
+            return res.status(400).json({ ok: false, message: 'id_conta obrigatório.' });
+        }
+
+        try {
+            const porOrdem = new Map();
+            itens.forEach((it) => {
+                if (!it || !it.tag) return;
+                const idPos = String(it.id_posicao || '').trim();
+                if (!idPos) return;
+                if (!porOrdem.has(idPos)) porOrdem.set(idPos, []);
+                porOrdem.get(idPos).push(it);
+            });
+
+            const resultados = [];
+            let okCount = 0;
+            let notFound = 0;
+
+            for (const [idPosicao, lista] of porOrdem.entries()) {
+                const posicao = await Posicao.findOne({ _id: idPosicao, id_conta: String(id_conta) });
+                if (!posicao) {
+                    lista.forEach((it) => {
+                        notFound += 1;
+                        resultados.push({
+                            tag: it.tag,
+                            id_posicao: idPosicao,
+                            resultado: 'not_found',
+                            message: 'Ordem não encontrada.'
+                        });
+                    });
+                    continue;
+                }
+
+                let alterou = false;
+                const agora = new Date();
+
+                for (const it of lista) {
+                    const tagRaw = String(it.tag || '').trim();
+                    const chave = normalizaTagPosicao(tagRaw);
+                    const tagsCandidatas = [...new Set([tagRaw, chave].filter(Boolean))];
+                    const item = acharItemPorTagNasPosicao(posicao, chave, tagsCandidatas);
+
+                    if (!item) {
+                        notFound += 1;
+                        resultados.push({
+                            tag: tagRaw,
+                            id_posicao: idPosicao,
+                            resultado: 'not_found',
+                            message: 'Tag não pertence a esta ordem.'
+                        });
+                        continue;
+                    }
+
+                    const retornoData = it.retorno_data ? new Date(it.retorno_data) : agora;
+                    item.retorno_data = isNaN(retornoData.getTime()) ? agora : retornoData;
+
+                    if (String(item.status || '').toLowerCase() === 'concluido') {
+                        item.status = 'pendente';
+                        item.status_data = agora;
+                    }
+
+                    alterou = true;
+                    okCount += 1;
+                    resultados.push({
+                        tag: String(item.tag || tagRaw),
+                        id_posicao: idPosicao,
+                        resultado: 'retorno',
+                        status: item.status,
+                        retorno_data: item.retorno_data
+                    });
+                }
+
+                if (alterou) {
+                    posicao.status = statusOrdemPorItensPosicao(posicao.itens);
+                    posicao.status_data = agora;
+                    await posicao.save();
+                }
+
+                const resumo = montarResumoPosicaoAtender(posicao.toObject ? posicao.toObject() : posicao);
+                resultados.forEach((r) => {
+                    if (r.id_posicao === idPosicao && r.resultado === 'retorno') {
+                        r.posicao = resumo;
+                    }
+                });
+            }
+
+            return res.status(200).json({
+                ok: true,
+                retornos: okCount,
+                not_found: notFound,
+                total: itens.length,
+                resultados
+            });
+        } catch (e) {
+            console.error('[posicao/retorno-tags]', e);
             return res.status(400).json({ ok: false, message: e.toString() });
         }
     });

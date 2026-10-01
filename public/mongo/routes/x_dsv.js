@@ -35,6 +35,22 @@ function parseDataBrasil(valor) {
   return isNaN(fallback.getTime()) ? null : fallback;
 }
 
+function formatDataHoraBrasil(valor) {
+  const d = valor instanceof Date ? valor : parseDataBrasil(valor) || new Date(valor);
+  if (!d || isNaN(d.getTime())) return '';
+  // se status_data vier em UTC e você quiser horário de Brasília:
+  const br = new Date(d.getTime() - 3 * 60 * 60 * 1000);
+  const pad = (n) => String(n).padStart(2, '0');
+  return (
+    pad(br.getUTCDate()) + '/' +
+    pad(br.getUTCMonth() + 1) + '/' +
+    br.getUTCFullYear() + ' ' +
+    pad(br.getUTCHours()) + ':' +
+    pad(br.getUTCMinutes()) + ':' +
+    pad(br.getUTCSeconds())
+  );
+}
+
 module.exports = (app) => {
 
   app.get('/x_dsv/:id_posicao', async (req, res) => {
@@ -53,7 +69,7 @@ module.exports = (app) => {
 
   app.post('/x_dsv/registro', async (req, res) => {
 
-    let id_conta = "a689db08-b858"
+    let id_conta ="a689db08-b858" // "9bbe91e6-b3e4" 
 
     let {
       datahora,
@@ -139,13 +155,35 @@ module.exports = (app) => {
 
       if (!posicao) {
         //4.2 Se não existir Registrar a Ordem de Posicao
-        //4.2.2 Localizacao de inicio, a primeira localizacao cadastrada da conta
-        const localizacaoInicio = await Localizacao.findOne({ id_conta, id_nivel: null }).sort({ createdAt: 1 });
+        //4.2.1 Nível 1: localização com nome FORNECEDOR
+        let localizacaoInicio = await Localizacao.findOne({
+          id_conta,
+          descricao: { $regex: /^FORNECEDOR$/i }
+        });
+        if (!localizacaoInicio) {
+          localizacaoInicio = await Localizacao.create({
+            id_conta,
+            id_nivel: null,
+            descricao: 'FORNECEDOR'
+          });
+        }
 
-        //4.2.2 Segundo nivel: a primeira localizacao filha (id_nivel = _id da localizacao de inicio)
+        //4.2.2 Nível 2: campo fornecedor do payload (filho de FORNECEDOR)
         let localizacaoInicioNivel2 = null;
-        if (localizacaoInicio) {
-          localizacaoInicioNivel2 = await Localizacao.findOne({ id_conta, id_nivel: localizacaoInicio._id }).sort({ createdAt: 1 });
+        const fornecedorNome = String(fornecedor || '').trim().toUpperCase();
+        if (localizacaoInicio && fornecedorNome) {
+          localizacaoInicioNivel2 = await Localizacao.findOne({
+            id_conta,
+            id_nivel: localizacaoInicio._id,
+            descricao: fornecedorNome
+          });
+          if (!localizacaoInicioNivel2) {
+            localizacaoInicioNivel2 = await Localizacao.create({
+              id_conta,
+              id_nivel: localizacaoInicio._id,
+              descricao: fornecedorNome
+            });
+          }
         }
 
         posicao = await Posicao.create({
@@ -158,9 +196,9 @@ module.exports = (app) => {
           status_data: new Date(),
           partida_data: parseDataBrasil(datahora) || new Date(),
 
-          //4.2.2 Localizacao de inicio, a primeira localizacao cadastrada da conta
+          //4.2.1 FORNECEDOR
           id_nivel_loc1: localizacaoInicio ? localizacaoInicio._id : null,
-          //4.2.2 Segundo nivel: a primeira localizacao filha (id_nivel = _id da localizacao de inicio)
+          //4.2.2 fornecedor do body (criado se não existir)
           id_nivel_loc2: localizacaoInicioNivel2 ? localizacaoInicioNivel2._id : null,
 
           //4.2.3 localizacao de destino, o Destinatário informado, 
@@ -231,7 +269,7 @@ module.exports = (app) => {
 
       const query = filtro.$and.length === 1 ? filtro.$and[0] : filtro;
       let posicao = await Posicao.findOne(query);
-   
+
       if (!posicao) {
         return { ok: false, message: 'Nenhuma posição encontrada para a tag informada.' };
       }
@@ -264,6 +302,78 @@ module.exports = (app) => {
     }
   };
 
+  app.post('/x_dsv/posicao_item', async (req, res) => {
+    try {
+      const payload = req.body || {};
+      const item = Array.isArray(payload.itens) && payload.itens[0] ? payload.itens[0] : null;
+      if (!item || !item.tag) {
+        return res.status(400).json({
+          ok: false,
+          message: 'Informe a posição com itens[0].tag (item concluído).'
+        });
+      }
+
+      const data = JSON.stringify({
+        Itens: [
+          {
+            datahora: formatDataHoraBrasil(item.status_data || payload.status_data),
+            pedido: payload.id_doc,
+            notafiscal: payload.descricao,
+            epc: item.tag
+          }
+        ]
+      });
+
+      // console.log(data);
+      // return res.status(200).json({
+      //   ok: true
+      // })
+
+      const config = {
+        method: 'post',
+        maxBodyLength: Infinity,
+        url: 'https://default4a90c23a3ece4ef2b857522f23b820.4c.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/06f26b0c3ed946138b7ce4068bfbdc32/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=csViNgsXEUEwRo0fiCzbhm2HqIE74bY-GF05l_1dPaA',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        data: data,
+        timeout: 20000,
+        validateStatus: () => true
+      };
+
+      const response = await axios.request(config);
+      console.log('[x_dsv/posicao_item]', response.status, JSON.stringify(response.data));
+
+      return res.status(200).json({
+        ok: true,
+        power_status: response.status,
+        power_data: response.data
+      });
+
+    } catch (error) {
+      console.error('[x_dsv/posicao_item] Erro:', error.message);
+      return res.status(200).json({
+        ok: false,
+        message: error.message
+      });
+    }
+  });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  // nao está em uso, virou default
   app.post('/x_dsv/registro/portal', async (req, res) => {
 
     const payload = req.body;

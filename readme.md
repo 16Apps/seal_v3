@@ -48,6 +48,7 @@ git push -u origin main
 
 
 - deploy GIT
+git config core.autocrlf true
 git add .
 git commit -m "Atualização Seal"
 git push
