@@ -65,6 +65,11 @@ const PosicaoSchema = new mongoose.Schema({
     retorno_api:  { type: String },
     // caso tenha mais um processo, replica do registro com nivel_destino como origem
 
+    logs_payload: [{
+        data: { type: Date, default: Date.now },
+        payload: { type: mongoose.Schema.Types.Mixed }
+    }],
+
 }, {
     versionKey: false,
     timestamps: true

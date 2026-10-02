@@ -153,6 +153,11 @@ module.exports = (app) => {
         status_destino_data: new Date()
       };
 
+      const logPayload = {
+        data: new Date(),
+        payload: JSON.parse(JSON.stringify(req.body || {}))
+      };
+
       if (!posicao) {
         //4.2 Se não existir Registrar a Ordem de Posicao
         //4.2.1 Nível 1: localização com nome FORNECEDOR
@@ -205,15 +210,19 @@ module.exports = (app) => {
           id_nivel_loc1_destino: localizacaoDestino._id,
 
           //4.2.1  Com o Items, 
-          itens: [itemPosicao]
+          itens: [itemPosicao],
+          logs_payload: [logPayload]
         });
       } else {
         //4.3 Se existir, vincular o Item a Ordem de Posicao
         const jaVinculado = (posicao.itens || []).some((it) => it.id_item === item._id);
         if (!jaVinculado) {
           posicao.itens.push(itemPosicao);
-          await posicao.save();
         }
+        // log de cada envio (mesmo se o item já estava vinculado)
+        if (!Array.isArray(posicao.logs_payload)) posicao.logs_payload = [];
+        posicao.logs_payload.push(logPayload);
+        await posicao.save();
       }
 
       //5. Atualizar Item
