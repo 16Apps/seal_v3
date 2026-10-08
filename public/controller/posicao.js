@@ -147,16 +147,28 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService,  $l
         if (!Array.isArray(itens)) itens = [];
 
         var concluido = 0;
-        var pendente = 0;
+        var pendenteArr = 0;
 
         itens.forEach(function (item) {
             if (!item) return;
             var st = String(item.status || 'pendente').toLowerCase();
             if (st === 'concluido') concluido += 1;
-            else pendente += 1;
+            else pendenteArr += 1;
         });
 
-        return { concluido: concluido, pendente: pendente };
+        var totais = uteisService.normalizarTotaisPosicao
+            ? uteisService.normalizarTotaisPosicao(posicao || { itens: itens })
+            : { total_itens: itens.length, total_concluido: concluido };
+        var totalPrevisto = totais.total_itens != null ? totais.total_itens : itens.length;
+        var concl = totais.total_concluido != null ? totais.total_concluido : concluido;
+
+        return {
+            concluido: concl,
+            pendente: Math.max(0, totalPrevisto - concl),
+            total: totalPrevisto,
+            // mantém contagem só do array quando útil
+            pendente_arr: pendenteArr
+        };
     };
 
     /** Lista de ordens após filtro de retorno (client-side) */

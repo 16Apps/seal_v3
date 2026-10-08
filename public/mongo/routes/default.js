@@ -314,6 +314,35 @@ module.exports = (app, dbConnection) => {
                 //analizar melhor esse ponto, ou já realizar a checagem previamente 
                 // await atualizarPosicaoConcluida(documento);
 
+                // Normaliza total_itens / total_concluido / status (legado sem campos)
+                try {
+                    const { normalizarTotaisPosicao } = require('../helpers/posicaoTotais');
+                    const plain = documento.toObject ? documento.toObject() : documento;
+                    const totais = normalizarTotaisPosicao(plain);
+                    const stOrig = String(documento.status || '').toLowerCase();
+                    const deveRecalcStatus = !stOrig || stOrig === 'pendente' || stOrig === 'parcial' || stOrig === 'concluido';
+                    const setTotais = {
+                        total_itens: totais.total_itens,
+                        total_concluido: totais.total_concluido
+                    };
+                    if (deveRecalcStatus) {
+                        setTotais.status = totais.status;
+                        setTotais.status_data = new Date();
+                    }
+                    if (
+                        documento.total_itens !== setTotais.total_itens
+                        || documento.total_concluido !== setTotais.total_concluido
+                        || (deveRecalcStatus && documento.status !== setTotais.status)
+                    ) {
+                        documento = await Collection.findByIdAndUpdate(
+                            documento._id,
+                            { $set: setTotais },
+                            { new: true }
+                        );
+                    }
+                } catch (eTotais) {
+                    console.error('[posicao] normalizar totais:', eTotais && eTotais.message);
+                }
 
                 await atualizarStatusItensInventario(documento);
 

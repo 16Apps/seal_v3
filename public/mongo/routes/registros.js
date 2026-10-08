@@ -17,6 +17,10 @@ const AssociacaoRegistro = require("../models/associacao_reg");
 const Interacao = require("../models/interacao");
 const Colaborador = require("../models/colaborador");
 const RegistroColaborador = require("../models/registro_colaborador");
+const {
+    normalizarTotaisPosicao,
+    aplicarTotaisNaPosicao
+} = require('../helpers/posicaoTotais');
 
 const ultimasLeituras = new Map(); // { "tag|tokem" => timestamp }
 const DEBOUNCE_LEITURA_SEG = 6; // leitor envia ~5s; folga evita processar o próximo tick como ciclo novo
@@ -2966,38 +2970,38 @@ module.exports = (app, dbConnection) => {
         return String(valor).replace(/[^0-9A-Za-z]/g, '').toUpperCase();
     }
 
-    function statusOrdemPorItensPosicao(itens) {
-        const lista = itens || [];
-        const todosConcluidos = lista.length > 0 && lista.every((it) => it.status === 'concluido');
-        const algumConcluido = lista.some((it) => it.status === 'concluido');
-        if (todosConcluidos) return 'concluido';
-        if (algumConcluido) return 'parcial';
-        return 'pendente';
-    }
-
     function montarResumoPosicaoAtender(posicao, statusOverride) {
         const itens = (posicao && posicao.itens) || [];
+        const totais = normalizarTotaisPosicao(posicao || { itens: itens });
         return {
             id_posicao: posicao._id,
             id_doc: posicao.id_doc || '',
             descricao: posicao.descricao || '',
             tipo: posicao.tipo || '',
-            status: statusOverride != null ? statusOverride : posicao.status,
-            total_itens: itens.length,
-            pendentes: itens.filter((it) => it.status === 'pendente').length,
-            concluidos: itens.filter((it) => it.status === 'concluido').length
+            status: statusOverride != null ? statusOverride : (posicao.status || totais.status),
+            total_itens: totais.total_itens,
+            total_concluido: totais.total_concluido,
+            pendentes: Math.max(0, totais.total_itens - totais.total_concluido),
+            concluidos: totais.total_concluido
         };
     }
 
     async function recalcularStatusOrdemAtomico(Posicao, idPosicao) {
         const atual = await Posicao.findById(idPosicao).lean();
         if (!atual) return null;
-        const novoStatus = statusOrdemPorItensPosicao(atual.itens);
+        const totais = normalizarTotaisPosicao(atual);
         await Posicao.updateOne(
             { _id: idPosicao },
-            { $set: { status: novoStatus, status_data: new Date() } }
+            {
+                $set: {
+                    status: totais.status,
+                    status_data: new Date(),
+                    total_itens: totais.total_itens,
+                    total_concluido: totais.total_concluido
+                }
+            }
         );
-        return { ...atual, status: novoStatus };
+        return { ...atual, ...totais };
     }
 
     function acharItemPorTagNasPosicao(posicao, chave, tagsCandidatas) {
@@ -3175,7 +3179,7 @@ module.exports = (app, dbConnection) => {
             ok: true,
             resultado: 'atendido',
             message: matched
-                ? (itens.length > 0 && itens.every((it) => it.status === 'concluido')
+                ? ((atual && atual.status === 'concluido')
                     ? 'Item atendido. Ordem concluída.'
                     : 'Item atendido na ordem.')
                 : 'Item já atendido (leitura concorrente).',
@@ -3359,19 +3363,18 @@ module.exports = (app, dbConnection) => {
 
             const matched = (upd.matchedCount != null ? upd.matchedCount : upd.n) || 0;
             const atual = await recalcularStatusOrdemAtomico(Posicao, posicao._id);
-            const itens = (atual && atual.itens) || [];
             const itemAtual = atual ? acharItemPorTagNasPosicao(atual, chave, tagsCandidatas) : null;
-            const todosConcluidos = itens.length > 0 && itens.every((it) => it.status === 'concluido');
+            const ordemConcluida = !!(atual && atual.status === 'concluido');
 
             return res.status(200).json({
                 ok: true,
                 resultado: 'atendido',
                 message: matched
-                    ? (todosConcluidos ? 'Item atendido. Ordem concluída.' : 'Item atendido na ordem.')
+                    ? (ordemConcluida ? 'Item atendido. Ordem concluída.' : 'Item atendido na ordem.')
                     : 'Item já atendido (leitura concorrente).',
                 posicao: montarResumoPosicaoAtender(
                     atual || posicao,
-                    (atual && atual.status) || (todosConcluidos ? 'concluido' : 'parcial')
+                    (atual && atual.status) || null
                 ),
                 item: {
                     tag: tagMatch,
@@ -3491,7 +3494,7 @@ module.exports = (app, dbConnection) => {
                 }
 
                 if (alterou) {
-                    posicao.status = statusOrdemPorItensPosicao(posicao.itens);
+                    aplicarTotaisNaPosicao(posicao, { forcarStatus: true });
                     posicao.status_data = agora;
                     await posicao.save();
                 }
@@ -3641,7 +3644,7 @@ module.exports = (app, dbConnection) => {
                 }
 
                 if (alterou) {
-                    posicao.status = statusOrdemPorItensPosicao(posicao.itens);
+                    aplicarTotaisNaPosicao(posicao, { forcarStatus: true });
                     posicao.status_data = agora;
                     await posicao.save();
                 }

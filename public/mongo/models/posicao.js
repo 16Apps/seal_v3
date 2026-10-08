@@ -25,6 +25,11 @@ const PosicaoSchema = new mongoose.Schema({
       },
     status_data: { type: Date },
 
+    /** Total previsto de itens (informado pelo cliente). Fallback: itens.length */
+    total_itens: { type: Number, default: null },
+    /** Cache: qtd de itens com status concluido */
+    total_concluido: { type: Number, default: null },
+
     id_nivel_loc1: { type: String, ref: 'Localizacao' },
     id_nivel_loc2: { type: String, ref: 'Localizacao' },
     id_nivel_loc3: { type: String, ref: 'Localizacao' },

@@ -70,12 +70,18 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
         var itens = (posicao && posicao.itens) || [];
         if (!Array.isArray(itens)) itens = [];
         var concluido = 0;
-        var total = itens.length;
         itens.forEach(function (item) {
             if (!item) return;
             if (String(item.status || '').toLowerCase() === 'concluido') concluido += 1;
         });
-        return { concluido: concluido, total: total };
+        // total previsto (total_itens) com fallback para itens.length
+        var totais = uteisService.normalizarTotaisPosicao
+            ? uteisService.normalizarTotaisPosicao(posicao || { itens: itens })
+            : { total_itens: itens.length, total_concluido: concluido };
+        return {
+            concluido: totais.total_concluido != null ? totais.total_concluido : concluido,
+            total: totais.total_itens != null ? totais.total_itens : itens.length
+        };
     }
 
     function statusUiFromPosicao(st) {
@@ -834,22 +840,27 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
 
     function recalcularOrdemLocal(ordem) {
         if (!ordem) return;
-        var total = (ordem.itens || []).length;
-        var lidos = 0;
-        (ordem.itens || []).forEach(function (it) {
-            if (it && String(it.status || '').toLowerCase() === 'concluido') lidos += 1;
-        });
+        var pos = ordem._posicao || { itens: ordem.itens || [], total_itens: ordem.total };
+        if (ordem.itens) pos.itens = ordem.itens;
+        var totais = uteisService.normalizarTotaisPosicao
+            ? uteisService.normalizarTotaisPosicao(pos)
+            : { total_itens: (ordem.itens || []).length, total_concluido: 0, status: 'pendente' };
+
+        var total = totais.total_itens || 0;
+        var lidos = totais.total_concluido || 0;
         ordem.lidos = lidos;
         ordem.total = total;
         ordem.pct = total > 0 ? Math.round((lidos / total) * 100) : 0;
+        if (ordem._posicao) {
+            ordem._posicao.total_itens = total;
+            ordem._posicao.total_concluido = lidos;
+            ordem._posicao.status = totais.status;
+        }
 
-        var statusUi = 'pendente';
-        if (lidos > 0 && lidos < total) statusUi = 'parcial';
-        else if (total > 0 && lidos >= total) statusUi = 'concluida';
-
+        var statusUi = statusUiFromPosicao(totais.status);
         var st = STATUS_UI[statusUi] || STATUS_UI.pendente;
         ordem.status = statusUi;
-        ordem.statusRaw = statusUi === 'concluida' ? 'concluido' : statusUi;
+        ordem.statusRaw = totais.status;
         ordem.statusLabel = st.label;
         ordem.badgeClass = st.badge;
         ordem.barClass = st.bar;

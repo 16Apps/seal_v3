@@ -61,7 +61,14 @@ app.controller('portalMovimentacaoCtrl', function ($scope, $http, $timeout, para
         if (gateway.checagem.modo_retorno) {
             return esperados.every((t) => t.status_destino === 'concluido');
         }
-        return esperados.every((t) => t.status === 'encontrado');
+        if (!esperados.every((t) => t.status === 'encontrado')) return false;
+        // Com total previsto: só completo se atingiu total_itens (imputação escalonada)
+        const totalPrevisto = Number(gateway.checagem.total_itens);
+        if (Number.isFinite(totalPrevisto) && totalPrevisto > 0) {
+            const concluidos = esperados.filter((t) => t.status === 'encontrado').length;
+            if (concluidos < totalPrevisto) return false;
+        }
+        return true;
     }
 
     function tokemPortalInverso(tokem) {
@@ -880,6 +887,8 @@ app.controller('portalMovimentacaoCtrl', function ($scope, $http, $timeout, para
                 id_posicao: posicao._id,
                 id_doc: posicao.id_doc,
                 tipo: posicao.tipo,
+                total_itens: posicao.total_itens != null ? posicao.total_itens : null,
+                total_concluido: posicao.total_concluido != null ? posicao.total_concluido : null,
                 id_nivel_loc1: posicao.id_nivel_loc1 || '',
                 id_nivel_loc2: posicao.id_nivel_loc2 || '',
                 id_nivel_loc3: posicao.id_nivel_loc3 || '',
@@ -1203,6 +1212,7 @@ app.controller('portalMovimentacaoCtrl', function ($scope, $http, $timeout, para
 
         const itens = (gateway.tags || []).map((t) => montarItemPosicao(t, gateway));
         let statusPos = 'pendente';
+        let totaisPos = null;
         if (chk.modo_retorno) {
             const destinos = itens.filter((it) => it.status !== 'excedente' || it.status_destino);
             const todosDestino = destinos.length > 0 && destinos.every((it) => it.status_destino === 'concluido');
@@ -1211,10 +1221,11 @@ app.controller('portalMovimentacaoCtrl', function ($scope, $http, $timeout, para
             else if (algumDestino) statusPos = 'parcial';
         } else {
             const itensChecagem = itens.filter((it) => it.status !== 'excedente');
-            const todosConcluidos = itensChecagem.length > 0 && itensChecagem.every((it) => it.status === 'concluido');
-            const algumConcluido = itensChecagem.some((it) => it.status === 'concluido');
-            if (todosConcluidos) statusPos = 'concluido';
-            else if (algumConcluido) statusPos = 'parcial';
+            totaisPos = uteisService.normalizarTotaisPosicao({
+                itens: itensChecagem,
+                total_itens: chk.total_itens
+            });
+            statusPos = totaisPos.status;
         }
 
         const payloadPos = {
@@ -1227,6 +1238,8 @@ app.controller('portalMovimentacaoCtrl', function ($scope, $http, $timeout, para
             descricao: chk.id_doc,
             status: statusPos,
             status_data: new Date(),
+            total_itens: totaisPos ? totaisPos.total_itens : (chk.total_itens != null ? chk.total_itens : undefined),
+            total_concluido: totaisPos ? totaisPos.total_concluido : undefined,
             id_nivel_loc1: chk.id_nivel_loc1 || null,
             id_nivel_loc2: chk.id_nivel_loc2 || null,
             id_nivel_loc3: chk.id_nivel_loc3 || null,
@@ -1634,15 +1647,13 @@ app.controller('portalMovimentacaoCtrl', function ($scope, $http, $timeout, para
             else payload.status = 'pendente';
         } else {
             const itensChecagem = itens.filter((it) => it.status !== 'excedente');
-            const todosConcluidos = itensChecagem.length > 0 && itensChecagem.every((it) => it.status === 'concluido');
-            const algumConcluido = itensChecagem.some((it) => it.status === 'concluido');
-            if (todosConcluidos) {
-                payload.status = 'concluido';
-            } else if (algumConcluido) {
-                payload.status = 'parcial';
-            } else {
-                payload.status = 'pendente';
-            }
+            const totaisReg = uteisService.normalizarTotaisPosicao({
+                itens: itensChecagem,
+                total_itens: (chk && chk.total_itens != null) ? chk.total_itens : ($scope._reg && $scope._reg.total_itens)
+            });
+            payload.status = totaisReg.status;
+            payload.total_itens = totaisReg.total_itens;
+            payload.total_concluido = totaisReg.total_concluido;
         }
 
         $scope._reg._salvando = true;
@@ -2060,6 +2071,8 @@ app.controller('portalMovimentacaoCtrl', function ($scope, $http, $timeout, para
             checagem.id_posicao = posicao._id;
             checagem.id_doc = posicao.id_doc;
             checagem.tipo = posicao.tipo;
+            checagem.total_itens = posicao.total_itens != null ? posicao.total_itens : null;
+            checagem.total_concluido = posicao.total_concluido != null ? posicao.total_concluido : null;
             checagem.id_nivel_loc1 = posicao.id_nivel_loc1 || '';
             checagem.id_nivel_loc2 = posicao.id_nivel_loc2 || '';
             checagem.id_nivel_loc3 = posicao.id_nivel_loc3 || '';

@@ -385,6 +385,40 @@ app.service('uteisService', ['$rootScope', '$http', function ($rootScope, $http)
     return regConta;
   };
 
+
+  /**
+   * Totais / status da posicao (espelha public/mongo/helpers/posicaoTotais.js).
+   * total_itens previsto; total_concluido = itens concluidos; fallback legado = itens.length.
+   */
+  this.normalizarTotaisPosicao = function (posicao, opts) {
+    opts = opts || {};
+    const itens = (posicao && posicao.itens) || [];
+    let totalConcluido = 0;
+    for (let i = 0; i < itens.length; i++) {
+      const it = itens[i];
+      if (!it) continue;
+      if (String(it.status || '').toLowerCase() === 'concluido') totalConcluido += 1;
+    }
+
+    const informadoBody = opts.total_itens_informado != null
+      ? Number(opts.total_itens_informado)
+      : NaN;
+    const armazenado = Number(posicao && posicao.total_itens);
+    const candidatos = [itens.length];
+    if (Number.isFinite(informadoBody) && informadoBody > 0) candidatos.push(informadoBody);
+    if (Number.isFinite(armazenado) && armazenado > 0) candidatos.push(armazenado);
+    const totalItens = Math.max.apply(null, candidatos);
+
+    let status = 'pendente';
+    if (totalItens > 0 && totalConcluido >= totalItens) status = 'concluido';
+    else if (totalConcluido > 0) status = 'parcial';
+
+    return {
+      total_itens: totalItens,
+      total_concluido: totalConcluido,
+      status: status
+    };
+  };
   // fim cookie
   // -_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_
 

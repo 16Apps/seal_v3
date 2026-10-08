@@ -6,6 +6,7 @@ const Categoria = require('../models/categoria');
 const Item = require('../models/item');
 const Posicao = require('../models/posicao');
 const Gateway = require('../models/gateway');
+const { normalizarTotaisPosicao, aplicarTotaisNaPosicao } = require('../helpers/posicaoTotais');
 
 // const ip_server = 'https://connectiot-app.azurewebsites.net';
 const ip_server = 'https://sealv3-production.up.railway.app';
@@ -51,6 +52,19 @@ function formatDataHoraBrasil(valor) {
   );
 }
 
+/** volume "2/4" → total 4; também aceita número puro */
+function totalItensFromVolume(volume) {
+  if (volume == null || volume === '') return null;
+  const str = String(volume).trim();
+  const m = str.match(/^\s*(\d+)\s*\/\s*(\d+)\s*$/);
+  if (m) {
+    const total = Number(m[2]);
+    return Number.isFinite(total) && total > 0 ? total : null;
+  }
+  const n = Number(str);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 module.exports = (app) => {
 
   app.get('/x_dsv/:id_posicao', async (req, res) => {
@@ -69,10 +83,11 @@ module.exports = (app) => {
 
   app.post('/x_dsv/registro', async (req, res) => {
 
-    let id_conta ="a689db08-b858" // "9bbe91e6-b3e4" 
+    let id_conta = "9bbe91e6-b3e4" // "a689db08-b858" 
 
     let {
       datahora,
+      volume,
       pedido,
       notafiscal,
 
@@ -86,8 +101,15 @@ module.exports = (app) => {
       descricao_item,
       epc,
       tag,
-      fornecedor
+      fornecedor,
+      total_itens
     } = req.body;
+
+    // Preferência: total do volume "2/4" → 4; senão total_itens explícito
+    const totalDoVolume = totalItensFromVolume(volume);
+    const totalItensInformado = (totalDoVolume != null)
+      ? totalDoVolume
+      : Number(total_itens);
 
     try {
 
@@ -191,15 +213,26 @@ module.exports = (app) => {
           }
         }
 
+        const totaisCreate = normalizarTotaisPosicao(
+          { itens: [itemPosicao], total_itens: null },
+          {
+            total_itens_informado: (Number.isFinite(totalItensInformado) && totalItensInformado > 0)
+              ? totalItensInformado
+              : undefined
+          }
+        );
+
         posicao = await Posicao.create({
           id_conta,
           ativo: '1',
           id_doc: pedido,
           descricao: notafiscal,
           tipo: 'conferencia',
-          status: 'pendente',
+          status: totaisCreate.status,
           status_data: new Date(),
           partida_data: parseDataBrasil(datahora) || new Date(),
+          total_itens: totaisCreate.total_itens,
+          total_concluido: totaisCreate.total_concluido,
 
           //4.2.1 FORNECEDOR
           id_nivel_loc1: localizacaoInicio ? localizacaoInicio._id : null,
@@ -222,6 +255,14 @@ module.exports = (app) => {
         // log de cada envio (mesmo se o item já estava vinculado)
         if (!Array.isArray(posicao.logs_payload)) posicao.logs_payload = [];
         posicao.logs_payload.push(logPayload);
+
+        aplicarTotaisNaPosicao(posicao, {
+          forcarStatus: true,
+          total_itens_informado: (Number.isFinite(totalItensInformado) && totalItensInformado > 0)
+            ? totalItensInformado
+            : undefined
+        });
+        posicao.status_data = new Date();
         await posicao.save();
       }
 
@@ -289,14 +330,8 @@ module.exports = (app) => {
         item.status_data = new Date();
       }
 
-      const itens = posicao.itens || [];
-      const todosConcluidos = itens.length > 0 && itens.every((it) => it.status === 'concluido');
-      const algumConcluido = itens.some((it) => it.status === 'concluido');
-      if (todosConcluidos) {
-        posicao.status = 'concluido';
-      } else if (algumConcluido) {
-        posicao.status = 'parcial';
-      }
+      aplicarTotaisNaPosicao(posicao, { forcarStatus: true });
+      posicao.status_data = new Date();
 
       // await axios.patch(
       //   POSICAO_URL,
