@@ -52,6 +52,9 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
     $scope._ordens = [];
     /** Cursor ISO do maior createdAt já carregado — refresh só pede ordens depois disso */
     $scope._ordensCursorCreatedAt = null;
+    /** Gateways da conta — prefixos EPC aceitos por tokem (codif_epc_aceito) */
+    $scope._listGateways = [];
+    $scope._mapPrefixosPorTokem = {};
 
     /** Sessão de retorno (modo retorno) — só front até Finalizar */
     $scope._retorno = {
@@ -687,6 +690,7 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
         $scope._regConta = uteisService.normalizarConta($scope._regConta);
         $scope._regColaborador = uteisService.getCookie('_colaborador') || [];
         iniciarRelogio();
+        await $scope.onCarregaGateways();
         $scope.onIniciarSocketLeituras();
         await $scope.onCarregaOrdens(true);
         iniciarAutoOrdens();
@@ -701,6 +705,52 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
         if (valor == null) return '';
         return String(valor).replace(/[^0-9A-Za-z]/g, '').toUpperCase();
     }
+
+    /** Prefixo(s) de EPC aceitos: "424D57;445543" → ['424D57','445543'] */
+    function parsePrefixosEpcAceito(valor) {
+        return String(valor || '')
+            .split(';')
+            .map(function (p) { return normalizaTag(p); })
+            .filter(Boolean);
+    }
+
+    function rebuildMapPrefixosGateways() {
+        var map = {};
+        ($scope._listGateways || []).forEach(function (g) {
+            if (!g || !g.tokem) return;
+            var prefs = parsePrefixosEpcAceito(g.codif_epc_aceito);
+            if (!prefs.length) return;
+            map[String(g.tokem).trim().toUpperCase()] = prefs;
+        });
+        $scope._mapPrefixosPorTokem = map;
+    }
+
+    /**
+     * Se o gateway (por tokem) tiver codif_epc_aceito, a tag só passa se iniciar com algum prefixo.
+     * Sem regra / gateway não encontrado → aceita (não bloqueia).
+     */
+    function tagPermitidaPeloGateway(tagRaw, leitura) {
+        var tokem = leitura && leitura.tokem != null
+            ? String(leitura.tokem).trim().toUpperCase()
+            : '';
+        var prefs = tokem ? $scope._mapPrefixosPorTokem[tokem] : null;
+        if (!prefs || !prefs.length) return true;
+        var chave = normalizaTag(tagRaw);
+        if (!chave) return false;
+        for (var i = 0; i < prefs.length; i++) {
+            if (chave.indexOf(prefs[i]) === 0) return true;
+        }
+        return false;
+    }
+
+    $scope.onCarregaGateways = async function () {
+        if (!$scope._regConta || !$scope._regConta._id) return;
+        var url = '/_bd?c=gateway&id_conta=' + encodeURIComponent($scope._regConta._id)
+            + '&_sort=descricao';
+        var res = await uteisService.getBase(url).catch(function () { return []; });
+        $scope._listGateways = Array.isArray(res) ? res : [];
+        rebuildMapPrefixosGateways();
+    };
 
     function cancelarIdleLote(lote) {
         if (lote && lote._timerIdle) {
@@ -1147,12 +1197,15 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
     $scope.onTagSocket = function (leitura) {
         if (!leitura || $scope._ui.pausado) return;
 
+        var tagRaw = leitura.tag || '';
+        // Descarta totalmente tags fora do codif_epc_aceito do gateway (nem exibe no portal)
+        if (!tagPermitidaPeloGateway(tagRaw, leitura)) return;
+
         if ($scope._ui.modoRetorno) {
             onTagSocketRetorno(leitura);
             return;
         }
 
-        var tagRaw = leitura.tag || '';
         var chave = normalizaTag(tagRaw);
         if (!chave) return;
 

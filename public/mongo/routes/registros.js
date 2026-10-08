@@ -92,7 +92,7 @@ module.exports = (app, dbConnection) => {
         };
 
         await axios.post(
-            _urlRegistroLocal, //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! SERVER PROD
+            _urlRegistro, //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! SERVER PROD
             registro,
             { timeout: 5000 }
         );
