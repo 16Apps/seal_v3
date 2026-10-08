@@ -45,6 +45,8 @@ const GatewaySchema = new mongoose.Schema({
     codif_epc_inicial: { type: String },
     codif_epc_comprimento: { type: String },
 
+    codif_epc_aceito: { type: String },
+
     watch_regra: { type: String },
     watch_valor: { type: String },
     leitura_base: { type: Object },

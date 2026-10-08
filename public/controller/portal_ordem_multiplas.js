@@ -10,6 +10,7 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
         tempoReal: true,
         filtroOrdem: 'todas',
         ordenacaoOrdem: 'ultimas_lidas',
+        pesquisaPedido: '',
         limiteLeituras: 10,
         ordemExpandidaId: null,
         modoRetorno: false,
@@ -168,7 +169,7 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
         if (!cliente && pos.id_colaborador && typeof pos.id_colaborador === 'object') {
             cliente = pos.id_colaborador.nome || pos.id_colaborador.descricao || '';
         }
-        if (cliente) cliente = 'Cliente: ' + cliente;
+        if (cliente) cliente = 'Nota: ' + cliente;
 
         var refData = pos.status_data || pos.partida_data || pos.updatedAt || pos.createdAt;
 
@@ -242,9 +243,9 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
     }
 
     /**
-     * Carrega ordens do dia.
-     * - Primeira carga (ou forcarCompleto): lista completa do dia.
-     * - Poll: só createdAt > cursor (operator *gt no /_bd) — append sem limpar a lista.
+     * Carrega ordens do portal.
+     * - Primeira carga (ou forcarCompleto): todas do dia + pendente/parcial dos últimos 2 anos.
+     * - Poll: só createdAt > cursor do dia corrente (*gt no /_bd) — append sem limpar a lista.
      */
     $scope.onCarregaOrdens = async function (forcarCompleto) {
         if (!$scope._regConta || !$scope._regConta._id) return;
@@ -259,25 +260,55 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
 
         try {
             var hoje = moment().format('YYYY-MM-DD');
-            var url = '/_bd?c=posicao&id_conta=' + encodeURIComponent($scope._regConta._id)
+            var ontem = moment().subtract(1, 'day').format('YYYY-MM-DD');
+            var inicioAnteriores = moment().subtract(2, 'years').format('YYYY-MM-DD');
+            var baseUrl = '/_bd?c=posicao&id_conta=' + encodeURIComponent($scope._regConta._id)
                 + '&tipo=conferencia'
-                + '&partida_data=*dtP' + hoje + '|' + hoje
                 + '&_sort=createdAt'
                 + '&pop=id_colaborador';
 
+            var urlHoje = baseUrl + '&partida_data=*dtP' + hoje + '|' + hoje;
+
             if (!cargaCompleta && $scope._ordensCursorCreatedAt) {
-                url += '&createdAt=*gt' + encodeURIComponent($scope._ordensCursorCreatedAt);
+                urlHoje += '&createdAt=*gt' + encodeURIComponent($scope._ordensCursorCreatedAt);
             }
 
-            var res = await uteisService.getBase(url).catch(function () { return []; });
-            if (!Array.isArray(res)) res = [];
+            var res;
+            var doDia = [];
+            if (cargaCompleta) {
+                // Dia corrente (todas) + dias anteriores só pendente/parcial
+                var urlAnteriores = baseUrl
+                    + '&partida_data=*dtP' + inicioAnteriores + '|' + ontem
+                    + '&status*in=' + encodeURIComponent(JSON.stringify(['pendente', 'parcial']));
+
+                var pares = await Promise.all([
+                    uteisService.getBase(urlHoje).catch(function () { return []; }),
+                    uteisService.getBase(urlAnteriores).catch(function () { return []; })
+                ]);
+                doDia = Array.isArray(pares[0]) ? pares[0] : [];
+                var anteriores = Array.isArray(pares[1]) ? pares[1] : [];
+                var vistos = {};
+                res = [];
+                [doDia, anteriores].forEach(function (lista) {
+                    (lista || []).forEach(function (pos) {
+                        if (!pos || !pos._id) return;
+                        var id = String(pos._id);
+                        if (vistos[id]) return;
+                        vistos[id] = true;
+                        res.push(pos);
+                    });
+                });
+            } else {
+                res = await uteisService.getBase(urlHoje).catch(function () { return []; });
+                if (!Array.isArray(res)) res = [];
+            }
 
             if (cargaCompleta) {
                 $scope._ordens = res.map(montarOrdemView);
                 $scope._ordensCursorCreatedAt = null;
-                avancarCursorOrdens(res);
-                if (!res.length) {
-                    // Sem ordens: polls seguintes usam *gt desde o início do dia
+                // Cursor do poll só considera o dia corrente (novas ordens de hoje)
+                avancarCursorOrdens(doDia);
+                if (!doDia.length) {
                     $scope._ordensCursorCreatedAt = moment().startOf('day').toISOString();
                 }
             } else if (res.length) {
@@ -302,7 +333,7 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
                 $scope._ordens = [];
                 atualizarKpisEAbas([]);
             }
-            uteisService.onToast('Não foi possível carregar as ordens do dia.', 'warning', 2500, 'top-end');
+            uteisService.onToast('Não foi possível carregar as ordens.', 'warning', 2500, 'top-end');
         } finally {
             $scope._carregandoOrdens = false;
             $timeout(function () { }, 0);
@@ -396,10 +427,36 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
         } else if (f === 'concluidas') {
             lista = lista.filter(function (o) { return o.status === 'concluida'; });
         }
+
+        // Busca por id_doc / descrição quando ordenação = Nº pedido
+        if ($scope._ui.ordenacaoOrdem === 'id_doc') {
+            var q = String($scope._ui.pesquisaPedido || '').trim().toLowerCase();
+            if (q) {
+                lista = lista.filter(function (o) {
+                    if (!o) return false;
+                    var idDoc = String(o.id_doc || '').toLowerCase();
+                    var desc = String(o.cliente || o.descricao || '').toLowerCase();
+                    var raw = (o._posicao && o._posicao.descricao)
+                        ? String(o._posicao.descricao).toLowerCase()
+                        : '';
+                    return idDoc.indexOf(q) !== -1
+                        || desc.indexOf(q) !== -1
+                        || raw.indexOf(q) !== -1;
+                });
+            }
+        }
+
         return ordenarLista(lista);
     };
 
-    $scope.$watch('_ui.ordenacaoOrdem', function () { /* re-render via ordensFiltradas */ });
+    $scope.$watch('_ui.ordenacaoOrdem', function (novo, antigo) {
+        if (novo === 'id_doc') {
+            // Ao filtrar por pedido, status volta para Todas
+            $scope._ui.filtroOrdem = 'todas';
+        } else if (antigo === 'id_doc' && novo !== 'id_doc') {
+            $scope._ui.pesquisaPedido = '';
+        }
+    });
 
     /** Bloqueia iniciar retorno se houver lote aberto ou persistindo */
     $scope.retornoBloqueadoPorLote = function () {

@@ -334,6 +334,27 @@
       color: #e2e8f0;
     }
 
+    .pom-input-pedido {
+      font-size: 0.78rem;
+      max-width: 160px;
+      min-width: 120px;
+      background: rgba(15, 23, 42, 0.5);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      color: #e2e8f0;
+      border-radius: 0.375rem;
+      padding: 0.25rem 0.5rem;
+    }
+
+    .pom-input-pedido::placeholder {
+      color: #64748b;
+    }
+
+    .pom-input-pedido:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
+
     .pom-tabs {
       display: flex;
       flex-wrap: wrap;
@@ -842,6 +863,12 @@
                   <option value="mais_pendentes">Mais pendentes</option>
                   <option value="id_doc">Nº pedido</option>
                 </select>
+                <input ng-if="_ui.ordenacaoOrdem === 'id_doc'"
+                  type="text"
+                  class="pom-input-pedido"
+                  ng-model="_ui.pesquisaPedido"
+                  placeholder="Pedido ou descrição…"
+                  title="Filtrar por idDoc ou descrição">
                 <div class="pom-tabs">
                   <button type="button" class="pom-tab" ng-repeat="tab in _filtrosOrdem"
                     ng-class="[tab.class, { active: _ui.filtroOrdem === tab.id }]" ng-click="onFiltroOrdem(tab.id)">
@@ -849,6 +876,7 @@
                   </button>
                 </div>
               </div>
+
 
               <div class="text-center text-muted py-4"
                 ng-if="_carregandoOrdens && (!_ordens || !_ordens.length)">

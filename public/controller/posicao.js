@@ -71,10 +71,7 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService,  $l
             _url += '&partida_data=*dtP' + moment($scope._pesquisa.data_de).format('YYYY-MM-DD') + '|' + moment($scope._pesquisa.data_a).format('YYYY-MM-DD')
         };
 
-        if($scope._pesquisa.pesquisa) {
-            _url += '&id_doc=*like'+ $scope._pesquisa.pesquisa
-        };
-
+        // Texto livre: filtro client-side em posicoesFiltradas (id_doc, descricao, níveis)
 
         _url += '&pop=id_nivel_loc1&pop=id_nivel_loc2&pop=id_nivel_loc3&pop=id_nivel_loc4';
         _url += '&pop=id_nivel_loc1_destino&pop=id_nivel_loc2_destino&pop=id_nivel_loc3_destino&pop=id_nivel_loc4_destino';
@@ -171,11 +168,41 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService,  $l
         };
     };
 
-    /** Lista de ordens após filtro de retorno (client-side) */
+    function descricaoNivelPosicao(campo) {
+        if (!campo) return '';
+        if (typeof campo === 'object') return String(campo.descricao || '');
+        return '';
+    }
+
+    /** Texto pesquisável: id_doc, descricao e níveis (origem + destino) expostos na lista */
+    function textoBuscaPosicao(pos) {
+        if (!pos) return '';
+        var partes = [
+            pos.id_doc,
+            pos.descricao,
+            descricaoNivelPosicao(pos.id_nivel_loc1),
+            descricaoNivelPosicao(pos.id_nivel_loc2),
+            descricaoNivelPosicao(pos.id_nivel_loc3),
+            descricaoNivelPosicao(pos.id_nivel_loc4),
+            descricaoNivelPosicao(pos.id_nivel_loc1_destino),
+            descricaoNivelPosicao(pos.id_nivel_loc2_destino),
+            descricaoNivelPosicao(pos.id_nivel_loc3_destino),
+            descricaoNivelPosicao(pos.id_nivel_loc4_destino)
+        ];
+        return partes.join(' ').toLowerCase();
+    }
+
+    /** Lista de ordens após filtros client-side (retorno + texto) */
     $scope.posicoesFiltradas = function () {
         var lista = Array.isArray($scope._listPosicoes) ? $scope._listPosicoes : [];
         if ($scope._pesquisa.somenteRetorno === true || $scope._pesquisa.somenteRetorno === '1') {
             lista = lista.filter(function (p) { return p && p._temRetorno; });
+        }
+        var q = String(($scope._pesquisa && $scope._pesquisa.pesquisa) || '').trim().toLowerCase();
+        if (q) {
+            lista = lista.filter(function (p) {
+                return textoBuscaPosicao(p).indexOf(q) !== -1;
+            });
         }
         return lista;
     };
@@ -201,6 +228,7 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService,  $l
                         tag: '—',
                         ean: '—',
                         itemStatus: '—',
+                        status_data: null,
                         retorno_data: null,
                         temRetorno: false
                     });
@@ -221,6 +249,7 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService,  $l
                     tag: (it && it.tag) || '—',
                     ean: (it && it.ean) || '—',
                     itemStatus: (it && it.status) || 'pendente',
+                    status_data: (it && it.status_data) || null,
                     retorno_data: (it && it.retorno_data) || null,
                     temRetorno: !!(it && it.retorno_data)
                 });
@@ -317,6 +346,7 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService,  $l
                 'Tag',
                 'EAN',
                 'Status Item',
+                'Leitura (Data)',
                 'Retornou',
                 'Retorno (Data)'
             ];
@@ -332,6 +362,7 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService,  $l
                     linha.tag || '',
                     linha.ean === '—' ? '' : (linha.ean || ''),
                     $scope.labelStatusItem(linha.itemStatus),
+                    linha.status_data ? fmtData(linha.status_data) : '',
                     linha.temRetorno ? 'Sim' : 'Não',
                     linha.temRetorno ? fmtData(linha.retorno_data) : ''
                 ].map(escapeCSV).join(';');
@@ -371,6 +402,7 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService,  $l
 
         const cabecalho = [
             'iD Doc',
+            'Inf. Extra',
             'Criado em',
             'Status',
             'Partida (Data)',
@@ -396,6 +428,7 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService,  $l
             const qtdItens = Array.isArray(item.itens) ? item.itens.length : 0;
             return [
                 item.id_doc || '',
+                item.descricao || '',
                 fmtData(item.createdAt),
                 item.status || '',
                 fmtData(item.partida_data),

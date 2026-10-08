@@ -115,6 +115,7 @@ app.component('gateway', {
           codif_epc: 'manual',
           codif_epc_inicial: '8',
           codif_epc_comprimento: '13',
+          codif_epc_aceito: '',
 
           watch_regra: 'sem_leitura',
           watch_valor: '30',

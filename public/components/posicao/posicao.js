@@ -46,7 +46,7 @@ app.component('posicao', {
 
       $scope.$watch(function () {
         var p = $ctrl._editPosicao || {};
-        return (p.tipo || '') + '|' + (p.status || '');
+        return (p.tipo || '') + '|' + (p.status || '') + '|' + (p.total_itens || '') + '|' + (p.total_concluido || '');
       }, function () {
         $ctrl.atualizarAnalisePosicao();
       });
@@ -668,6 +668,18 @@ app.component('posicao', {
         return;
       };
 
+      // Normaliza totais / status (total_itens previsto × itens concluídos)
+      if (uteisService.normalizarTotaisPosicao) {
+        var totaisSave = uteisService.normalizarTotaisPosicao($ctrl._editPosicao);
+        $ctrl._editPosicao.total_itens = totaisSave.total_itens;
+        $ctrl._editPosicao.total_concluido = totaisSave.total_concluido;
+        var stAtual = String($ctrl._editPosicao.status || '').toLowerCase();
+        if (!stAtual || stAtual === 'pendente' || stAtual === 'parcial' || stAtual === 'concluido') {
+          $ctrl._editPosicao.status = totaisSave.status;
+          $ctrl._editPosicao.status_data = new Date();
+        }
+      }
+
       uteisService.patchBase('/posicao', $ctrl._editPosicao)
         .then((res) => {
           uteisService.onToast('Registrado!', 'success', 3000, 'top-end');
@@ -805,9 +817,18 @@ app.component('posicao', {
     $ctrl.atualizarAnalisePosicao = function () {
       var itens = ($ctrl._editPosicao && $ctrl._editPosicao.itens) || [];
       if (!Array.isArray(itens)) itens = [];
-      var total = itens.length;
-      var concluido = 0;
-      var pendente = 0;
+
+      // Totais previstos (total_itens) × concluídos — regra única do sistema
+      var totais = uteisService.normalizarTotaisPosicao
+        ? uteisService.normalizarTotaisPosicao($ctrl._editPosicao || { itens: itens })
+        : { total_itens: itens.length, total_concluido: 0, status: 'pendente' };
+
+      var total = totais.total_itens || 0;
+      var concluido = totais.total_concluido || 0;
+      var vinculados = itens.length;
+      var aguardandoImputacao = Math.max(0, total - vinculados);
+
+      var pendenteArr = 0;
       var excedente = 0;
       var naoEncontrado = 0;
       var destinoConcluido = 0;
@@ -820,10 +841,10 @@ app.component('posicao', {
         quantidadeTotal += Number(item.quantidade) || 1;
 
         var st = String(item.status || 'pendente').toLowerCase();
-        if (st === 'concluido') concluido += 1;
+        if (st === 'concluido') { /* contado em totais */ }
         else if (st === 'excedente') excedente += 1;
         else if (st === 'nao_encontrado') naoEncontrado += 1;
-        else pendente += 1;
+        else pendenteArr += 1;
 
         var std = String(item.status_destino || 'pendente').toLowerCase();
         if (std === 'concluido') destinoConcluido += 1;
@@ -833,8 +854,11 @@ app.component('posicao', {
         if (dt) datasLeitura.push(dt);
       });
 
+      // Pendentes do previsto = ainda não lidos (lista + slots não imputados)
+      var pendente = Math.max(0, total - concluido);
+
       var pct = total > 0 ? Math.round((concluido / total) * 100) : 0;
-      var pctDestino = total > 0 ? Math.round((destinoConcluido / total) * 100) : 0;
+      var pctDestino = vinculados > 0 ? Math.round((destinoConcluido / vinculados) * 100) : 0;
 
       var primeiraLeitura = null;
       var ultimaLeitura = null;
@@ -852,11 +876,18 @@ app.component('posicao', {
       }
 
       var alertas = [];
-      if (total === 0) {
+      if (vinculados === 0 && total === 0) {
         alertas.push({ tipo: 'secondary', icon: 'bi-inbox', msg: 'Nenhum item vinculado a este registro ainda.' });
       }
-      if (pendente > 0) {
-        alertas.push({ tipo: 'warning', icon: 'bi-hourglass-split', msg: pendente + ' item(ns) aguardando leitura na origem.' });
+      if (aguardandoImputacao > 0) {
+        alertas.push({
+          tipo: 'info',
+          icon: 'bi-cloud-download',
+          msg: aguardandoImputacao + ' item(ns) previstos ainda não imputados na ordem (' + vinculados + '/' + total + ').'
+        });
+      }
+      if (pendenteArr > 0) {
+        alertas.push({ tipo: 'warning', icon: 'bi-hourglass-split', msg: pendenteArr + ' item(ns) aguardando leitura na origem.' });
       }
       if (naoEncontrado > 0) {
         alertas.push({ tipo: 'danger', icon: 'bi-exclamation-triangle', msg: naoEncontrado + ' item(ns) não encontrado(s).' });
@@ -866,7 +897,7 @@ app.component('posicao', {
       }
 
       var ehConferencia = $ctrl._editPosicao && $ctrl._editPosicao.tipo === 'conferencia';
-      if (ehConferencia && total > 0) {
+      if (ehConferencia && vinculados > 0) {
         if (destinoPendente > 0) {
           alertas.push({
             tipo: 'warning',
@@ -874,14 +905,14 @@ app.component('posicao', {
             msg: destinoPendente + ' item(ns) sem confirmação de leitura no destino.'
           });
         }
-        if (concluido === total && destinoPendente > 0) {
+        if (concluido >= total && total > 0 && destinoPendente > 0) {
           alertas.push({
             tipo: 'danger',
             icon: 'bi-signpost-split',
             msg: 'Origem concluída — aguardando leituras no destino.'
           });
         }
-        if (destinoConcluido === total && total > 0) {
+        if (destinoConcluido === vinculados && vinculados > 0 && concluido >= total && total > 0) {
           alertas.push({
             tipo: 'success',
             icon: 'bi-check-circle',
@@ -894,18 +925,23 @@ app.component('posicao', {
         alertas.push({ tipo: 'success', icon: 'bi-check-all', msg: 'Inventário concluído — 100% dos itens lidos.' });
       }
 
-      var statusGeral = ($ctrl._editPosicao && $ctrl._editPosicao.status) || 'aberta';
+      // Status exibido: totais (exceto aberta/partida manuais)
+      var stDoc = String(($ctrl._editPosicao && $ctrl._editPosicao.status) || '').toLowerCase();
+      var statusGeral = (stDoc === 'aberta' || stDoc === 'partida') ? stDoc : (totais.status || stDoc || 'aberta');
       var statusCor = 'secondary';
       if (statusGeral === 'concluido') statusCor = 'success';
       else if (statusGeral === 'parcial') statusCor = 'warning';
       else if (statusGeral === 'partida') statusCor = 'info';
-      else if (statusGeral === 'aberta') statusCor = 'primary';
+      else if (statusGeral === 'aberta' || statusGeral === 'pendente') statusCor = 'primary';
 
       $ctrl._analisePosicao = {
         total: total,
+        vinculados: vinculados,
+        aguardandoImputacao: aguardandoImputacao,
         quantidadeTotal: quantidadeTotal,
         concluido: concluido,
         pendente: pendente,
+        pendenteArr: pendenteArr,
         excedente: excedente,
         naoEncontrado: naoEncontrado,
         pct: pct,
@@ -920,9 +956,11 @@ app.component('posicao', {
         statusGeral: statusGeral,
         statusCor: statusCor,
         ehConferencia: ehConferencia,
+        lidosLabel: concluido + ' / ' + total,
         segmentos: [
           { label: 'Concluído', valor: concluido, cor: 'success' },
-          { label: 'Pendente', valor: pendente, cor: 'danger' },
+          { label: 'Pendente', valor: pendenteArr, cor: 'danger' },
+          { label: 'A imputar', valor: aguardandoImputacao, cor: 'info' },
           { label: 'Excedente', valor: excedente, cor: 'purple' },
           { label: 'Não enc.', valor: naoEncontrado, cor: 'warning' }
         ].filter(function (s) { return s.valor > 0; })
