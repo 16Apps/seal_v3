@@ -7,6 +7,76 @@ app.controller('widgetCtrl', function ($scope, $http, params, uteisService, $tim
   $scope.id_nivelPlanta = 'f3005790-a635';
   $scope.temWidgets = false;
   $scope.layoutAlterado = false;
+  /** Opções visuais da planta por widget id (bindings ao vivo + persistência) */
+  $scope._plantaConfigPorId = {};
+  $scope.exibirModalOpcoesPlanta = false;
+  $scope._plantaOpcoesForm = {
+    widgetId: null,
+    mostrarLegendaDescricao: true,
+    tamanhoFonteLegenda: 24,
+    zoomInicial: 1,
+    mostrarMarcacaoArea: true
+  };
+
+  function parseBoolOpt (v, def) {
+    if (v === undefined || v === null || v === '') return def;
+    if (v === true || v === 1 || v === '1' || v === 'true') return true;
+    if (v === false || v === 0 || v === '0' || v === 'false') return false;
+    return def;
+  }
+
+  function normalizarOpcoesPlanta (meta) {
+    meta = meta || {};
+    var fonte = Number(meta.tamanhoFonteLegenda);
+    if (!Number.isFinite(fonte) || fonte <= 0) fonte = 24;
+    fonte = Math.min(120, Math.max(8, Math.round(fonte)));
+    var zoom = Number(meta.zoomInicial);
+    if (!Number.isFinite(zoom) || zoom <= 0) zoom = 1;
+    zoom = Math.min(4, Math.max(0.4, zoom));
+    return {
+      mostrarLegendaDescricao: parseBoolOpt(meta.mostrarLegendaDescricao, true),
+      tamanhoFonteLegenda: fonte,
+      zoomInicial: zoom,
+      mostrarMarcacaoArea: parseBoolOpt(meta.mostrarMarcacaoArea, true)
+    };
+  }
+
+  $scope.abrirModalOpcoesPlanta = function (widgetId) {
+    if (!widgetId) return;
+    var cfg = $scope._plantaConfigPorId[widgetId] || normalizarOpcoesPlanta({});
+    $scope._plantaOpcoesForm = {
+      widgetId: widgetId,
+      mostrarLegendaDescricao: !!cfg.mostrarLegendaDescricao,
+      tamanhoFonteLegenda: cfg.tamanhoFonteLegenda,
+      zoomInicial: cfg.zoomInicial,
+      mostrarMarcacaoArea: !!cfg.mostrarMarcacaoArea
+    };
+    $scope.exibirModalOpcoesPlanta = true;
+  };
+
+  $scope.cancelarModalOpcoesPlanta = function () {
+    $scope.exibirModalOpcoesPlanta = false;
+  };
+
+  $scope.confirmarModalOpcoesPlanta = function () {
+    var form = $scope._plantaOpcoesForm || {};
+    var id = form.widgetId;
+    if (!id) return;
+    var opts = normalizarOpcoesPlanta(form);
+    $scope._plantaConfigPorId[id] = opts;
+
+    var card = document.querySelector('.widget-card[data-widget-id="' + id + '"][data-widget-tipo="planta"]');
+    if (card) {
+      card.setAttribute('data-mostrar-legenda', opts.mostrarLegendaDescricao ? '1' : '0');
+      card.setAttribute('data-tamanho-fonte-legenda', String(opts.tamanhoFonteLegenda));
+      card.setAttribute('data-zoom-inicial', String(opts.zoomInicial));
+      card.setAttribute('data-mostrar-marcacao-area', opts.mostrarMarcacaoArea ? '1' : '0');
+    }
+
+    $scope.exibirModalOpcoesPlanta = false;
+    $scope.layoutAlterado = true;
+    uteisService.onToast('Opções da planta aplicadas. Salve o layout para manter.', 'success', 2800, 'top-end');
+  };
 
   /** Opções do KPI Total (rótulo → collection na rota /total/...) */
 
@@ -660,6 +730,41 @@ app.controller('widgetCtrl', function ($scope, $http, params, uteisService, $tim
     grid.on('removed', function () {
       $scope.atualizarTemWidgets();
     });
+    // Planta/mapa: reflow ao redimensionar a célula (sem precisar reload)
+    function notificarResizeWidget (el) {
+      if (!el) return;
+      try {
+        el.dispatchEvent(new CustomEvent('widget-grid-resize', { bubbles: true }));
+      } catch (e) { /* ignore */ }
+      // Força ResizeObserver / layout dos filhos
+      void el.offsetHeight;
+    }
+    grid.on('resize', function (_ev, el) {
+      notificarResizeWidget(el);
+    });
+    grid.on('resizestop', function (_ev, el) {
+      $scope.layoutAlterado = true;
+      notificarResizeWidget(el);
+      $timeout(function () { notificarResizeWidget(el); }, 50);
+    });
+
+    // Botão direito na planta → opções visuais
+    var gridEl = document.querySelector('.grid-stack');
+    if (gridEl && !gridEl._plantaContextMenuBound) {
+      gridEl._plantaContextMenuBound = true;
+      gridEl.addEventListener('contextmenu', function (e) {
+        var card = e.target && e.target.closest
+          ? e.target.closest('.widget-card[data-widget-tipo="planta"]')
+          : null;
+        if (!card) return;
+        e.preventDefault();
+        e.stopPropagation();
+        var wid = card.getAttribute('data-widget-id');
+        $timeout(function () {
+          $scope.abrirModalOpcoesPlanta(wid);
+        }, 0);
+      });
+    }
 
     $scope.atualizarTemWidgets();
   };
@@ -772,16 +877,18 @@ app.controller('widgetCtrl', function ($scope, $http, params, uteisService, $tim
       const idNivelPlantaEsc = escAttr(idNivelPlantaRaw);
       const plantaLabelRaw = layoutMeta.plantaLabel != null ? String(layoutMeta.plantaLabel) : '';
       const plantaLabelEsc = escAttr(plantaLabelRaw);
+      const plantaOpts = normalizarOpcoesPlanta(layoutMeta);
+      $scope._plantaConfigPorId[id] = plantaOpts;
       content = `
-        <div class="${cardClass}" data-widget-id="${id}" data-widget-tipo="planta" data-id-nivel-planta="${idNivelPlantaEsc}" data-planta-label="${plantaLabelEsc}"${dataBare}>
+        <div class="${cardClass}" data-widget-id="${id}" data-widget-tipo="planta" data-id-nivel-planta="${idNivelPlantaEsc}" data-planta-label="${plantaLabelEsc}" data-mostrar-legenda="${plantaOpts.mostrarLegendaDescricao ? '1' : '0'}" data-tamanho-fonte-legenda="${plantaOpts.tamanhoFonteLegenda}" data-zoom-inicial="${plantaOpts.zoomInicial}" data-mostrar-marcacao-area="${plantaOpts.mostrarMarcacaoArea ? '1' : '0'}"${dataBare}>
           ${headerPlanta}
-          <div class="widget-body">
+          <div class="widget-body" title="Botão direito: opções da planta">
             <planta
               id-nivel-planta="'${idNivelPlantaEsc}'"
-              mostrar-legenda-descricao="true"
-              tamanho-fonte-legenda="24"
-              zoom-inicial="1"
-              mostrar-marcacao-area="true">
+              mostrar-legenda-descricao="_plantaConfigPorId['${id}'].mostrarLegendaDescricao"
+              tamanho-fonte-legenda="_plantaConfigPorId['${id}'].tamanhoFonteLegenda"
+              zoom-inicial="_plantaConfigPorId['${id}'].zoomInicial"
+              mostrar-marcacao-area="_plantaConfigPorId['${id}'].mostrarMarcacaoArea">
             </planta>
           </div>
         </div>
@@ -1042,6 +1149,9 @@ app.controller('widgetCtrl', function ($scope, $http, params, uteisService, $tim
     if (el) {
       grid.removeWidget(el);
     }
+    if (id && $scope._plantaConfigPorId) {
+      delete $scope._plantaConfigPorId[id];
+    }
     $scope.atualizarTemWidgets();
   };
 
@@ -1139,6 +1249,18 @@ app.controller('widgetCtrl', function ($scope, $http, params, uteisService, $tim
       const plantaLabel = card && (widgetTipo === 'planta' || widgetTipo === 'mapa')
         ? card.getAttribute('data-planta-label')
         : null;
+      const mostrarLegendaDescricao = card && widgetTipo === 'planta'
+        ? card.getAttribute('data-mostrar-legenda')
+        : null;
+      const tamanhoFonteLegenda = card && widgetTipo === 'planta'
+        ? card.getAttribute('data-tamanho-fonte-legenda')
+        : null;
+      const zoomInicial = card && widgetTipo === 'planta'
+        ? card.getAttribute('data-zoom-inicial')
+        : null;
+      const mostrarMarcacaoArea = card && widgetTipo === 'planta'
+        ? card.getAttribute('data-mostrar-marcacao-area')
+        : null;
       const idNivel = card && widgetTipo === 'deslocamento'
         ? card.getAttribute('data-id-nivel')
         : null;
@@ -1166,6 +1288,18 @@ app.controller('widgetCtrl', function ($scope, $http, params, uteisService, $tim
           semMoldura,
           idNivelPlanta: idNivelPlanta || undefined,
           plantaLabel: plantaLabel || undefined,
+          mostrarLegendaDescricao: widgetTipo === 'planta'
+            ? parseBoolOpt(mostrarLegendaDescricao, true)
+            : undefined,
+          tamanhoFonteLegenda: widgetTipo === 'planta'
+            ? (Number(tamanhoFonteLegenda) || 24)
+            : undefined,
+          zoomInicial: widgetTipo === 'planta'
+            ? (Number(zoomInicial) || 1)
+            : undefined,
+          mostrarMarcacaoArea: widgetTipo === 'planta'
+            ? parseBoolOpt(mostrarMarcacaoArea, true)
+            : undefined,
           kpiCollection: kpiCollection || undefined,
           kpiLabel: kpiLabel || undefined,
           graficoTipo: graficoTipo || undefined,
@@ -1235,6 +1369,10 @@ app.controller('widgetCtrl', function ($scope, $http, params, uteisService, $tim
           h: widget.h,
           idNivelPlanta: cfg.idNivelPlanta,
           plantaLabel: cfg.plantaLabel,
+          mostrarLegendaDescricao: cfg.mostrarLegendaDescricao,
+          tamanhoFonteLegenda: cfg.tamanhoFonteLegenda,
+          zoomInicial: cfg.zoomInicial,
+          mostrarMarcacaoArea: cfg.mostrarMarcacaoArea,
           kpiCollection: cfg.kpiCollection,
           kpiLabel: cfg.kpiLabel,
           graficoTipo: cfg.graficoTipo,
@@ -1281,6 +1419,7 @@ app.controller('widgetCtrl', function ($scope, $http, params, uteisService, $tim
     if (!grid) return;
 
     grid.removeAll();
+    $scope._plantaConfigPorId = {};
     $scope.atualizarTemWidgets();
 
     try {

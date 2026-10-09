@@ -7,9 +7,11 @@ app.component('planta', {
     mostrarMarcacaoArea: '<'
   },
 
-  controller: function (uteisService, $http, $timeout, $interval) {
+  controller: function (uteisService, $http, $timeout, $interval, $element) {
     const $ctrl = this
     $ctrl._timePlanta = false;
+    var _resizeObserver = null;
+    var _syncAlturaTimer = null;
 
     $ctrl._idNivelEdit = '';
     $ctrl._listNivel2 = [];
@@ -87,6 +89,9 @@ app.component('planta', {
         $ctrl.zoom = resolveZoom($ctrl.zoomInicial, 1.0);
       }
 
+      // Só recarrega planta quando o nível muda (opções visuais atualizam sem reload)
+      if (!(changes.idNivelPlanta && $ctrl.idNivelPlanta)) return;
+
       if ($ctrl.idNivelPlanta) {
         $ctrl._ajusteInicialAplicado = false;
         $timeout(async () => {
@@ -131,8 +136,65 @@ app.component('planta', {
 
     }
 
+    function getViewportEl () {
+      return ($element[0] && $element[0].querySelector('.planta-viewport')) || null;
+    }
+
+    /**
+     * No grid: altura do stage acompanha o .grid-stack-item em tempo real (resize).
+     * Fora do grid: usa a altura do host.
+     */
+    function syncAlturaViewport () {
+      const host = $element[0];
+      if (!host) return;
+      const wrap = host.querySelector('.planta-stage-wrap');
+      const title = host.querySelector('.planta-title');
+      if (!wrap) return;
+
+      const item = host.closest('.grid-stack-item');
+      const titleH = title ? title.offsetHeight : 0;
+
+      if (item) {
+        const content = host.closest('.grid-stack-item-content') || item;
+        const header = content.querySelector('.widget-header');
+        const headerH = header ? header.offsetHeight : 0;
+        const body = host.closest('.widget-body');
+        var padY = 0;
+        if (body) {
+          const cs = window.getComputedStyle(body);
+          padY = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+        }
+        const avail = Math.floor(item.clientHeight - headerH - titleH - padY - 2);
+        if (avail > 50) {
+          wrap.style.height = avail + 'px';
+          wrap.style.minHeight = avail + 'px';
+        }
+      } else {
+        const hostH = host.clientHeight || 0;
+        if (hostH > 50) {
+          const avail = Math.floor(hostH - titleH - 2);
+          if (avail > 50) {
+            wrap.style.height = avail + 'px';
+            wrap.style.minHeight = avail + 'px';
+          }
+        }
+      }
+
+      if ($ctrl.imgW && $ctrl.imgH) {
+        ajustarPlantaAoViewport();
+      }
+    }
+
+    function agendarSyncAltura () {
+      if (_syncAlturaTimer) $timeout.cancel(_syncAlturaTimer);
+      _syncAlturaTimer = $timeout(function () {
+        _syncAlturaTimer = null;
+        syncAlturaViewport();
+      }, 0);
+    }
+
     function ajustarPlantaAoViewport () {
-      const viewport = document.getElementById('viewport');
+      const viewport = getViewportEl();
       if (!viewport || !$ctrl.imgW || !$ctrl.imgH) return;
 
       const viewportW = viewport.clientWidth || 0;
@@ -149,16 +211,55 @@ app.component('planta', {
       $ctrl.pan.y = (viewportH - renderH) / 2;
     }
 
+    var _gridItemEl = null;
+    var _onGridResizeEvt = function () { agendarSyncAltura(); };
+
+    $ctrl.$postLink = function () {
+      const host = $element[0];
+      if (!host) return;
+
+      _gridItemEl = host.closest('.grid-stack-item');
+      if (_gridItemEl) {
+        _gridItemEl.addEventListener('widget-grid-resize', _onGridResizeEvt);
+      }
+
+      if (typeof ResizeObserver !== 'undefined') {
+        _resizeObserver = new ResizeObserver(function () {
+          agendarSyncAltura();
+        });
+        _resizeObserver.observe(host);
+        if (_gridItemEl) _resizeObserver.observe(_gridItemEl);
+        const content = host.closest('.grid-stack-item-content');
+        if (content) _resizeObserver.observe(content);
+      }
+
+      $timeout(syncAlturaViewport, 0);
+      $timeout(syncAlturaViewport, 350);
+    };
+
+    $ctrl.$onDestroy = function () {
+      if (_gridItemEl) {
+        _gridItemEl.removeEventListener('widget-grid-resize', _onGridResizeEvt);
+        _gridItemEl = null;
+      }
+      if (_resizeObserver) {
+        _resizeObserver.disconnect();
+        _resizeObserver = null;
+      }
+      if (_syncAlturaTimer) {
+        $timeout.cancel(_syncAlturaTimer);
+        _syncAlturaTimer = null;
+      }
+    };
+
     $ctrl.initPlanta = function () {
       const img = new Image();
       img.onload = () => {
         $timeout(() => {
           $ctrl.imgW = img.naturalWidth;
           $ctrl.imgH = img.naturalHeight;
-          if (!$ctrl._ajusteInicialAplicado) {
-            ajustarPlantaAoViewport();
-            $ctrl._ajusteInicialAplicado = true;
-          }
+          syncAlturaViewport();
+          $ctrl._ajusteInicialAplicado = true;
           $ctrl.loadPlanta('abc123'); // 👈 aqui você chama o carregamento da planta
 
         }, 500);
@@ -303,7 +404,9 @@ app.component('planta', {
 
     // ===== Helpers =====
     function clientToImageCoords(evt) {
-      const viewport = document.getElementById('viewport').getBoundingClientRect();
+      const viewportEl = getViewportEl();
+      if (!viewportEl) return { x: 0, y: 0 };
+      const viewport = viewportEl.getBoundingClientRect();
       const xScreen = evt.clientX - viewport.left;
       const yScreen = evt.clientY - viewport.top;
       // inverte o transform do stage: (p - pan) / zoom

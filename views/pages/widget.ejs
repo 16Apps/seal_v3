@@ -203,6 +203,46 @@
     </div>
   </div>
 
+  <div class="widget-modal-total-backdrop" ng-if="exibirModalOpcoesPlanta" ng-click="cancelarModalOpcoesPlanta()">
+    <div class="widget-modal-total-dialog" ng-click="$event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="widgetModalOpcoesPlantaTitulo">
+      <h5 id="widgetModalOpcoesPlantaTitulo" class="widget-modal-total-titulo mb-3">Opções da planta</h5>
+      <p class="widget-modal-total-lead small mb-3">
+        Ajuste a visualização deste widget. As alterações entram na hora; use <strong>Salvar</strong> no topo para manter nos próximos carregamentos.
+      </p>
+
+      <div class="mb-3">
+        <div class="form-check form-switch mb-2">
+          <input class="form-check-input" type="checkbox" id="plantaOptLegenda"
+            ng-model="_plantaOpcoesForm.mostrarLegendaDescricao">
+          <label class="form-check-label" for="plantaOptLegenda">Mostrar legenda (nome das áreas)</label>
+        </div>
+        <div class="form-check form-switch mb-2">
+          <input class="form-check-input" type="checkbox" id="plantaOptMarcacao"
+            ng-model="_plantaOpcoesForm.mostrarMarcacaoArea">
+          <label class="form-check-label" for="plantaOptMarcacao">Mostrar marcação das áreas</label>
+        </div>
+      </div>
+
+      <div class="row g-2 mb-2">
+        <div class="col-6">
+          <label class="form-label small mb-1" for="plantaOptFonte">Tamanho da fonte</label>
+          <input type="number" min="8" max="120" step="1" class="form-control form-control-sm" id="plantaOptFonte"
+            ng-model="_plantaOpcoesForm.tamanhoFonteLegenda">
+        </div>
+        <div class="col-6">
+          <label class="form-label small mb-1" for="plantaOptZoom">Zoom inicial</label>
+          <input type="number" min="0.4" max="4" step="0.1" class="form-control form-control-sm" id="plantaOptZoom"
+            ng-model="_plantaOpcoesForm.zoomInicial">
+        </div>
+      </div>
+
+      <div class="d-grid gap-2 mt-3">
+        <button type="button" class="btn btn-primary" ng-click="confirmarModalOpcoesPlanta()">Aplicar</button>
+        <button type="button" class="btn btn-light" ng-click="cancelarModalOpcoesPlanta()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
   <div class="widget-modal-total-backdrop" ng-if="exibirModalTempo" ng-click="cancelarModalTempo()">
     <div class="widget-modal-total-dialog" ng-click="$event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="widgetModalTempoTitulo">
       <h5 id="widgetModalTempoTitulo" class="widget-modal-total-titulo mb-3">Tempo de permanência</h5>
@@ -504,6 +544,14 @@
     border-radius: 14px;
     overflow: hidden;
     box-shadow: 0 8px 24px rgba(0,0,0,.15);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .grid-stack-item-content > .widget-card {
+    flex: 1 1 auto;
+    min-height: 0;
   }
 
   .widget-card {
@@ -576,6 +624,20 @@
   .widget-body > * {
     flex: 1 1 auto;
     min-height: 0;
+  }
+
+  /* Planta: host + root preenchem a altura do grid */
+  .widget-body planta {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-height: 0;
+  }
+
+  .widget-body planta .planta-root {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
   }
 
   /* KPI gráfico / processos: preenche a célula do grid e alinha alturas */
