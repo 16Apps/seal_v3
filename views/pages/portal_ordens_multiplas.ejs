@@ -295,6 +295,31 @@
       word-break: break-all;
     }
 
+    /* DSV: partes decodificadas ~20% maiores que o EPC, com espaço e cores distintas */
+    .pom-epc-dsv {
+      font-family: ui-monospace, monospace;
+      font-size: 0.78rem; /* 0.65rem * 1.2 */
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      line-height: 1.25;
+    }
+
+    .pom-epc-dsv > span + span {
+      margin-left: 0.45em;
+    }
+
+    .pom-epc-dsv-cliente {
+      color: #38bdf8;
+    }
+
+    .pom-epc-dsv-volume {
+      color: #fbbf24;
+    }
+
+    .pom-epc-dsv-nf {
+      color: #4ade80;
+    }
+
     .pom-rssi {
       font-weight: 600;
       font-size: 0.78rem;
@@ -831,7 +856,12 @@
                       </td>
                       <td>{{ formatHoraLeitura(l.data_leitura || l.data_hora || l._recebidoEm) }}</td>
                       <td>
-                        <span class="pom-epc d-block">{{ formatTagLeitura(l).linha1 }}</span>
+                        <span class="pom-epc d-block" ng-if="!formatTagLeitura(l).dsv">{{ formatTagLeitura(l).linha1 }}</span>
+                        <span class="pom-epc-dsv d-block" ng-if="formatTagLeitura(l).dsv && formatTagLeitura(l).dec">
+                          <span class="pom-epc-dsv-cliente">{{ formatTagLeitura(l).dec.cliente }}</span>
+                          <span class="pom-epc-dsv-volume">{{ formatTagLeitura(l).dec.volume }}</span>
+                          <span class="pom-epc-dsv-nf">{{ formatTagLeitura(l).dec.nota_fiscal }}</span>
+                        </span>
                         <small class="text-muted d-block pom-epc-raw" ng-if="formatTagLeitura(l).dsv">{{ formatTagLeitura(l).linha2 }}</small>
                       </td>
                       <td>
