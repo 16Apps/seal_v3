@@ -55,6 +55,8 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
     /** Gateways da conta — prefixos EPC aceitos por tokem (codif_epc_aceito) */
     $scope._listGateways = [];
     $scope._mapPrefixosPorTokem = {};
+    /** tokem → codif_epc do gateway (ex.: dsv) */
+    $scope._mapCodifPorTokem = {};
 
     /** Sessão de retorno (modo retorno) — só front até Finalizar */
     $scope._retorno = {
@@ -137,6 +139,68 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
         if (m.clone().startOf('day').isSame(ontem)) return 'Ontem ' + m.format('HH:mm');
         return m.format('DD/MM HH:mm');
     }
+
+    function gatewayPorTokemLeitura(leitura) {
+        var tokem = leitura && (leitura.tokem != null ? leitura.tokem : leitura.token);
+        if (tokem == null || tokem === '') return null;
+        var key = String(tokem).trim().toUpperCase();
+        var codif = $scope._mapCodifPorTokem[key];
+        if (codif != null) return { tokem: key, codif_epc: codif };
+        var lista = $scope._listGateways || [];
+        for (var i = 0; i < lista.length; i++) {
+            var g = lista[i];
+            if (!g || g.tokem == null) continue;
+            if (String(g.tokem).trim().toUpperCase() === key) return g;
+        }
+        return null;
+    }
+
+    /**
+     * Exibição da tag na lista de leituras.
+     * Se gateway.codif_epc === 'dsv': linha 1 = dados decodificados, linha 2 = EPC.
+     * Caso contrário: só o EPC (como antes).
+     */
+    $scope.formatTagLeitura = function (leitura) {
+        var epc = leitura && leitura.tag ? String(leitura.tag) : '';
+        var tokem = leitura && (leitura.tokem != null ? leitura.tokem : leitura.token);
+        var cacheKey = epc + '|' + String(tokem || '');
+        if (leitura && leitura._tagDisplay && leitura._tagDisplay._key === cacheKey) {
+            return leitura._tagDisplay;
+        }
+        var out;
+        if (!epc) {
+            out = { dsv: false, epc: '', linha1: '—', linha2: null, _key: cacheKey };
+        } else {
+            var gw = gatewayPorTokemLeitura(leitura);
+            var codif = gw && gw.codif_epc != null ? String(gw.codif_epc).trim().toLowerCase() : '';
+            if (codif !== 'dsv') {
+                out = { dsv: false, epc: epc, linha1: epc, linha2: null, _key: cacheKey };
+            } else {
+                try {
+                    var dec = uteisService.decodificarEPCDSV(epc);
+                    var linha1 = (dec && dec.tag)
+                        ? String(dec.tag)
+                        : [
+                            dec && dec.cliente,
+                            dec && dec.volume != null ? 'Vol ' + dec.volume : '',
+                            dec && dec.nota_fiscal != null ? 'NF ' + dec.nota_fiscal : ''
+                        ].filter(Boolean).join(' · ');
+                    out = {
+                        dsv: true,
+                        epc: (dec && dec.epc) || epc,
+                        linha1: linha1 || epc,
+                        linha2: (dec && dec.epc) || epc,
+                        dec: dec || null,
+                        _key: cacheKey
+                    };
+                } catch (e) {
+                    out = { dsv: false, epc: epc, linha1: epc, linha2: null, _key: cacheKey };
+                }
+            }
+        }
+        if (leitura) leitura._tagDisplay = out;
+        return out;
+    };
 
     /** Exibe só hora da leitura (HH:mm:ss), fuso Brasília */
     $scope.formatHoraLeitura = function (valor) {
@@ -716,13 +780,19 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
 
     function rebuildMapPrefixosGateways() {
         var map = {};
+        var mapCodif = {};
         ($scope._listGateways || []).forEach(function (g) {
             if (!g || !g.tokem) return;
+            var key = String(g.tokem).trim().toUpperCase();
+            if (g.codif_epc != null && String(g.codif_epc).trim() !== '') {
+                mapCodif[key] = String(g.codif_epc).trim().toLowerCase();
+            }
             var prefs = parsePrefixosEpcAceito(g.codif_epc_aceito);
             if (!prefs.length) return;
-            map[String(g.tokem).trim().toUpperCase()] = prefs;
+            map[key] = prefs;
         });
         $scope._mapPrefixosPorTokem = map;
+        $scope._mapCodifPorTokem = mapCodif;
     }
 
     /**

@@ -287,6 +287,14 @@
       color: #93c5fd;
     }
 
+    .pom-epc-raw {
+      font-family: ui-monospace, monospace;
+      font-size: 0.65rem;
+      line-height: 1.2;
+      margin-top: 2px;
+      word-break: break-all;
+    }
+
     .pom-rssi {
       font-weight: 600;
       font-size: 0.78rem;
@@ -807,7 +815,7 @@
                       <th>Lote</th>
                       <th>Data / Hora</th>
                       <th>Tag (EPC)</th>
-                      <th>Match</th>
+                      <th>ID Doc</th>
                       <th>Tokem</th>
                       <th>Antena</th>
                       <th>RSSI</th>
@@ -822,7 +830,10 @@
                         <span class="pom-badge-retorno" ng-if="l.retorno">RET</span>
                       </td>
                       <td>{{ formatHoraLeitura(l.data_leitura || l.data_hora || l._recebidoEm) }}</td>
-                      <td><span class="pom-epc">{{ l.tag || '—' }}</span></td>
+                      <td>
+                        <span class="pom-epc d-block">{{ formatTagLeitura(l).linha1 }}</span>
+                        <small class="text-muted d-block pom-epc-raw" ng-if="formatTagLeitura(l).dsv">{{ formatTagLeitura(l).linha2 }}</small>
+                      </td>
                       <td>
                         <span ng-if="l.excedente" class="pom-match-excedente">Excedente</span>
                         <span ng-if="!l.excedente && l.retorno" class="pom-match-retorno">{{ l.matchLabel || 'Retorno' }}</span>
