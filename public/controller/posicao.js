@@ -1,4 +1,4 @@
-app.controller('posicaoCtrl', function ($scope, $http, params, uteisService,  $location) {
+app.controller('posicaoCtrl', function ($scope, $http, params, uteisService, $location, $interval, $timeout) {
 
     $scope._regConta = {};
     $scope._regColaborador = []
@@ -6,8 +6,15 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService,  $l
     $scope.sortField = 'id_doc';
     $scope.sortReverse = false;
     $scope._tipo = 'conferencia';
+    $scope._autoRefreshPct = 0;
 
     var modalInstance = undefined;
+    var AUTO_REFRESH_MS = 1000;
+    var AUTO_TICK_MS = 50;
+    var _autoTimer = null;
+    var _pctTimer = null;
+    var _cicloInicio = 0;
+    var _carregandoLista = false;
 
     var inicioSemanaAtual = moment().startOf('isoWeek').format('YYYY-MM-DD');
     var fimSemanaAtual = moment().endOf('isoWeek').format('YYYY-MM-DD');
@@ -49,10 +56,46 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService,  $l
         
         $scope._regColaborador = uteisService.getCookie('_colaborador');
 
-        $scope.onCarregaRegistros()
+        await $scope.onCarregaRegistros();
+        iniciarAutoRefreshLista();
     });
 
-    $scope.onCarregaRegistros = async function () {
+    function pararAutoRefreshLista() {
+        if (_autoTimer) {
+            $interval.cancel(_autoTimer);
+            _autoTimer = null;
+        }
+        if (_pctTimer) {
+            $interval.cancel(_pctTimer);
+            _pctTimer = null;
+        }
+        $scope._autoRefreshPct = 0;
+    }
+
+    function iniciarAutoRefreshLista() {
+        pararAutoRefreshLista();
+        _cicloInicio = Date.now();
+        _pctTimer = $interval(function () {
+            var elapsed = Date.now() - _cicloInicio;
+            $scope._autoRefreshPct = Math.min(100, (elapsed / AUTO_REFRESH_MS) * 100);
+        }, AUTO_TICK_MS);
+        _autoTimer = $interval(function () {
+            _cicloInicio = Date.now();
+            $scope._autoRefreshPct = 0;
+            $scope.onCarregaRegistros({ silencioso: true });
+        }, AUTO_REFRESH_MS);
+    }
+
+    $scope.$on('$destroy', function () {
+        pararAutoRefreshLista();
+    });
+
+    $scope.onCarregaRegistros = async function (opts) {
+        opts = opts || {};
+        var silencioso = !!opts.silencioso;
+        if (_carregandoLista) return;
+        if (!$scope._regConta || !$scope._regConta._id) return;
+        _carregandoLista = true;
 
         let _url = '/_bd?c=posicao&id_conta=' + $scope._regConta._id;
 
@@ -77,48 +120,44 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService,  $l
         _url += '&pop=id_nivel_loc1_destino&pop=id_nivel_loc2_destino&pop=id_nivel_loc3_destino&pop=id_nivel_loc4_destino';
         _url += '&pop=id_colaborador';
 
-        await uteisService.getBase(_url)
-            .then((res) => {
-                
+        try {
+            var res = await uteisService.getBase(_url).catch(function (error) {
+                if (!silencioso) {
+                    uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
+                }
+                return null;
+            });
+            if (!Array.isArray(res)) return;
 
-                res.map((item) => {
+            res.map((item) => {
 
-                    item['_icone'] = '../assets/images/icon_cadastro.fw.png'
+                item['_icone'] = '../assets/images/icon_cadastro.fw.png'
 
-                    // if (item.icone && !item.foto.includes('assets')) {
-                    //     item._icone = uteisService.apiUrl_() + '/image/' + item.icone
-                    // };
+                item['_previsao_chegada_data'] = item.previsao_chegada_data
+                item['_previsao_chegada_data_status'] = false
 
-                    item['_previsao_chegada_data'] = item.previsao_chegada_data
-                    item['_previsao_chegada_data_status'] = false
+                let _chegadaReal = (item.itens || []).find(function (it) { return it && it.status_destino_data; });
+                if (_chegadaReal) {
+                    item['_previsao_chegada_data'] = _chegadaReal.status_destino_data;
+                    item['_previsao_chegada_data_status'] = true
+                }
 
-                    let _chegadaReal = item.itens.find(item => item.status_destino_data);
-                    if (_chegadaReal) {
- 
-                      item['_previsao_chegada_data'] = _chegadaReal.status_destino_data;
-                      item['_previsao_chegada_data_status'] = true
-                    }
+                var contagem = $scope.contagemItensPosicao(item);
+                item['_itensConcluido'] = contagem.concluido;
+                item['_itensPendente'] = contagem.pendente;
 
-                    var contagem = $scope.contagemItensPosicao(item);
-                    item['_itensConcluido'] = contagem.concluido;
-                    item['_itensPendente'] = contagem.pendente;
+                var infoRetorno = $scope.infoRetornoPosicao(item);
+                item['_temRetorno'] = infoRetorno.temRetorno;
+                item['_qtdRetorno'] = infoRetorno.qtd;
+                item['_ultimoRetorno'] = infoRetorno.ultimo;
 
-                    var infoRetorno = $scope.infoRetornoPosicao(item);
-                    item['_temRetorno'] = infoRetorno.temRetorno;
-                    item['_qtdRetorno'] = infoRetorno.qtd;
-                    item['_ultimoRetorno'] = infoRetorno.ultimo;
-
-                });
-
-
-                $scope._listPosicoes = res
-                $scope.$apply();
-            })
-            .catch((error) => {
-                alert(JSON.stringify(error))
-                uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
             });
 
+            $scope._listPosicoes = res;
+            $timeout(function () { }, 0);
+        } finally {
+            _carregandoLista = false;
+        }
     };
 
     $scope.infoRetornoPosicao = function (posicao) {

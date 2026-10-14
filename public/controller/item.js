@@ -1,10 +1,11 @@
-app.controller('itemCtrl', function ($scope, $http, params, uteisService) {
+app.controller('itemCtrl', function ($scope, $http, params, uteisService, $interval, $timeout) {
 
     $scope._regConta = {};
     $scope._regColaborador = []
     $scope._listItens = []
     $scope._listItensBase = []
     $scope._pesquisa = ''
+    $scope._autoRefreshPct = 0;
     $scope._filtroLocalizacao = {
         id_nivel_loc1: '',
         id_nivel_loc2: '',
@@ -51,18 +52,63 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService) {
 
         $scope._regColaborador = uteisService.getCookie('_colaborador');
 
-        $scope.onCarregaRegistros()
+        await $scope.onCarregaRegistros();
+        iniciarAutoRefreshLista();
     });
 
-    $scope.onCarregaRegistros = async function () {
+    var AUTO_REFRESH_MS = 1000;
+    var AUTO_TICK_MS = 50;
+    var _autoTimer = null;
+    var _pctTimer = null;
+    var _cicloInicio = 0;
+    var _carregandoLista = false;
 
-        // Alinha id_categoria_reg1 a partir de categoria.id_nivel_cat1 (quando estiver vazio)
-        try {
-            await uteisService.getBase(
-                '/_bd/item/alinhar-categoria-reg1?id_conta=' + $scope._regConta._id
-            );
-        } catch (e) {
-            console.warn('Falha ao alinhar id_categoria_reg1 dos itens:', e);
+    function pararAutoRefreshLista() {
+        if (_autoTimer) {
+            $interval.cancel(_autoTimer);
+            _autoTimer = null;
+        }
+        if (_pctTimer) {
+            $interval.cancel(_pctTimer);
+            _pctTimer = null;
+        }
+        $scope._autoRefreshPct = 0;
+    }
+
+    function iniciarAutoRefreshLista() {
+        pararAutoRefreshLista();
+        _cicloInicio = Date.now();
+        _pctTimer = $interval(function () {
+            var elapsed = Date.now() - _cicloInicio;
+            $scope._autoRefreshPct = Math.min(100, (elapsed / AUTO_REFRESH_MS) * 100);
+        }, AUTO_TICK_MS);
+        _autoTimer = $interval(function () {
+            _cicloInicio = Date.now();
+            $scope._autoRefreshPct = 0;
+            $scope.onCarregaRegistros({ silencioso: true });
+        }, AUTO_REFRESH_MS);
+    }
+
+    $scope.$on('$destroy', function () {
+        pararAutoRefreshLista();
+    });
+
+    $scope.onCarregaRegistros = async function (opts) {
+        opts = opts || {};
+        var silencioso = !!opts.silencioso;
+        if (_carregandoLista) return;
+        if (!$scope._regConta || !$scope._regConta._id) return;
+        _carregandoLista = true;
+
+        // Alinha só na carga manual / inicial (evita custo a cada segundo)
+        if (!silencioso) {
+            try {
+                await uteisService.getBase(
+                    '/_bd/item/alinhar-categoria-reg1?id_conta=' + $scope._regConta._id
+                );
+            } catch (e) {
+                console.warn('Falha ao alinhar id_categoria_reg1 dos itens:', e);
+            }
         }
 
         let _url = '/_bd?c=item&id_conta=' + $scope._regConta._id;
@@ -70,43 +116,46 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService) {
         _url += '&pop=id_categoria_reg1'
         _url += '&_sort=registro_atual.data_registro'
 
-        await uteisService.getBase(_url)
-            .then((res) => {
-
-                $scope._labelInf1 = '';
-
-                res.map((item) => {
-
-                    const categoria = item.id_categoria;
-                    const labelInf1 = categoria && typeof categoria === 'object'
-                        ? categoria.labelInf1
-                        : '';
-                    if (!$scope._labelInf1 && labelInf1) {
-                        $scope._labelInf1 = labelInf1;
-                    }
-
-                    item['_foto'] = '../assets/images/icon_cadastro.fw.png'
-
-                    if (item.foto && !item.foto.includes('assets')) {
-                        item._foto = uteisService.apiUrl_() + '/image/' + item.foto
-                    } else {
-                        if (item.id_categoria && item.id_categoria.foto && !item.id_categoria.foto.includes('assets')) {
-                            item._foto = uteisService.apiUrl_() + '/image/' + item.id_categoria.foto
-                        }
-                    }
-
-        
-                });
-
-
-                $scope._listItensBase = res
-                $scope.atualizarOpcoesFiltroLocalizacao();
-                $scope.onPesquisa();
-                $scope.$apply();
-            })
-            .catch((error) => {
-                uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
+        try {
+            var res = await uteisService.getBase(_url).catch(function () {
+                if (!silencioso) {
+                    uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
+                }
+                return null;
             });
+            if (!Array.isArray(res)) return;
+
+            $scope._labelInf1 = '';
+
+            res.map((item) => {
+
+                const categoria = item.id_categoria;
+                const labelInf1 = categoria && typeof categoria === 'object'
+                    ? categoria.labelInf1
+                    : '';
+                if (!$scope._labelInf1 && labelInf1) {
+                    $scope._labelInf1 = labelInf1;
+                }
+
+                item['_foto'] = '../assets/images/icon_cadastro.fw.png'
+
+                if (item.foto && !item.foto.includes('assets')) {
+                    item._foto = uteisService.apiUrl_() + '/image/' + item.foto
+                } else {
+                    if (item.id_categoria && item.id_categoria.foto && !item.id_categoria.foto.includes('assets')) {
+                        item._foto = uteisService.apiUrl_() + '/image/' + item.id_categoria.foto
+                    }
+                }
+
+            });
+
+            $scope._listItensBase = res
+            $scope.atualizarOpcoesFiltroLocalizacao();
+            $scope.onPesquisa();
+            $timeout(function () { }, 0);
+        } finally {
+            _carregandoLista = false;
+        }
     };
 
     const normaliza = (v) =>
