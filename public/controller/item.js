@@ -56,7 +56,7 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService, $inter
         iniciarAutoRefreshLista();
     });
 
-    var AUTO_REFRESH_MS = 1000;
+    var AUTO_REFRESH_MS = 10000;
     var AUTO_TICK_MS = 50;
     var _autoTimer = null;
     var _pctTimer = null;

@@ -9,7 +9,7 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService, $lo
     $scope._autoRefreshPct = 0;
 
     var modalInstance = undefined;
-    var AUTO_REFRESH_MS = 1000;
+    var AUTO_REFRESH_MS = 10000;
     var AUTO_TICK_MS = 50;
     var _autoTimer = null;
     var _pctTimer = null;
