@@ -5,7 +5,7 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService, $inter
     $scope._listItens = []
     $scope._listItensBase = []
     $scope._pesquisa = ''
-    $scope._autoRefreshPct = 0;
+    $scope._autoRefreshRunning = false;
     $scope._filtroLocalizacao = {
         id_nivel_loc1: '',
         id_nivel_loc2: '',
@@ -57,10 +57,7 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService, $inter
     });
 
     var AUTO_REFRESH_MS = 10000;
-    var AUTO_TICK_MS = 50;
     var _autoTimer = null;
-    var _pctTimer = null;
-    var _cicloInicio = 0;
     var _carregandoLista = false;
 
     function pararAutoRefreshLista() {
@@ -68,23 +65,21 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService, $inter
             $interval.cancel(_autoTimer);
             _autoTimer = null;
         }
-        if (_pctTimer) {
-            $interval.cancel(_pctTimer);
-            _pctTimer = null;
-        }
-        $scope._autoRefreshPct = 0;
+        $scope._autoRefreshRunning = false;
+    }
+
+    function reiniciarBarraAutoRefresh() {
+        $scope._autoRefreshRunning = false;
+        $timeout(function () {
+            $scope._autoRefreshRunning = true;
+        }, 20);
     }
 
     function iniciarAutoRefreshLista() {
         pararAutoRefreshLista();
-        _cicloInicio = Date.now();
-        _pctTimer = $interval(function () {
-            var elapsed = Date.now() - _cicloInicio;
-            $scope._autoRefreshPct = Math.min(100, (elapsed / AUTO_REFRESH_MS) * 100);
-        }, AUTO_TICK_MS);
+        reiniciarBarraAutoRefresh();
         _autoTimer = $interval(function () {
-            _cicloInicio = Date.now();
-            $scope._autoRefreshPct = 0;
+            reiniciarBarraAutoRefresh();
             $scope.onCarregaRegistros({ silencioso: true });
         }, AUTO_REFRESH_MS);
     }
@@ -150,7 +145,10 @@ app.controller('itemCtrl', function ($scope, $http, params, uteisService, $inter
             });
 
             $scope._listItensBase = res
-            $scope.atualizarOpcoesFiltroLocalizacao();
+            // No poll silencioso: não reconstrói opções de filtro (evita travar a UI)
+            if (!silencioso) {
+                $scope.atualizarOpcoesFiltroLocalizacao();
+            }
             $scope.onPesquisa();
             $timeout(function () { }, 0);
         } finally {

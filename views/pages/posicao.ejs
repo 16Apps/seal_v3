@@ -15,7 +15,13 @@
         width: 0;
         background: linear-gradient(90deg, rgba(59, 130, 246, 0.25), rgba(59, 130, 246, 0.75));
         border-radius: 1px;
-        transition: width 50ms linear;
+      }
+      .lista-auto-refresh-bar__fill.is-running {
+        animation: lista-auto-refresh-fill 10s linear infinite;
+      }
+      @keyframes lista-auto-refresh-fill {
+        from { width: 0; }
+        to { width: 100%; }
       }
     </style>
 
@@ -32,7 +38,7 @@
           {{ _tipo == 'conferencia' ? 'Conferências' : 'Inventários' }}
         </li>
         <li class="breadcrumb-item text-info" aria-current="page">
-          Total: {{ _ui.modoVisualizacao === 'itens' ? itensExpandidos().length : posicoesFiltradas().length }}
+          Total: {{ _ui.modoVisualizacao === 'itens' ? _listItensExpandidos.length : _listPosicoesFiltradas.length }}
         </li>
       </ol>
       <!-- Breadcrumb end -->
@@ -97,7 +103,7 @@
       </div>
       <!-- Filter end -->
       <div class="lista-auto-refresh-bar w-100" title="Atualização automática a cada 10s">
-        <div class="lista-auto-refresh-bar__fill" ng-style="{ width: (_autoRefreshPct || 0) + '%' }"></div>
+        <div class="lista-auto-refresh-bar__fill" ng-class="{'is-running': _autoRefreshRunning}"></div>
       </div>
 
     </div>
@@ -162,6 +168,26 @@
 
                     <tbody>
                       <style>
+                        .pos-epc-dsv {
+                          font-family: ui-monospace, monospace;
+                          font-size: 0.9rem;
+                          font-weight: 600;
+                          line-height: 1.25;
+                        }
+                        .pos-epc-dsv > span + span {
+                          margin-left: 0.45em;
+                        }
+                        .pos-epc-dsv-cliente { color: #38bdf8; }
+                        .pos-epc-dsv-volume { color: #fbbf24; }
+                        .pos-epc-dsv-nf { color: #4ade80; }
+                        .pos-epc-raw {
+                          font-family: ui-monospace, monospace;
+                          font-size: 0.72rem;
+                          line-height: 1.2;
+                          margin-top: 2px;
+                          word-break: break-all;
+                          color: #94a3b8;
+                        }
                         .status-circle {
                           width: 40px;
                           height: 40px;
@@ -190,7 +216,7 @@
                           border: 1px solid rgba(168, 85, 247, 0.4);
                         }
                       </style>
-                      <tr ng-repeat="item in posicoesFiltradas() | orderBy:sortField:sortReverse">
+                      <tr ng-repeat="item in _listPosicoesFiltradas | orderBy:sortField:sortReverse track by item._id">
                         <td class="align-top">
                     
                           <span ng-class="{
@@ -261,7 +287,7 @@
                           </a>
                         </td>
                       </tr>
-                      <tr ng-if="!posicoesFiltradas().length">
+                      <tr ng-if="!_listPosicoesFiltradas.length">
                         <td colspan="6" class="text-center text-muted py-4">Nenhum registro encontrado.</td>
                       </tr>
                     </tbody>
@@ -283,7 +309,7 @@
                       </tr>
                     </thead>
                     <tbody>
-                      <tr ng-repeat="linha in itensExpandidos()">
+                      <tr ng-repeat="linha in _listItensExpandidos track by (linha.id_doc + '-' + linha.seq + '-' + linha.tag)">
                         <td>
                           <span class="text-white fw-bold">{{ linha.id_doc }}</span>
                           <span class="badge badge-retorno-pos ms-1" ng-if="linha.temRetorno">
@@ -299,7 +325,15 @@
                             }">{{ linha.ordemStatus }}</span>
                         </td>
                         <td class="small">{{ formataDataHora(linha.partida_data) }}</td>
-                        <td><code class="text-info">{{ linha.tag }}</code></td>
+                        <td>
+                          <span class="pos-epc-dsv d-block" ng-if="linha.tagDsv">
+                            <span class="pos-epc-dsv-cliente">{{ linha.tagCliente }}</span>
+                            <span class="pos-epc-dsv-volume">{{ linha.tagVolume }}</span>
+                            <span class="pos-epc-dsv-nf">{{ linha.tagNotaFiscal }}</span>
+                          </span>
+                          <small class="d-block pos-epc-raw" ng-if="linha.tagDsv">{{ linha.tagEpc || linha.tag }}</small>
+                          <code class="text-info" ng-if="!linha.tagDsv">{{ linha.tag }}</code>
+                        </td>
                         <td class="small text-muted">{{ linha.ean }}</td>
                         <td>
                           <span ng-class="classeStatusItem(linha.itemStatus)">
@@ -322,7 +356,7 @@
                           </a>
                         </td>
                       </tr>
-                      <tr ng-if="!itensExpandidos().length">
+                      <tr ng-if="!_listItensExpandidos.length">
                         <td colspan="9" class="text-center text-muted py-4">Nenhum item encontrado.</td>
                       </tr>
                     </tbody>

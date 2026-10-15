@@ -238,17 +238,19 @@ app.service('uteisService', ['$rootScope', '$http', function ($rootScope, $http)
   };
 
   this.decodificarEPCDSV = function (epc) {
-    const hex = String(epc || '').trim();
+    // Aceita 24 (12 chars ASCII) ou 26 (13 chars) — NF com 7 ou 8 dígitos
+    const hex = String(epc || '').trim().replace(/[^0-9a-fA-F]/g, '');
 
-    if (!/^[0-9a-f]{24}$/i.test(hex)) {
-        throw new Error('EPC inválido: esperado hexadecimal com 24 caracteres.');
+    if (!/^[0-9a-f]{24}$/i.test(hex) && !/^[0-9a-f]{26}$/i.test(hex)) {
+        throw new Error('EPC inválido: esperado hexadecimal com 24 ou 26 caracteres.');
     }
 
     const tag = hex.match(/.{2}/g)
         .map(byte => String.fromCharCode(parseInt(byte, 16)))
         .join('');
 
-    if (!/^[A-Z0-9]{3}\d{9}$/.test(tag)) {
+    // cliente(3) + volume(2) + nota_fiscal(7|8) → 12 ou 13 chars
+    if (!/^[A-Z0-9]{3}\d{9,10}$/.test(tag)) {
         throw new Error('EPC fora do padrão: cliente + volume + nota fiscal.');
     }
 
@@ -257,7 +259,7 @@ app.service('uteisService', ['$rootScope', '$http', function ($rootScope, $http)
         tag,
         cliente: tag.substring(0, 3),
         volume: tag.substring(3, 5),
-        nota_fiscal: tag.substring(5, 12)
+        nota_fiscal: tag.substring(5)
     };
 }
 

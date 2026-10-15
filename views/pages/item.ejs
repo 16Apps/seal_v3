@@ -15,7 +15,13 @@
         width: 0;
         background: linear-gradient(90deg, rgba(59, 130, 246, 0.25), rgba(59, 130, 246, 0.75));
         border-radius: 1px;
-        transition: width 50ms linear;
+      }
+      .lista-auto-refresh-bar__fill.is-running {
+        animation: lista-auto-refresh-fill 10s linear infinite;
+      }
+      @keyframes lista-auto-refresh-fill {
+        from { width: 0; }
+        to { width: 100%; }
       }
     </style>
 
@@ -115,7 +121,7 @@
       </div>
       <!-- Filter end -->
       <div class="lista-auto-refresh-bar w-100" title="Atualização automática a cada 10s">
-        <div class="lista-auto-refresh-bar__fill" ng-style="{ width: (_autoRefreshPct || 0) + '%' }"></div>
+        <div class="lista-auto-refresh-bar__fill" ng-class="{'is-running': _autoRefreshRunning}"></div>
       </div>
 
     </div>

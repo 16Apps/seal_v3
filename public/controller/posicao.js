@@ -6,14 +6,14 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService, $lo
     $scope.sortField = 'id_doc';
     $scope.sortReverse = false;
     $scope._tipo = 'conferencia';
-    $scope._autoRefreshPct = 0;
+    /** Barra de auto-refresh via CSS (sem digests a cada 50ms) */
+    $scope._autoRefreshRunning = false;
+    $scope._listPosicoesFiltradas = [];
+    $scope._listItensExpandidos = [];
 
     var modalInstance = undefined;
     var AUTO_REFRESH_MS = 10000;
-    var AUTO_TICK_MS = 50;
     var _autoTimer = null;
-    var _pctTimer = null;
-    var _cicloInicio = 0;
     var _carregandoLista = false;
 
     var inicioSemanaAtual = moment().startOf('isoWeek').format('YYYY-MM-DD');
@@ -34,6 +34,11 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService, $lo
     $scope._ui = {
         modoVisualizacao: 'ordens'
     };
+
+    /** id_gateway → { codif_epc, ... } — modo da última leitura do item (itens.id_gatweway) */
+    $scope._mapGatewayPorId = {};
+    /** Conta tem ao menos um gateway com codif_epc = dsv */
+    $scope._temGatewayDsv = false;
 
     $scope.$watch('$viewContentLoaded', async function () {
 
@@ -56,32 +61,111 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService, $lo
         
         $scope._regColaborador = uteisService.getCookie('_colaborador');
 
+        await $scope.onCarregaGateways();
         await $scope.onCarregaRegistros();
         iniciarAutoRefreshLista();
     });
+
+    $scope.onCarregaGateways = async function () {
+        if (!$scope._regConta || !$scope._regConta._id) return;
+        var url = '/_bd?c=gateway&id_conta=' + encodeURIComponent($scope._regConta._id);
+        var res = await uteisService.getBase(url).catch(function () { return []; });
+        var map = {};
+        var temDsv = false;
+        (Array.isArray(res) ? res : []).forEach(function (g) {
+            if (!g || !g._id) return;
+            var codif = g.codif_epc != null ? String(g.codif_epc).trim().toLowerCase() : '';
+            if (codif === 'dsv') temDsv = true;
+            map[String(g._id)] = {
+                _id: g._id,
+                tokem: g.tokem || '',
+                codif_epc: codif,
+                codif_epc_inicial: g.codif_epc_inicial,
+                codif_epc_comprimento: g.codif_epc_comprimento
+            };
+        });
+        $scope._mapGatewayPorId = map;
+        $scope._temGatewayDsv = temDsv;
+    };
+
+    function montarDecodDsv(epc, dec) {
+        return {
+            dsv: true,
+            epc: (dec && dec.epc) || epc,
+            cliente: (dec && dec.cliente) || '',
+            volume: (dec && dec.volume) || '',
+            nota_fiscal: (dec && dec.nota_fiscal) || '',
+            tagDec: (dec && dec.tag) || '',
+            dec: dec || null
+        };
+    }
+
+    /**
+     * Decodifica tag conforme codif_epc do gateway da última leitura (itens.id_gatweway).
+     * Fallback: se o item não tiver gateway mas a conta tiver gateway DSV e o EPC
+     * for válido no padrão DSV, aplica decodificarEPCDSV (itens antigos sem id_gatweway).
+     */
+    function decodificarTagPorGateway(tagRaw, idGateway) {
+        var epc = tagRaw && tagRaw !== '—' ? String(tagRaw).trim() : '';
+        var vazio = {
+            dsv: false,
+            epc: epc || '',
+            cliente: '',
+            volume: '',
+            nota_fiscal: '',
+            tagDec: '',
+            dec: null
+        };
+        if (!epc) return vazio;
+
+        var gw = null;
+        if (idGateway != null && idGateway !== '') {
+            gw = $scope._mapGatewayPorId[String(idGateway)] || null;
+        }
+        var codif = gw && gw.codif_epc ? gw.codif_epc : '';
+
+        // Preferência: modo do gateway gravado no item (última leitura)
+        if (codif === 'dsv') {
+            try {
+                return montarDecodDsv(epc, uteisService.decodificarEPCDSV(epc));
+            } catch (e) {
+                return Object.assign({}, vazio, { epc: epc });
+            }
+        }
+
+        // Sem id_gatweway / gateway sem modo: tenta DSV se a conta usa esse modo
+        if ((!codif || !gw) && $scope._temGatewayDsv) {
+            try {
+                return montarDecodDsv(epc, uteisService.decodificarEPCDSV(epc));
+            } catch (e) {
+                /* EPC não é DSV — mantém tag crua */
+            }
+        }
+
+        return Object.assign({}, vazio, { epc: epc });
+    }
 
     function pararAutoRefreshLista() {
         if (_autoTimer) {
             $interval.cancel(_autoTimer);
             _autoTimer = null;
         }
-        if (_pctTimer) {
-            $interval.cancel(_pctTimer);
-            _pctTimer = null;
-        }
-        $scope._autoRefreshPct = 0;
+        $scope._autoRefreshRunning = false;
+    }
+
+    function reiniciarBarraAutoRefresh() {
+        // Reinicia animação CSS sem $interval de progresso
+        $scope._autoRefreshRunning = false;
+        $timeout(function () {
+            $scope._autoRefreshRunning = true;
+        }, 20);
     }
 
     function iniciarAutoRefreshLista() {
         pararAutoRefreshLista();
-        _cicloInicio = Date.now();
-        _pctTimer = $interval(function () {
-            var elapsed = Date.now() - _cicloInicio;
-            $scope._autoRefreshPct = Math.min(100, (elapsed / AUTO_REFRESH_MS) * 100);
-        }, AUTO_TICK_MS);
+        reiniciarBarraAutoRefresh();
         _autoTimer = $interval(function () {
-            _cicloInicio = Date.now();
-            $scope._autoRefreshPct = 0;
+            reiniciarBarraAutoRefresh();
             $scope.onCarregaRegistros({ silencioso: true });
         }, AUTO_REFRESH_MS);
     }
@@ -154,6 +238,7 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService, $lo
             });
 
             $scope._listPosicoes = res;
+            atualizarListasDerivadas();
             $timeout(function () { }, 0);
         } finally {
             _carregandoLista = false;
@@ -231,8 +316,7 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService, $lo
         return partes.join(' ').toLowerCase();
     }
 
-    /** Lista de ordens após filtros client-side (retorno + texto) */
-    $scope.posicoesFiltradas = function () {
+    function computarPosicoesFiltradas() {
         var lista = Array.isArray($scope._listPosicoes) ? $scope._listPosicoes : [];
         if ($scope._pesquisa.somenteRetorno === true || $scope._pesquisa.somenteRetorno === '1') {
             lista = lista.filter(function (p) { return p && p._temRetorno; });
@@ -244,17 +328,12 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService, $lo
             });
         }
         return lista;
-    };
+    }
 
-    /**
-     * Visão por itens: uma linha por item da ordem,
-     * com dados básicos da ordem + status/tag/retorno do item.
-     * Com filtro de retorno, lista só itens que retornaram.
-     */
-    $scope.itensExpandidos = function () {
+    function computarItensExpandidos(posicoes) {
         var linhas = [];
         var soRetorno = $scope._pesquisa.somenteRetorno === true || $scope._pesquisa.somenteRetorno === '1';
-        ($scope.posicoesFiltradas() || []).forEach(function (pos) {
+        (posicoes || []).forEach(function (pos) {
             var itens = (pos && pos.itens) || [];
             if (!Array.isArray(itens) || !itens.length) {
                 if (!soRetorno) {
@@ -265,6 +344,11 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService, $lo
                         ordemStatus: pos.status,
                         partida_data: pos.partida_data,
                         tag: '—',
+                        tagDsv: false,
+                        tagCliente: '',
+                        tagVolume: '',
+                        tagNotaFiscal: '',
+                        tagEpc: '',
                         ean: '—',
                         itemStatus: '—',
                         status_data: null,
@@ -276,6 +360,9 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService, $lo
             }
             itens.forEach(function (it, idx) {
                 if (soRetorno && !(it && it.retorno_data)) return;
+                var tagRaw = (it && it.tag) || '—';
+                var idGw = (it && (it.id_gatweway || it.id_gateway)) || null;
+                var tagInfo = decodificarTagPorGateway(tagRaw, idGw);
                 linhas.push({
                     posicao: pos,
                     item: it,
@@ -285,17 +372,53 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService, $lo
                     partida_data: pos.partida_data,
                     origem: (pos.id_nivel_loc1 && pos.id_nivel_loc1.descricao) || '',
                     destino: (pos.id_nivel_loc1_destino && pos.id_nivel_loc1_destino.descricao) || '',
-                    tag: (it && it.tag) || '—',
+                    tag: tagRaw,
+                    tagDsv: !!tagInfo.dsv,
+                    tagCliente: tagInfo.cliente || '',
+                    tagVolume: tagInfo.volume || '',
+                    tagNotaFiscal: tagInfo.nota_fiscal || '',
+                    tagEpc: tagInfo.epc || (tagRaw !== '—' ? tagRaw : ''),
                     ean: (it && it.ean) || '—',
                     itemStatus: (it && it.status) || 'pendente',
                     status_data: (it && it.status_data) || null,
                     retorno_data: (it && it.retorno_data) || null,
-                    temRetorno: !!(it && it.retorno_data)
+                    temRetorno: !!(it && it.retorno_data),
+                    id_gatweway: idGw
                 });
             });
         });
         return linhas;
+    }
+
+    /** Recalcula caches usadas na view (evita reprocessar DSV a cada digest) */
+    function atualizarListasDerivadas() {
+        $scope._listPosicoesFiltradas = computarPosicoesFiltradas();
+        $scope._listItensExpandidos = computarItensExpandidos($scope._listPosicoesFiltradas);
+    }
+
+    /** Lista de ordens após filtros client-side (retorno + texto) */
+    $scope.posicoesFiltradas = function () {
+        return $scope._listPosicoesFiltradas || [];
     };
+
+    /**
+     * Visão por itens: uma linha por item da ordem (cache).
+     */
+    $scope.itensExpandidos = function () {
+        return $scope._listItensExpandidos || [];
+    };
+
+    $scope.onFiltroClientChange = function () {
+        atualizarListasDerivadas();
+    };
+
+    // Filtros client-side: pesquisa / retorno — status e datas disparam reload via botão/auto
+    $scope.$watchGroup([
+        '_pesquisa.pesquisa',
+        '_pesquisa.somenteRetorno'
+    ], function () {
+        atualizarListasDerivadas();
+    });
 
     $scope.labelStatusItem = function (st) {
         var s = String(st || '').toLowerCase();
@@ -382,7 +505,10 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService, $lo
                 'Partida',
                 'Origem N1',
                 'Destino N1',
-                'Tag',
+                'Cliente',
+                'Volume',
+                'Nota Fiscal',
+                'Tag (EPC)',
                 'EAN',
                 'Status Item',
                 'Leitura (Data)',
@@ -392,13 +518,18 @@ app.controller('posicaoCtrl', function ($scope, $http, params, uteisService, $lo
 
             const linhas = lista.map((linha) => {
                 const pos = linha.posicao || {};
+                const tagPlain = linha.tag === '—' ? '' : (linha.tag || '');
+                const tagInfo = decodificarTagPorGateway(tagPlain, linha.id_gatweway);
                 return [
                     linha.id_doc || '',
                     linha.ordemStatus || '',
                     fmtData(linha.partida_data),
                     (pos.id_nivel_loc1 && pos.id_nivel_loc1.descricao) || linha.origem || '',
                     (pos.id_nivel_loc1_destino && pos.id_nivel_loc1_destino.descricao) || linha.destino || '',
-                    linha.tag || '',
+                    tagInfo.dsv ? (tagInfo.cliente || '') : '',
+                    tagInfo.dsv ? (tagInfo.volume || '') : '',
+                    tagInfo.dsv ? (tagInfo.nota_fiscal || '') : '',
+                    tagInfo.dsv ? (tagInfo.epc || tagPlain) : tagPlain,
                     linha.ean === '—' ? '' : (linha.ean || ''),
                     $scope.labelStatusItem(linha.itemStatus),
                     linha.status_data ? fmtData(linha.status_data) : '',
