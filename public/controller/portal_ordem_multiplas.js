@@ -57,6 +57,8 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
     $scope._mapPrefixosPorTokem = {};
     /** tokem → codif_epc do gateway (ex.: dsv) */
     $scope._mapCodifPorTokem = {};
+    /** tokem → intervalo_ausencia (segundos) — releitura de concluído vira excedente após esse tempo */
+    $scope._mapIntervaloAusenciaPorTokem = {};
 
     /** Sessão de retorno (modo retorno) — só front até Finalizar */
     $scope._retorno = {
@@ -121,6 +123,7 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
                 status: (it && it.status) || 'pendente',
                 statusLabel: st.label,
                 statusClass: st.cls,
+                status_data: (it && it.status_data) || null,
                 retorno_data: retornoData,
                 retornoHora: retornoData ? $scope.formatHoraLeitura(retornoData) : null,
                 retornou: !!retornoData
@@ -781,18 +784,39 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
     function rebuildMapPrefixosGateways() {
         var map = {};
         var mapCodif = {};
+        var mapIntervalo = {};
         ($scope._listGateways || []).forEach(function (g) {
             if (!g || !g.tokem) return;
             var key = String(g.tokem).trim().toUpperCase();
             if (g.codif_epc != null && String(g.codif_epc).trim() !== '') {
                 mapCodif[key] = String(g.codif_epc).trim().toLowerCase();
             }
+            var intervalo = Number(g.intervalo_ausencia);
+            mapIntervalo[key] = Number.isFinite(intervalo) && intervalo >= 0 ? intervalo : 0;
             var prefs = parsePrefixosEpcAceito(g.codif_epc_aceito);
-            if (!prefs.length) return;
-            map[key] = prefs;
+            if (prefs.length) map[key] = prefs;
         });
         $scope._mapPrefixosPorTokem = map;
         $scope._mapCodifPorTokem = mapCodif;
+        $scope._mapIntervaloAusenciaPorTokem = mapIntervalo;
+    }
+
+    function intervaloAusenciaDoGateway(leitura) {
+        var tokem = leitura && (leitura.tokem != null ? leitura.tokem : leitura.token);
+        if (tokem == null || tokem === '') return 0;
+        var key = String(tokem).trim().toUpperCase();
+        var n = $scope._mapIntervaloAusenciaPorTokem[key];
+        return Number.isFinite(n) && n >= 0 ? n : 0;
+    }
+
+    /** Segundos desde status_data / última leitura local do item */
+    function segundosDesdeUltimaLeituraItem(item) {
+        if (!item) return Infinity;
+        var ref = item._ultimaLeituraLocal || item.status_data || null;
+        if (!ref) return Infinity;
+        var t = new Date(ref).getTime();
+        if (isNaN(t)) return Infinity;
+        return Math.max(0, (Date.now() - t) / 1000);
     }
 
     /**
@@ -1076,7 +1100,9 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
 
     /**
      * Aplica leitura só na UI: item → concluido; ordem → pendente/parcial/concluida.
-     * Tag fora de qualquer ordem → excedente (roxo). Sem persistência (isso no fechar lote).
+     * Tag fora de qualquer ordem → excedente (roxo).
+     * Item já concluído (e já persistido): se tempo desde última leitura > intervalo_ausencia
+     * do gateway (segundos) → lista de novo como excedente.
      * @returns {{ excedente: boolean, precisaPersistir: boolean, id_ordem: string|null }}
      */
     function aplicarTagNasOrdens(chave, tagRaw, linha) {
@@ -1092,16 +1118,49 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
         var ordem = hit.ordem;
         var precisaPersistir = false;
         var st = labelStatusItem('concluido');
+        var jaConcluido = String(item.status || '').toLowerCase() === 'concluido';
 
-        if (String(item.status || '').toLowerCase() !== 'concluido') {
+        if (jaConcluido) {
+            // Ainda não gravou no banco nesta sessão → segue fluxo normal de persistir
+            if (item._pendentePersistir && !item._persistido) {
+                precisaPersistir = true;
+            } else {
+                // Já concluído: releitura após intervalo_ausencia do gateway → excedente
+                var intervaloSeg = intervaloAusenciaDoGateway(linha);
+                var elapsed = segundosDesdeUltimaLeituraItem(item);
+                if (elapsed > intervaloSeg) {
+                    item._ultimaLeituraLocal = new Date();
+                    var docRef = ordem.id_doc || ordem._id || '';
+                    linha.excedente = true;
+                    linha.excedenteConcluido = true;
+                    linha.match = 'excedente_concluido';
+                    linha.matchLabel = docRef || 'Excedente · já concluído';
+                    linha.id_ordem = ordem._id;
+                    return {
+                        excedente: true,
+                        excedenteConcluido: true,
+                        precisaPersistir: false,
+                        id_ordem: ordem._id
+                    };
+                }
+                // Dentro do intervalo: só atualiza marca de leitura, sem reabrir/persistir
+                item._ultimaLeituraLocal = new Date();
+                linha.excedente = false;
+                linha.match = 'ok';
+                linha.matchLabel = ordem.id_doc || ordem._id;
+                linha.id_ordem = ordem._id;
+                return { excedente: false, precisaPersistir: false, id_ordem: ordem._id };
+            }
+        } else {
             item.status = 'concluido';
             item.statusLabel = st.label;
             item.statusClass = st.cls;
             item._pendentePersistir = true;
             precisaPersistir = true;
-        } else if (item._pendentePersistir && !item._persistido) {
-            precisaPersistir = true;
         }
+
+        item._ultimaLeituraLocal = new Date();
+        if (!item.status_data) item.status_data = item._ultimaLeituraLocal;
 
         linha.excedente = false;
         linha.match = 'ok';
@@ -1309,6 +1368,7 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
                 rssi: leitura.rssi,
                 data_leitura: leitura.data_leitura || linha._recebidoEm,
                 excedente: !!(matchInfo && matchInfo.excedente),
+                excedenteConcluido: !!(matchInfo && matchInfo.excedenteConcluido),
                 precisaPersistir: !!(matchInfo && matchInfo.precisaPersistir),
                 id_ordem: (matchInfo && matchInfo.id_ordem) || null
             });
@@ -1321,8 +1381,43 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
 
             agendarFechamentoLote(lote);
         } else {
+            // Releitura no mesmo lote: se item já concluído e passou intervalo_ausencia → lista de novo como excedente
+            var hitRe = localizarItemPorTag(chave);
+            var itemRe = hitRe && hitRe.item;
+            var jaConcluidoRe = itemRe && String(itemRe.status || '').toLowerCase() === 'concluido'
+                && !(itemRe._pendentePersistir && !itemRe._persistido);
+            if (jaConcluidoRe) {
+                var intervaloRe = intervaloAusenciaDoGateway(linha);
+                var elapsedRe = segundosDesdeUltimaLeituraItem(itemRe);
+                if (elapsedRe > intervaloRe) {
+                    itemRe._ultimaLeituraLocal = new Date();
+                    var docRe = (hitRe.ordem && (hitRe.ordem.id_doc || hitRe.ordem._id)) || '';
+                    linha.excedente = true;
+                    linha.excedenteConcluido = true;
+                    linha.match = 'excedente_concluido';
+                    linha.matchLabel = docRe || 'Excedente · já concluído';
+                    linha.lote_nova = true;
+                    linha.id_ordem = hitRe.ordem && hitRe.ordem._id;
+
+                    var tagLoteEx = (lote.tags || []).find(function (t) { return t.chave === chave; });
+                    if (tagLoteEx) {
+                        tagLoteEx.excedente = true;
+                        tagLoteEx.excedenteConcluido = true;
+                        tagLoteEx.precisaPersistir = false;
+                        tagLoteEx.rssi = leitura.rssi != null ? leitura.rssi : tagLoteEx.rssi;
+                    }
+
+                    $scope._leituras.unshift(linha);
+                    if ($scope._leituras.length > MAX_LEITURAS) {
+                        $scope._leituras.length = MAX_LEITURAS;
+                    }
+                    agendarFechamentoLote(lote);
+                    return;
+                }
+            }
+
             var existente = ($scope._leituras || []).find(function (l) {
-                return l.id_lote === lote.id && l._chave === chave;
+                return l.id_lote === lote.id && l._chave === chave && !l.excedente;
             });
             if (existente) {
                 existente.rssi = leitura.rssi;
@@ -1331,6 +1426,7 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
             }
             var tagLote = (lote.tags || []).find(function (t) { return t.chave === chave; });
             if (tagLote && leitura.rssi != null) tagLote.rssi = leitura.rssi;
+            if (itemRe) itemRe._ultimaLeituraLocal = new Date();
         }
 
     };

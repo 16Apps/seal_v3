@@ -670,6 +670,16 @@
       color: #d8b4fe;
     }
 
+    /* Excedente + item já concluído (releitura após intervalo) */
+    tr.pom-leitura-excedente-concluido td {
+      background: rgba(245, 158, 11, 0.14);
+      box-shadow: inset 3px 0 0 #f59e0b;
+    }
+
+    tr.pom-leitura-excedente-concluido .pom-epc {
+      color: #fcd34d;
+    }
+
     .pom-match-ok {
       color: #86efac;
       font-size: 0.72rem;
@@ -680,6 +690,23 @@
       color: #d8b4fe;
       font-size: 0.72rem;
       font-weight: 700;
+    }
+
+    .pom-match-excedente-concluido {
+      display: inline-flex;
+      flex-direction: column;
+      gap: 2px;
+      color: #fbbf24;
+      font-size: 0.72rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+
+    .pom-match-excedente-concluido .pom-match-sub {
+      font-size: 0.65rem;
+      font-weight: 500;
+      color: #fcd34d;
+      opacity: 0.9;
     }
 
     .pom-ordem-wrap.is-hit .pom-ordem-item {
@@ -848,7 +875,11 @@
                   </thead>
                   <tbody>
                     <tr ng-repeat="l in leiturasVisiveis()"
-                      ng-class="{ 'pom-leitura-excedente': l.excedente, 'pom-leitura-retorno': l.retorno && !l.excedente }">
+                      ng-class="{
+                        'pom-leitura-excedente': l.excedente && !l.excedenteConcluido,
+                        'pom-leitura-excedente-concluido': l.excedente && l.excedenteConcluido,
+                        'pom-leitura-retorno': l.retorno && !l.excedente
+                      }">
                       <td><span class="pom-seq">{{ $index + 1 }}</span></td>
                       <td>
                         <span class="pom-lote-badge" ng-if="!l.retorno">P{{ l.lote_seq || '—' }}</span>
@@ -865,7 +896,11 @@
                         <small class="text-muted d-block pom-epc-raw" ng-if="formatTagLeitura(l).dsv">{{ formatTagLeitura(l).linha2 }}</small>
                       </td>
                       <td>
-                        <span ng-if="l.excedente" class="pom-match-excedente">Excedente</span>
+                        <span ng-if="l.excedente && l.excedenteConcluido" class="pom-match-excedente-concluido">
+                          <span><i class="bi bi-arrow-repeat"></i> Excedente · já concluído</span>
+                          <span class="pom-match-sub" ng-if="l.matchLabel && l.matchLabel !== 'Excedente · já concluído'">{{ l.matchLabel }}</span>
+                        </span>
+                        <span ng-if="l.excedente && !l.excedenteConcluido" class="pom-match-excedente">Excedente</span>
                         <span ng-if="!l.excedente && l.retorno" class="pom-match-retorno">{{ l.matchLabel || 'Retorno' }}</span>
                         <span ng-if="!l.excedente && !l.retorno && l.matchLabel" class="pom-match-ok">{{ l.matchLabel }}</span>
                         <span ng-if="!l.excedente && !l.retorno && !l.matchLabel">—</span>
