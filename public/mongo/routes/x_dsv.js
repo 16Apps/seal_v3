@@ -347,14 +347,34 @@ module.exports = (app) => {
   };
 
   app.post('/x_dsv/posicao_item', async (req, res) => {
+    const payload = req.body || {};
+    const idPosicao = payload._id || payload.id_posicao || null;
+
+    async function salvarRetornoApi(retorno) {
+      if (!idPosicao) return;
+      try {
+        const texto = typeof retorno === 'string'
+          ? retorno
+          : JSON.stringify(retorno);
+        await Posicao.findByIdAndUpdate(
+          idPosicao,
+          { $set: { retorno_api: texto } },
+          { new: false }
+        );
+      } catch (eSave) {
+        console.error('[x_dsv/posicao_item] Falha ao salvar retorno_api:', eSave && eSave.message);
+      }
+    }
+
     try {
-      const payload = req.body || {};
       const item = Array.isArray(payload.itens) && payload.itens[0] ? payload.itens[0] : null;
       if (!item || !item.tag) {
-        return res.status(400).json({
+        const errBody = {
           ok: false,
           message: 'Informe a posição com itens[0].tag (item concluído).'
-        });
+        };
+        await salvarRetornoApi(errBody);
+        return res.status(400).json(errBody);
       }
 
       const data = JSON.stringify({
@@ -367,11 +387,6 @@ module.exports = (app) => {
           }
         ]
       });
-
-      // console.log(data);
-      // return res.status(200).json({
-      //   ok: true
-      // })
 
       const config = {
         method: 'post',
@@ -388,18 +403,26 @@ module.exports = (app) => {
       const response = await axios.request(config);
       console.log('[x_dsv/posicao_item]', response.status, JSON.stringify(response.data));
 
-      return res.status(200).json({
+      const retornoOk = {
         ok: true,
         power_status: response.status,
-        power_data: response.data
-      });
+        power_data: response.data,
+        tag: item.tag,
+        at: new Date().toISOString()
+      };
+      await salvarRetornoApi(retornoOk);
+
+      return res.status(200).json(retornoOk);
 
     } catch (error) {
       console.error('[x_dsv/posicao_item] Erro:', error.message);
-      return res.status(200).json({
+      const retornoErro = {
         ok: false,
-        message: error.message
-      });
+        message: error.message,
+        at: new Date().toISOString()
+      };
+      await salvarRetornoApi(retornoErro);
+      return res.status(200).json(retornoErro);
     }
   });
 
