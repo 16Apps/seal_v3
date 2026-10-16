@@ -312,10 +312,157 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
         });
     }
 
+    /** total_itens previsto maior que a qtd já vinculada em itens[] */
+    function isOrdemIncompleta(ordem) {
+        if (!ordem) return false;
+        var itensLen = Array.isArray(ordem.itens) ? ordem.itens.length : 0;
+        var total = Number(
+            ordem._posicao && ordem._posicao.total_itens != null
+                ? ordem._posicao.total_itens
+                : ordem.total
+        );
+        return Number.isFinite(total) && total > itensLen;
+    }
+
+    function capturarEstadoLocalOrdem(ordem) {
+        var itens = {};
+        (ordem.itens || []).forEach(function (it) {
+            if (!it || !it.tag) return;
+            itens[normalizaTag(it.tag)] = {
+                _ultimaLeituraLocal: it._ultimaLeituraLocal || null,
+                _pendentePersistir: !!it._pendentePersistir,
+                _persistido: !!it._persistido,
+                status: it.status,
+                statusLabel: it.statusLabel,
+                statusClass: it.statusClass,
+                status_data: it.status_data || null
+            };
+        });
+        return { _hitLocal: !!ordem._hitLocal, itens: itens };
+    }
+
+    /**
+     * Após remount a partir do banco, devolve flags locais de leitura
+     * (releitura / lote ainda não persistido).
+     */
+    function restaurarEstadoLocalOrdem(ordemNova, estado) {
+        if (!ordemNova || !estado) return false;
+        ordemNova._hitLocal = !!estado._hitLocal;
+        var precisaRecalc = false;
+        (ordemNova.itens || []).forEach(function (it) {
+            if (!it || !it.tag) return;
+            var st = estado.itens[normalizaTag(it.tag)];
+            if (!st) return;
+            if (st._ultimaLeituraLocal) it._ultimaLeituraLocal = st._ultimaLeituraLocal;
+            if (st._persistido) it._persistido = true;
+            if (st._pendentePersistir && !st._persistido) {
+                it._pendentePersistir = true;
+                it._persistido = false;
+                if (String(st.status || '').toLowerCase() === 'concluido'
+                    && String(it.status || '').toLowerCase() !== 'concluido') {
+                    var lab = labelStatusItem('concluido');
+                    it.status = 'concluido';
+                    it.statusLabel = st.statusLabel || lab.label;
+                    it.statusClass = st.statusClass || lab.cls;
+                    if (st.status_data) it.status_data = st.status_data;
+                    precisaRecalc = true;
+                }
+            }
+        });
+        if (precisaRecalc) {
+            var pos = ordemNova._posicao || { itens: ordemNova.itens || [], total_itens: ordemNova.total };
+            pos.itens = ordemNova.itens;
+            var totais = uteisService.normalizarTotaisPosicao
+                ? uteisService.normalizarTotaisPosicao(pos)
+                : { total_itens: (ordemNova.itens || []).length, total_concluido: 0, status: 'pendente' };
+            var total = totais.total_itens || 0;
+            var lidos = totais.total_concluido || 0;
+            ordemNova.lidos = lidos;
+            ordemNova.total = total;
+            ordemNova.pct = total > 0 ? Math.round((lidos / total) * 100) : 0;
+            if (ordemNova._posicao) {
+                ordemNova._posicao.total_itens = total;
+                ordemNova._posicao.total_concluido = lidos;
+                ordemNova._posicao.status = totais.status;
+            }
+            var statusUi = statusUiFromPosicao(totais.status);
+            var stUi = STATUS_UI[statusUi] || STATUS_UI.pendente;
+            ordemNova.status = statusUi;
+            ordemNova.statusRaw = totais.status;
+            ordemNova.statusLabel = stUi.label;
+            ordemNova.badgeClass = stUi.badge;
+            ordemNova.barClass = stUi.bar;
+            ordemNova.iconClass = stUi.icon;
+        }
+        return true;
+    }
+
+    /**
+     * Reconsulta no banco posições em memória com total_itens > itens.length
+     * (novos EPCs chegam via integração sem mudar createdAt).
+     * @returns {boolean} se alguma ordem foi substituída
+     */
+    async function atualizarOrdensIncompletasEmMemoria() {
+        var incompletas = ($scope._ordens || []).filter(isOrdemIncompleta);
+        if (!incompletas.length || !$scope._regConta || !$scope._regConta._id) return false;
+
+        var ids = [];
+        var estados = {};
+        incompletas.forEach(function (o) {
+            if (!o || !o._id) return;
+            var id = String(o._id);
+            ids.push(id);
+            estados[id] = capturarEstadoLocalOrdem(o);
+        });
+        if (!ids.length) return false;
+
+        var url = '/_bd?c=posicao'
+            + '&id_conta=' + encodeURIComponent($scope._regConta._id)
+            + '&_id*in=' + encodeURIComponent(JSON.stringify(ids))
+            + '&pop=id_colaborador';
+
+        var atuais = await uteisService.getBase(url).catch(function () { return []; });
+        if (!Array.isArray(atuais) || !atuais.length) return false;
+
+        var porId = {};
+        atuais.forEach(function (p) {
+            if (p && p._id) porId[String(p._id)] = p;
+        });
+
+        var mudou = false;
+        for (var i = 0; i < $scope._ordens.length; i++) {
+            var ord = $scope._ordens[i];
+            if (!ord || !ord._id || !isOrdemIncompleta(ord)) continue;
+            var pos = porId[String(ord._id)];
+            if (!pos) continue;
+
+            var lenAntes = (ord.itens || []).length;
+            var lenDepois = Array.isArray(pos.itens) ? pos.itens.length : 0;
+            var totalAntes = Number(ord.total);
+            var totalDepois = Number(pos.total_itens != null ? pos.total_itens : totalAntes);
+            var statusAntes = String(ord.statusRaw || '');
+            var statusDepois = String(pos.status || '');
+
+            // Só remonta se o banco trouxe algo diferente (itens novos, total ou status)
+            if (lenDepois === lenAntes
+                && totalDepois === totalAntes
+                && statusDepois === statusAntes) {
+                continue;
+            }
+
+            var nova = montarOrdemView(pos);
+            restaurarEstadoLocalOrdem(nova, estados[String(ord._id)]);
+            $scope._ordens[i] = nova;
+            mudou = true;
+        }
+        return mudou;
+    }
+
     /**
      * Carrega ordens do portal.
      * - Primeira carga (ou forcarCompleto): todas do dia + pendente/parcial dos últimos 2 anos.
      * - Poll: só createdAt > cursor do dia corrente (*gt no /_bd) — append sem limpar a lista.
+     * - Em toda checagem: reconsulta posições com total_itens > itens.length e atualiza a lista.
      */
     $scope.onCarregaOrdens = async function (forcarCompleto) {
         if (!$scope._regConta || !$scope._regConta._id) return;
@@ -396,6 +543,9 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
                 }
                 avancarCursorOrdens(adicionadas.length ? adicionadas : res);
             }
+
+            // Poll (e também pós-carga): sincroniza ordens ainda incompletas no banco
+            await atualizarOrdensIncompletasEmMemoria();
 
             atualizarKpisEAbas($scope._ordens);
         } catch (e) {
@@ -628,6 +778,7 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
             return;
         }
 
+        
         $scope._ui.finalizandoRetorno = true;
         try {
             var resHttp = await $http.post(
