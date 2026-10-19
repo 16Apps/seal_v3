@@ -730,7 +730,16 @@ app.controller('portalMovimentacaoCtrl', function ($scope, $http, $timeout, para
         // Presence: avisa o servidor que o portal desta conta está aberto
         function entrarPresencePortal() {
             if (!$scope.socket || !$scope._regConta || !$scope._regConta._id) return;
-            $scope.socket.emit('portal_join', { id_conta: $scope._regConta._id });
+            const gateways = ($scope._listGateways || []).map((g) => ({
+                _id: g._id,
+                tokem: g.tokem || '',
+                descricao: g.descricao || ''
+            }));
+            $scope.socket.emit('portal_join', {
+                id_conta: $scope._regConta._id,
+                origem: 'portal_movimentacao',
+                gateways: gateways
+            });
         }
         $scope.socket.on('connect', entrarPresencePortal);
         if ($scope.socket.connected) {
@@ -2008,9 +2017,6 @@ app.controller('portalMovimentacaoCtrl', function ($scope, $http, $timeout, para
         const gateway = $scope._chkGateway;
         if (!gateway) return;
 
-        let sentidoGateway = gateway.tokem.split('-')[1];
-
-
         let esperados = [];
         let checagem = { ativa: true };
 
@@ -2033,13 +2039,9 @@ app.controller('portalMovimentacaoCtrl', function ($scope, $http, $timeout, para
                     return;
                 }
 
-                let urlIntegracao = '/' + encodeURIComponent(idApi);
-                if (sentidoGateway === 'S') {
-                    urlIntegracao += '/pickdetails/' + encodeURIComponent($scope._chk.id_doc);
-                } else {
-                    urlIntegracao += '/receiptdetails/' + encodeURIComponent($scope._chk.id_doc);
-                }
-                urlIntegracao += '?id_conta=' + encodeURIComponent($scope._regConta._id);
+                let urlIntegracao = '/' + encodeURIComponent(idApi)
+                    + '/ordem/' + encodeURIComponent($scope._chk.id_doc)
+                    + '?id_conta=' + encodeURIComponent($scope._regConta._id);
 
                 try {
                     const integ = await uteisService.getBase(urlIntegracao);

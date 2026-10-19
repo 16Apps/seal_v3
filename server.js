@@ -6,6 +6,7 @@ var cors = require('cors');
 var bodyParser = require('body-parser');
 var http = require('http');
 const socketio = require('socket.io');
+const axios = require('axios');
 
 var app = express();
 const port = process.env.PORT || 3000;
@@ -29,29 +30,191 @@ app.use(express.static(__dirname + '/public'));
 server = http.createServer(app);
 
 const io = socketio(server);
+
+/** Rooms portal:{id_conta} por socket — para saber FECHADO no disconnect. */
+const portalRoomsPorSocket = new Map(); // socket.id -> Set<room>
+/** Últimos leitores vinculados ao portal (nome BASE: P01, não P01-E/P01-S). */
+const portalGatewaysPorConta = new Map(); // idConta -> Set<deviceBase>
+/** Intervalo de alerta vermelho enquanto portal da conta está FECHADO. */
+const alertaPortalFechadoTimers = new Map(); // idConta -> Interval
+const ALERTA_PORTAL_FECHADO_MS = 5000;
+
+function tamanhoRoomPortal(room) {
+  const r = io.sockets.adapter.rooms.get(room);
+  return r ? r.size : 0;
+}
+
+/** GPO / sinaleiro usa o nome base do leitor (P01), agrupando P01-E e P01-S. */
+function baseDeviceSinaleiro(tokem) {
+  return String(tokem || '').trim().replace(/-[EeSs]$/, '');
+}
+
+function registrarGatewaysPortal(idConta, gateways) {
+  const key = String(idConta || '');
+  if (!key || !Array.isArray(gateways) || !gateways.length) return;
+
+  let set = portalGatewaysPorConta.get(key);
+  if (!set) {
+    set = new Set();
+    portalGatewaysPorConta.set(key, set);
+  }
+
+  gateways.forEach((g) => {
+    const raw = typeof g === 'string'
+      ? g
+      : (g && (g.tokem || g.deviceName || g.device || g.descricao)) || '';
+    const base = baseDeviceSinaleiro(raw);
+    if (base) set.add(base);
+  });
+
+  console.log('[portal] gateways registrados', {
+    id_conta: key,
+    leitores: Array.from(set)
+  });
+}
+
+async function dispararSinaleirosPortalFechado(idConta) {
+  const key = String(idConta || '');
+  const set = portalGatewaysPorConta.get(key);
+  if (!set || !set.size) {
+    console.log('[portal] alerta fechado: sem gateways vinculados', { id_conta: key });
+    return;
+  }
+
+  const url = 'http://127.0.0.1:' + port + '/x_naturgy/sinaleiro';
+  const leitores = Array.from(set);
+
+  console.log('[portal] alerta vermelho (portal fechado)', {
+    id_conta: key,
+    leitores: leitores
+  });
+
+  for (const deviceName of leitores) {
+    try {
+      const res = await axios.post(
+        url,
+        { deviceName: deviceName, cor: 4, tempo: ALERTA_PORTAL_FECHADO_MS },
+        { timeout: 6000, validateStatus: () => true }
+      );
+      console.log('[portal] sinaleiro', {
+        deviceName: deviceName,
+        status: res.status,
+        ok: res.data && res.data.ok,
+        ignored: res.data && res.data.ignored
+      });
+    } catch (e) {
+      console.warn('[portal] sinaleiro falhou', deviceName, e.message);
+    }
+  }
+}
+
+function iniciarAlertaPortalFechado(idConta) {
+  const key = String(idConta || '');
+  if (!key || alertaPortalFechadoTimers.has(key)) return;
+
+  console.log('[portal] iniciando alerta vermelho a cada 5s', { id_conta: key });
+  const tick = function () {
+    dispararSinaleirosPortalFechado(key);
+  };
+  tick();
+  alertaPortalFechadoTimers.set(key, setInterval(tick, ALERTA_PORTAL_FECHADO_MS));
+}
+
+function pararAlertaPortalFechado(idConta) {
+  const key = String(idConta || '');
+  const timer = alertaPortalFechadoTimers.get(key);
+  if (!timer) return;
+  clearInterval(timer);
+  alertaPortalFechadoTimers.delete(key);
+  console.log('[portal] alerta vermelho parado (portal aberto)', { id_conta: key });
+}
+
+function logPortalStatus(idConta, room, extras) {
+  const conexoes = tamanhoRoomPortal(room);
+  const base = Object.assign({
+    id_conta: String(idConta),
+    room: room,
+    conexoes: conexoes
+  }, extras || {});
+
+  if (conexoes === 0) {
+    console.log('[portal] FECHADO', base);
+    iniciarAlertaPortalFechado(idConta);
+  } else {
+    console.log('[portal] ABERTO', base);
+    pararAlertaPortalFechado(idConta);
+  }
+}
+
 // Ao conectar
 io.on('connection', (socket) => {
   console.log('Cliente conectado:', socket.id);
 
-  // Presence do portal_movimentacao: room portal:{id_conta}
+  // Presence do portal (movimentacao / posicao / ordens): room portal:{id_conta}
   socket.on('portal_join', (data) => {
     const idConta = data && (data.id_conta || data.idConta);
     if (!idConta) return;
     const room = 'portal:' + String(idConta);
+    const origem = (data && (data.origem || data.portal)) || '-';
+
+    registrarGatewaysPortal(idConta, data.gateways || data.leitores || []);
+
     socket.join(room);
-    console.log('[portal_join]', socket.id, room);
+
+    if (!portalRoomsPorSocket.has(socket.id)) {
+      portalRoomsPorSocket.set(socket.id, new Set());
+    }
+    portalRoomsPorSocket.get(socket.id).add(room);
+
+    logPortalStatus(idConta, room, { origem: origem, socket: socket.id, evento: 'join' });
+  });
+
+  /** Atualiza lista de leitores sem mudar presence (ex.: vincular/desvincular chip). */
+  socket.on('portal_gateways', (data) => {
+    const idConta = data && (data.id_conta || data.idConta);
+    if (!idConta) return;
+    registrarGatewaysPortal(idConta, data.gateways || data.leitores || []);
   });
 
   socket.on('portal_leave', (data) => {
     const idConta = data && (data.id_conta || data.idConta);
     if (!idConta) return;
     const room = 'portal:' + String(idConta);
+    const origem = (data && (data.origem || data.portal)) || '-';
+
     socket.leave(room);
-    console.log('[portal_leave]', socket.id, room);
+
+    const rooms = portalRoomsPorSocket.get(socket.id);
+    if (rooms) {
+      rooms.delete(room);
+      if (!rooms.size) portalRoomsPorSocket.delete(socket.id);
+    }
+
+    setImmediate(() => {
+      logPortalStatus(idConta, room, { origem: origem, socket: socket.id, evento: 'leave' });
+    });
+  });
+
+  socket.on('disconnect', () => {
+    const rooms = portalRoomsPorSocket.get(socket.id);
+    portalRoomsPorSocket.delete(socket.id);
+    if (!rooms || !rooms.size) return;
+
+    setImmediate(() => {
+      rooms.forEach((room) => {
+        const idConta = String(room).replace(/^portal:/, '');
+        logPortalStatus(idConta, room, {
+          origem: '-',
+          socket: socket.id,
+          evento: 'disconnect'
+        });
+      });
+    });
   });
 });
 
 app.set('io', io); // opcional, para acessar no controller
+app.set('portalGatewaysPorConta', portalGatewaysPorConta);
 
 var dbMongo = require('./config/mongo');
 
@@ -111,7 +274,9 @@ app.get('/portal_endereco', (req, res) => {
 app.get('/portal_ordens_multiplas', (req, res) => {
   res.render('pages/portal_ordens_multiplas', { layout: 'layout' });
 });
-
+app.get('/portal_posicao', (req, res) => {
+  res.render('pages/portal_posicao', { layout: 'layout' });
+});
 
 
 app.get('/rel_itens_associados', (req, res) => {
@@ -199,7 +364,7 @@ fetch('https://api.ipify.org?format=json')
           external: (mem.external / 1024 / 1024).toFixed(2) + ' MB'
       });
   
-  }, 10000);
+  }, 60000);
 
 
 

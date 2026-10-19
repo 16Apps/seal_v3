@@ -3028,7 +3028,9 @@ module.exports = (app, dbConnection) => {
 
     async function notificarClientePosicaoItem(posicao, item) {
         if (!posicao || !item) return;
-        if (String(item.status || '').toLowerCase() !== 'concluido') return;
+        // concluido = atendimento normal; excedente = releitura de item já concluído (ordens múltiplas)
+        const stItem = String(item.status || '').toLowerCase();
+        if (stItem !== 'concluido' && stItem !== 'excedente') return;
 
         const idDoc = String(posicao.id_doc || '');
         if (idDoc.includes('-RET') || idDoc.includes('-REC')) {
@@ -3392,8 +3394,10 @@ module.exports = (app, dbConnection) => {
     /**
      * Batch para fechamento de lote do portal ordens múltiplas.
      * POST /posicao/atender-tags
-     * Body: { id_conta, id_gateway?, itens: [{ id_posicao, tag, rssi? }] }
-     * Agrupa por id_posicao: N concludes + 1 recalculo por ordem.
+     * Body: { id_conta, id_gateway?, itens: [{ id_posicao, tag, rssi?, notificar_excedente? }] }
+     * - Sem notificar_excedente: conclui item + notifica cliente (fluxo homologado).
+     * - Com notificar_excedente: NÃO altera status no Mongo; só notifica API com status excedente
+     *   (releitura de item já concluído).
      */
     app.post('/posicao/atender-tags', async (req, res) => {
         const Posicao = require('../models/posicao');
@@ -3407,8 +3411,20 @@ module.exports = (app, dbConnection) => {
         }
 
         try {
+            // Separa notificação de excedente (não mexe no fluxo de conclusão)
+            const itensConcluir = [];
+            const itensNotificarExcedente = [];
+            itens.forEach((it) => {
+                if (!it || !it.tag) return;
+                if (it.notificar_excedente === true || it.notificar_excedente === 'true') {
+                    itensNotificarExcedente.push(it);
+                } else {
+                    itensConcluir.push(it);
+                }
+            });
+
             const porOrdem = new Map();
-            itens.forEach((it, idx) => {
+            itensConcluir.forEach((it, idx) => {
                 if (!it || !it.tag) return;
                 const idPos = String(it.id_posicao || '').trim();
                 if (!idPos) return;
@@ -3420,6 +3436,7 @@ module.exports = (app, dbConnection) => {
             let atendidos = 0;
             let notFound = 0;
             let erros = 0;
+            let notificadosExcedente = 0;
 
             for (const [idPosicao, lista] of porOrdem.entries()) {
                 const filtroId = { _id: idPosicao, id_conta: String(id_conta) };
@@ -3514,7 +3531,8 @@ module.exports = (app, dbConnection) => {
             }
 
             // Itens sem id_posicao → concluir via fallback (ainda com índice)
-            const semOrdem = itens.filter((it) => it && it.tag && !String(it.id_posicao || '').trim());
+            // (apenas itens de conclusão — não notificar_excedente)
+            const semOrdem = itensConcluir.filter((it) => it && it.tag && !String(it.id_posicao || '').trim());
             for (const it of semOrdem) {
                 try {
                     const out = await concluirItemNaPosicao(Posicao, {
@@ -3543,11 +3561,80 @@ module.exports = (app, dbConnection) => {
                 }
             }
 
+            // Releitura de item já concluído: só notifica API (não altera Mongo / totais)
+            for (const it of itensNotificarExcedente) {
+                try {
+                    const tagRaw = String(it.tag || '').trim();
+                    const idPos = String(it.id_posicao || '').trim();
+                    if (!tagRaw || !idPos) {
+                        notFound += 1;
+                        resultados.push({
+                            tag: tagRaw,
+                            id_posicao: idPos || null,
+                            resultado: 'not_found',
+                            message: 'Tag/ordem inválidos para notificar excedente.'
+                        });
+                        continue;
+                    }
+
+                    const filtroId = { _id: idPos, id_conta: String(id_conta) };
+                    const posicao = await Posicao.findOne(filtroId).lean();
+                    if (!posicao) {
+                        notFound += 1;
+                        resultados.push({
+                            tag: tagRaw,
+                            id_posicao: idPos,
+                            resultado: 'not_found',
+                            message: 'Ordem não encontrada.'
+                        });
+                        continue;
+                    }
+
+                    const chave = normalizaTagPosicao(tagRaw);
+                    const tagsCandidatas = [...new Set([tagRaw, chave].filter(Boolean))];
+                    const item = acharItemPorTagNasPosicao(posicao, chave, tagsCandidatas);
+                    if (!item) {
+                        notFound += 1;
+                        resultados.push({
+                            tag: tagRaw,
+                            id_posicao: idPos,
+                            resultado: 'not_found',
+                            message: 'Tag não pertence a esta ordem.'
+                        });
+                        continue;
+                    }
+
+                    // Cópia só para o payload do cliente — status no banco permanece concluido
+                    const itemNotify = Object.assign({}, item, {
+                        status: 'excedente',
+                        status_data: new Date(),
+                        rssi: it.rssi != null && it.rssi !== '' ? String(it.rssi) : item.rssi
+                    });
+                    dispararNotificacaoClientePosicaoItem(posicao, itemNotify);
+                    notificadosExcedente += 1;
+                    resultados.push({
+                        tag: String(item.tag || tagRaw),
+                        id_posicao: idPos,
+                        resultado: 'notificado_excedente',
+                        message: 'Notificado cliente como excedente (item permanece concluído na ordem).'
+                    });
+                } catch (eExc) {
+                    erros += 1;
+                    resultados.push({
+                        tag: it && it.tag,
+                        id_posicao: it && it.id_posicao,
+                        resultado: 'erro',
+                        message: eExc.toString()
+                    });
+                }
+            }
+
             return res.status(200).json({
                 ok: true,
                 atendidos,
                 not_found: notFound,
                 erros,
+                notificados_excedente: notificadosExcedente,
                 total: itens.length,
                 resultados
             });

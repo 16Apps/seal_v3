@@ -1073,12 +1073,17 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
             return;
         }
 
+        // Fluxo homologado: tags novas a concluir
         var aPersistir = lote.tags.filter(function (t) {
             return t && !t.excedente && t.precisaPersistir && t.tag && t.id_ordem;
         });
+        // Releitura de item já concluído → só notifica API (não altera ordem)
+        var aNotificarExcedente = lote.tags.filter(function (t) {
+            return t && t.excedenteConcluido && t.tag && t.id_ordem;
+        });
 
-        if (!aPersistir.length) {
-            console.log('[lote] P' + lote.seq + ' sem tags para persistir (só excedentes ou já gravadas)');
+        if (!aPersistir.length && !aNotificarExcedente.length) {
+            console.log('[lote] P' + lote.seq + ' sem tags para persistir/notificar');
             return;
         }
 
@@ -1086,16 +1091,26 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
         var ok = 0;
         var falha = 0;
         var notFound = 0;
+        var notificadosExc = 0;
+
+        var itensPayload = aPersistir.map(function (t) {
+            return {
+                id_posicao: t.id_ordem,
+                tag: t.tag,
+                rssi: t.rssi != null ? t.rssi : ''
+            };
+        }).concat(aNotificarExcedente.map(function (t) {
+            return {
+                id_posicao: t.id_ordem,
+                tag: t.tag,
+                rssi: t.rssi != null ? t.rssi : '',
+                notificar_excedente: true
+            };
+        }));
 
         var payload = {
             id_conta: idConta,
-            itens: aPersistir.map(function (t) {
-                return {
-                    id_posicao: t.id_ordem,
-                    tag: t.tag,
-                    rssi: t.rssi != null ? t.rssi : ''
-                };
-            })
+            itens: itensPayload
         };
 
         try {
@@ -1107,12 +1122,13 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
             var res = resHttp && resHttp.data ? resHttp.data : null;
 
             if (!res || res.ok === false) {
-                falha = aPersistir.length;
+                falha = aPersistir.length + aNotificarExcedente.length;
                 console.error('[lote] atender-tags falhou', res);
             } else {
                 ok = res.atendidos || 0;
                 notFound = res.not_found || 0;
                 falha = res.erros || 0;
+                notificadosExc = res.notificados_excedente || 0;
 
                 var porTag = {};
                 (res.resultados || []).forEach(function (r) {
@@ -1136,18 +1152,33 @@ app.controller('portalOrdemMultiplasCtrl', function ($scope, $timeout, $http, ut
                         t.precisaPersistir = false;
                     }
                 });
+
+                aNotificarExcedente.forEach(function (t) {
+                    var rExc = porTag[t.chave] || porTag[normalizaTag(t.tag)];
+                    t.persistResultado = (rExc && rExc.resultado) || 'sem_retorno';
+                });
             }
         } catch (err) {
-            falha = aPersistir.length;
+            falha = aPersistir.length + aNotificarExcedente.length;
             console.error('[lote] erro ao persistir batch', err);
         }
 
         lote.persistindo = false;
-        lote.persistResumo = { ok: ok, falha: falha, notFound: notFound };
+        lote.persistResumo = {
+            ok: ok,
+            falha: falha,
+            notFound: notFound,
+            notificadosExcedente: notificadosExc
+        };
 
         console.log('[lote] P' + lote.seq + ' persistência batch', lote.persistResumo);
 
-        var msg = 'Lote P' + lote.seq + ' · ' + ok + ' tag(s) gravada(s)';
+        var msg = 'Lote P' + lote.seq;
+        if (ok) msg += ' · ' + ok + ' tag(s) gravada(s)';
+        if (notificadosExc) msg += ' · ' + notificadosExc + ' excedente(s) notificado(s)';
+        if (!ok && !notificadosExc && !notFound && !falha) {
+            msg += ' · nada a gravar';
+        }
         if (notFound) msg += ' · ' + notFound + ' não encontrada(s)';
         if (falha) msg += ' · ' + falha + ' erro(s)';
         uteisService.onToast(msg, falha ? 'warning' : 'success', 3200, 'top-end');

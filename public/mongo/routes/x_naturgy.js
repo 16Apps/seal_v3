@@ -153,21 +153,82 @@ async function getInforComToken(url) {
   });
 }
 
-/** Extrai toids únicos de receiptdetails (inf_compl1 no Seal). Usa linhas com qtyexpected > 0. */
-function extrairToidsDeReceiptdetails(receiptdetails) {
-  const toids = [];
-  for (const det of receiptdetails || []) {
-    const toid = String(det && det.toid != null ? det.toid : '').trim();
-    if (!toid) continue;
-    const qtyExpected = Number(det.qtyexpected) || 0;
-    if (qtyExpected <= 0) continue;
-    toids.push(toid);
+/** Extrai ids únicos da resposta de findpicksbyorderkey. */
+function extrairIdsDePickdetails(raw) {
+  let ids = [];
+  if (Array.isArray(raw)) {
+    ids = raw.map((item) => (item && item.id != null ? item.id : null)).filter((v) => v != null);
+  } else if (raw && Array.isArray(raw.pickdetails)) {
+    ids = raw.pickdetails.map((item) => (item && item.id != null ? item.id : null)).filter((v) => v != null);
+  } else if (raw && Array.isArray(raw.data)) {
+    ids = raw.data.map((item) => (item && item.id != null ? item.id : null)).filter((v) => v != null);
+  } else if (raw && raw.id != null) {
+    ids = [raw.id];
   }
-  return [...new Set(toids)];
+  return [...new Set(ids.map((v) => String(v).trim()).filter(Boolean))];
 }
 
+/** Normaliza a resposta GET /receipts/{key} para um array de linhas. */
+function extrairReceiptdetailsDoRaw(raw) {
+  if (!raw) return [];
+
+  if (Array.isArray(raw)) {
+    if (!raw.length) return [];
+    // Array de receipts com receiptdetails interno
+    if (raw.some((r) => r && Array.isArray(r.receiptdetails))) {
+      return raw.flatMap((r) => (r && Array.isArray(r.receiptdetails) ? r.receiptdetails : []));
+    }
+    // Array de linhas de detalhe
+    return raw;
+  }
+
+  if (Array.isArray(raw.receiptdetails)) return raw.receiptdetails;
+  if (raw.data != null) return extrairReceiptdetailsDoRaw(raw.data);
+  return [];
+}
+
+/** ID da linha de receipt para cruzar com item.tag (toid / id / LPN). */
+function idLinhaReceiptdetail(det) {
+  if (!det || typeof det !== 'object') return '';
+  const candidatos = [det.toid, det.id, det.dropid, det.selectedcartonid, det.caseid];
+  for (const c of candidatos) {
+    const v = String(c != null ? c : '').trim();
+    if (v) return v;
+  }
+  return '';
+}
+
+/**
+ * Extrai IDs únicos de receiptdetails (cruzados com item.inf_compl1 no Seal).
+ * Prefere linhas com qtyexpected > 0; se nenhuma, usa todas as linhas com ID.
+ */
+function extrairToidsDeReceiptdetails(receiptdetails) {
+  const linhas = receiptdetails || [];
+  const comQty = [];
+  const todos = [];
+
+  for (const det of linhas) {
+    const id = idLinhaReceiptdetail(det);
+    if (!id) continue;
+    todos.push(id);
+    const qtyExpected = Number(det.qtyexpected);
+    if (!Number.isNaN(qtyExpected) && qtyExpected > 0) {
+      comQty.push(id);
+    }
+  }
+
+  const escolhidos = comQty.length ? comQty : todos;
+  return [...new Set(escolhidos)];
+}
+
+/**
+ * Cruza IDs da API do cliente com item.inf_compl1 do cadastro Seal.
+ * A posição gerada leva tag (EPC p/ checagem RFID) + inf_compl_1 (id da API).
+ * Só grava Posicao se TODOS os ids estiverem cadastrados.
+ */
 async function montarPosicaoPorInfCompl1(id_conta, id_doc, idsUnicos) {
   const Item = require('../models/item');
+  const Categoria = require('../models/categoria');
   const Posicao = require('../models/posicao');
   const shortid = require('shortid');
 
@@ -179,44 +240,72 @@ async function montarPosicaoPorInfCompl1(id_conta, id_doc, idsUnicos) {
     id_conta,
     inf_compl1: { $in: idsUnicos }
   })
-    .select('_id tag id_categoria inf_compl1')
-    .populate('id_categoria', 'descricao ean')
+    .select('_id tag tag_secundaria id_categoria inf_compl1 descricao')
     .lean();
 
+  // Busca categorias explicitamente (populate às vezes não resolve id string)
+  const idsCategoria = [...new Set(
+    itensDb
+      .map((it) => {
+        const c = it && it.id_categoria;
+        if (!c) return '';
+        if (typeof c === 'object' && c._id != null) return String(c._id).trim();
+        return String(c).trim();
+      })
+      .filter(Boolean)
+  )];
+
+  const categoriasDb = idsCategoria.length
+    ? await Categoria.find({ _id: { $in: idsCategoria } }).select('_id descricao ean').lean()
+    : [];
+  const porCategoria = new Map();
+  for (const cat of categoriasDb) {
+    porCategoria.set(String(cat._id), cat);
+  }
+
+  // Índice só por inf_compl1 (identificador entregue pelas APIs do cliente)
   const porInfCompl1 = new Map();
   for (const it of itensDb) {
-    const chave = String(it.inf_compl1 || '').trim();
-    if (chave && !porInfCompl1.has(chave)) {
-      porInfCompl1.set(chave, it);
-    }
+    const k = String(it.inf_compl1 || '').trim();
+    if (k && !porInfCompl1.has(k)) porInfCompl1.set(k, it);
   }
 
   const agora = new Date();
   const itensResposta = [];
   const itensPosicao = [];
+  let faltamCadastro = 0;
 
-  for (const infId of idsUnicos) {
-    const cadastro = porInfCompl1.get(infId);
+  for (const idApi of idsUnicos) {
+    const cadastro = porInfCompl1.get(String(idApi).trim());
     if (!cadastro) {
+      faltamCadastro += 1;
       itensResposta.push({
-        id: infId,
+        id: idApi,
         cadastrado: false,
-        mensagem: 'Item não cadastrado'
+        mensagem: 'Item não cadastrado (inf_compl1)'
       });
       continue;
     }
 
-    const cat = cadastro.id_categoria;
-    const idCategoria = (cat && cat._id) || (typeof cadastro.id_categoria === 'string' ? cadastro.id_categoria : null);
+    const idCategoria = cadastro.id_categoria
+      ? String(typeof cadastro.id_categoria === 'object' && cadastro.id_categoria._id != null
+        ? cadastro.id_categoria._id
+        : cadastro.id_categoria).trim()
+      : '';
+    const cat = idCategoria ? porCategoria.get(idCategoria) : null;
     const ean = (cat && cat.ean) || '';
-    const descricaoCategoria = (cat && cat.descricao) || '';
+    const descricaoCategoria = String((cat && cat.descricao) || cadastro.descricao || '').trim();
+    const tagItem = String(cadastro.tag || '').trim();
+    const infCompl1 = String(cadastro.inf_compl1 || idApi).trim();
 
     itensResposta.push({
-      id: infId,
+      id: idApi,
       cadastrado: true,
       _id: cadastro._id,
-      epc: cadastro.tag || '',
-      id_categoria: idCategoria,
+      epc: tagItem,
+      tag: tagItem,
+      inf_compl1: infCompl1,
+      id_categoria: idCategoria || null,
       ean,
       descricao_categoria: descricaoCategoria
     });
@@ -224,11 +313,12 @@ async function montarPosicaoPorInfCompl1(id_conta, id_doc, idsUnicos) {
     itensPosicao.push({
       _id: shortid.generate(),
       id_item: cadastro._id,
-      id_categoria: idCategoria,
-      tag: cadastro.tag || '',
+      id_categoria: idCategoria || null,
+      tag: tagItem,
       ean,
+      descricao: descricaoCategoria,
       rssi: '',
-      inf_compl_1: infId,
+      inf_compl_1: infCompl1,
       quantidade: 1,
       status: 'pendente',
       status_data: agora,
@@ -237,25 +327,27 @@ async function montarPosicaoPorInfCompl1(id_conta, id_doc, idsUnicos) {
     });
   }
 
+  // Só cria posição se 100% dos itens da API estiverem cadastrados
+  if (faltamCadastro > 0) {
+    return { itensResposta, itensPosicao: [], posicao: null };
+  }
+
   await Posicao.deleteMany({ id_conta, id_doc });
 
-  let posicao = null;
-  if (itensPosicao.length) {
-    posicao = await Posicao.create({
-      _id: shortid.generate(),
-      id_conta,
-      id_colaborador: '',
-      ativo: '1',
-      id_doc,
-      descricao: id_doc,
-      tipo: 'conferencia',
-      status: 'pendente',
-      status_data: agora,
-      partida_data: agora,
-      tolerancia: 30,
-      itens: itensPosicao
-    });
-  }
+  const posicao = await Posicao.create({
+    _id: shortid.generate(),
+    id_conta,
+    id_colaborador: '',
+    ativo: '1',
+    id_doc,
+    descricao: id_doc,
+    tipo: 'conferencia',
+    status: 'pendente',
+    status_data: agora,
+    partida_data: agora,
+    tolerancia: 30,
+    itens: itensPosicao
+  });
 
   return { itensResposta, itensPosicao, posicao };
 }
@@ -274,7 +366,8 @@ module.exports = (app) => {
         status_sensor: dados.status_sensor || '',
         device: dados.device || '',
         tokem: dados.tokem || '',
-        antena: dados.antena || ''
+        antena: dados.antena || '',
+        message: dados.message || ''
       });
     } catch (e) {
       console.warn('[x_naturgy] emitirLogPortal:', e.message);
@@ -379,7 +472,7 @@ module.exports = (app) => {
   /**
    * GET /x_naturgy/pickdetails/:id?id_conta=...
    * Consulta picks na Infor pelo orderkey, cruza com item.inf_compl1 da conta
-   * e grava/recria Posicao com id_doc = orderkey.
+   * e grava/recria Posicao com id_doc = orderkey (itens com tag + inf_compl_1).
    */
   app.get('/x_naturgy/pickdetails/:id', async (req, res) => {
     try {
@@ -415,108 +508,13 @@ module.exports = (app) => {
         });
       }
 
-      const raw = response.data;
-      let ids = [];
-
-      if (Array.isArray(raw)) {
-        ids = raw.map((item) => (item && item.id != null ? item.id : null)).filter((v) => v != null);
-      } else if (raw && Array.isArray(raw.pickdetails)) {
-        ids = raw.pickdetails.map((item) => (item && item.id != null ? item.id : null)).filter((v) => v != null);
-      } else if (raw && Array.isArray(raw.data)) {
-        ids = raw.data.map((item) => (item && item.id != null ? item.id : null)).filter((v) => v != null);
-      } else if (raw && raw.id != null) {
-        ids = [raw.id];
-      }
-
-      const idsUnicos = [...new Set(ids.map((v) => String(v).trim()).filter(Boolean))];
+      const idsUnicos = extrairIdsDePickdetails(response.data);
 
       if (!idsUnicos.length) {
         return res.status(200).json({ ok: true, itens: [], posicao: null });
       }
 
-      const Item = require('../models/item');
-      const Posicao = require('../models/posicao');
-      const shortid = require('shortid');
-
-      const itensDb = await Item.find({
-        id_conta,
-        inf_compl1: { $in: idsUnicos }
-      })
-        .select('_id tag id_categoria inf_compl1')
-        .populate('id_categoria', 'descricao ean')
-        .lean();
-
-      const porInfCompl1 = new Map();
-      for (const it of itensDb) {
-        const chave = String(it.inf_compl1 || '').trim();
-        if (chave && !porInfCompl1.has(chave)) {
-          porInfCompl1.set(chave, it);
-        }
-      }
-
-      const agora = new Date();
-      const itensResposta = [];
-      const itensPosicao = [];
-
-      for (const infId of idsUnicos) {
-        const cadastro = porInfCompl1.get(infId);
-        if (!cadastro) {
-          itensResposta.push({
-            id: infId,
-            cadastrado: false,
-            mensagem: 'Item não cadastrado'
-          });
-          continue;
-        }
-
-        const cat = cadastro.id_categoria;
-        const idCategoria = (cat && cat._id) || (typeof cadastro.id_categoria === 'string' ? cadastro.id_categoria : null);
-        const ean = (cat && cat.ean) || '';
-        const descricaoCategoria = (cat && cat.descricao) || '';
-
-        itensResposta.push({
-          id: infId,
-          cadastrado: true,
-          _id: cadastro._id,
-          epc: cadastro.tag || '',
-          id_categoria: idCategoria,
-          ean,
-          descricao_categoria: descricaoCategoria
-        });
-
-        itensPosicao.push({
-          _id: shortid.generate(),
-          id_item: cadastro._id,
-          id_categoria: idCategoria,
-          tag: cadastro.tag || '',
-          ean,
-          rssi: '',
-          inf_compl_1: infId,
-          quantidade: 1,
-          status: 'pendente',
-          status_data: agora,
-          status_destino: 'pendente',
-          status_destino_data: ''
-        });
-      }
-
-      // Se já existir posição com esse id_doc na conta, remove e cria nova
-      await Posicao.deleteMany({ id_conta, id_doc: id });
-
-      const posicao = await Posicao.create({
-        _id: shortid.generate(),
-        id_conta,
-        id_colaborador: '',
-        ativo: '1',
-        id_doc: id,
-        descricao: id,
-        tipo: 'conferencia',
-        status: 'pendente',
-        status_data: agora,
-        partida_data: agora,
-        tolerancia: 30,
-        itens: itensPosicao
-      });
+      const { itensResposta, posicao } = await montarPosicaoPorInfCompl1(id_conta, id, idsUnicos);
 
       return res.status(200).json({
         ok: true,
@@ -562,6 +560,7 @@ module.exports = (app) => {
       const sucesso = response.status >= 200 && response.status < 300;
 
       if (!sucesso) {
+        console.log('[x_naturgy/receiptdetails] erro body:', JSON.stringify(response.data).slice(0, 800));
         return res.status(response.status).json({
           ok: false,
           error: 'API Infor retornou erro ao consultar receipt.',
@@ -570,18 +569,13 @@ module.exports = (app) => {
       }
 
       const raw = response.data;
-      const receiptdetails = raw && Array.isArray(raw.receiptdetails) ? raw.receiptdetails : [];
-      let idsUnicos = extrairToidsDeReceiptdetails(receiptdetails);
-      console.log('idsUnicos:', idsUnicos);
-
-      // if(idsUnicos.length == 0){
-      //   idsUnicos = ["NS001", "NS002"]
-      // }
-
-      console.log('idsUnicos:', idsUnicos);
+      const receiptdetails = extrairReceiptdetailsDoRaw(raw);
+      const idsUnicos = extrairToidsDeReceiptdetails(receiptdetails);
+      console.log('[x_naturgy/receiptdetails] linhas:', receiptdetails.length, 'ids:', idsUnicos);
 
       if (!idsUnicos.length) {
-        return res.status(200).json({ ok: true, itens: [], posicao: null });
+        console.log('[x_naturgy/receiptdetails] raw keys:', raw && typeof raw === 'object' ? Object.keys(raw) : typeof raw);
+        return res.status(200).json({ ok: true, itens: [], posicao: null, detalhes: receiptdetails.length });
       }
 
       const { itensResposta, posicao } = await montarPosicaoPorInfCompl1(id_conta, id, idsUnicos);
@@ -594,6 +588,133 @@ module.exports = (app) => {
     } catch (error) {
       console.error('[x_naturgy/receiptdetails] Erro:', error.response?.data || error.message);
       return responderErroInfor(res, error, 'API receipts');
+    }
+  });
+
+  /**
+   * Resposta unificada de /ordem após cruzar IDs da API com cadastro local.
+   * - todos cadastrados → ok + posicao
+   * - qualquer item faltando → motivo itens_nao_cadastrados (não grava posicao)
+   */
+  function responderOrdemComItens(res, origem, itensResposta, posicao) {
+    const itensNaoCadastrados = (itensResposta || [])
+      .filter((it) => it && it.cadastrado === false)
+      .map((it) => it.id);
+
+    if (itensNaoCadastrados.length) {
+      return res.status(200).json({
+        ok: false,
+        motivo: 'itens_nao_cadastrados',
+        error: 'Ordem encontrada, mas nem todos os itens estão cadastrados.',
+        origem,
+        itens: itensResposta,
+        itens_nao_cadastrados: itensNaoCadastrados,
+        posicao: null
+      });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      origem,
+      itens: itensResposta,
+      itens_nao_cadastrados: [],
+      posicao
+    });
+  }
+
+  /**
+   * GET /x_naturgy/ordem/:id?id_conta=...
+   * Consulta o número do pedido primeiro em pickdetails (saída);
+   * se não encontrar itens, tenta receiptdetails (entrada).
+   * Grava/recria Posicao só quando todos os itens da ordem estiverem cadastrados.
+   */
+  app.get('/x_naturgy/ordem/:id', async (req, res) => {
+    try {
+      const id = String(req.params.id || '').trim();
+      const id_conta = String(req.query.id_conta || '').trim();
+
+      if (!id) {
+        return res.status(400).json({
+          ok: false,
+          error: 'Informe o id (número do pedido).'
+        });
+      }
+
+      if (!id_conta) {
+        return res.status(400).json({
+          ok: false,
+          error: 'Informe id_conta.'
+        });
+      }
+
+      // 1) Tentativa: pickdetails (orderkey / saída)
+      try {
+        const urlPick = `${INFOR.pickdetailsBaseUrl}/${encodeURIComponent(id)}/findpicksbyorderkey`;
+        console.log('[x_naturgy/ordem] pickdetails url:', urlPick);
+
+        const respPick = await postInforComToken(urlPick, '');
+        if (respPick.status >= 200 && respPick.status < 300) {
+          const idsPick = extrairIdsDePickdetails(respPick.data);
+          console.log('[x_naturgy/ordem] pickdetails ids:', idsPick.length);
+
+          if (idsPick.length) {
+            const { itensResposta, posicao } = await montarPosicaoPorInfCompl1(id_conta, id, idsPick);
+            return responderOrdemComItens(res, 'pickdetails', itensResposta, posicao);
+          }
+        } else {
+          console.log('[x_naturgy/ordem] pickdetails sem sucesso:', respPick.status);
+        }
+      } catch (errPick) {
+        console.error('[x_naturgy/ordem] pickdetails falhou, tentando receipt:', errPick.response?.data || errPick.message);
+      }
+
+      // 2) Fallback: receiptdetails (receiptkey / entrada)
+      try {
+        const urlReceipt = `${INFOR.receiptsUrl}/${encodeURIComponent(id)}`;
+        console.log('[x_naturgy/ordem] receiptdetails url:', urlReceipt);
+
+        const respReceipt = await getInforComToken(urlReceipt);
+        console.log('[x_naturgy/ordem] receiptdetails status:', respReceipt.status);
+
+        if (respReceipt.status >= 200 && respReceipt.status < 300) {
+          const raw = respReceipt.data;
+          const receiptdetails = extrairReceiptdetailsDoRaw(raw);
+          const idsReceipt = extrairToidsDeReceiptdetails(receiptdetails);
+          console.log('[x_naturgy/ordem] receiptdetails linhas:', receiptdetails.length, 'ids:', idsReceipt);
+
+          if (idsReceipt.length) {
+            const { itensResposta, posicao } = await montarPosicaoPorInfCompl1(id_conta, id, idsReceipt);
+            return responderOrdemComItens(res, 'receiptdetails', itensResposta, posicao);
+          }
+
+          console.log(
+            '[x_naturgy/ordem] receipt OK mas sem IDs. raw keys:',
+            raw && typeof raw === 'object' ? Object.keys(raw) : typeof raw
+          );
+        } else {
+          console.log(
+            '[x_naturgy/ordem] receiptdetails sem sucesso:',
+            respReceipt.status,
+            JSON.stringify(respReceipt.data).slice(0, 800)
+          );
+        }
+      } catch (errReceipt) {
+        console.error('[x_naturgy/ordem] receiptdetails falhou:', errReceipt.response?.data || errReceipt.message);
+        return responderErroInfor(res, errReceipt, 'API ordem (receipts)');
+      }
+
+      return res.status(200).json({
+        ok: false,
+        motivo: 'ordem_nao_encontrada',
+        error: 'Ordem não encontrada.',
+        origem: null,
+        itens: [],
+        itens_nao_cadastrados: [],
+        posicao: null
+      });
+    } catch (error) {
+      console.error('[x_naturgy/ordem] Erro:', error.response?.data || error.message);
+      return responderErroInfor(res, error, 'API ordem');
     }
   });
 
@@ -828,6 +949,13 @@ module.exports = (app) => {
     const reg = sentidoPorDevice.get(key);
     if (!reg) return null;
     if (Date.now() > reg.validoAte) {
+      emitirLogPortal({
+        tag: 'SENTIDO',
+        device: reg.devicenameRaw || reg.devicename || key,
+        tokem: tokemPorSentido(reg.devicenameRaw || reg.devicename || key, reg.tipo),
+        status_sensor: 'sentido_expirado',
+        message: `Sentido ${reg.tipo || ''} expirado`
+      });
       limparSentidoDevice(key);
       return null;
     }
@@ -942,6 +1070,44 @@ module.exports = (app) => {
     tagsPendentesPorDevice.delete(key);
   }
 
+  /**
+   * Sequência 1ª→2ª porta expirou: NÃO apaga a fila de tags.
+   * Tags lidas durante a definição do sentido ficam retidas para o próximo flush.
+   */
+  function notificarSequenciaExpirada(chaveSensor, porta, deviceLog) {
+    const key = normalizarChaveDevice(chaveSensor);
+    const fila = tagsPendentesPorDevice.get(key) || [];
+    const device = deviceLog || chaveSensor;
+
+    console.log(
+      `Sequência expirada para ${chaveSensor}. Porta inicial: ${porta}`,
+      { tagsRetidas: fila.length }
+    );
+
+    emitirLogPortal({
+      tag: 'SENSOR',
+      rssi: '',
+      antena: String(porta),
+      device,
+      status_sensor: 'sequencia_expirada',
+      message: fila.length
+        ? `Sequência expirada. Porta inicial: ${porta}. ${fila.length} tag(s) retida(s)`
+        : `Sequência expirada. Porta inicial: ${porta}`
+    });
+
+    for (const item of fila) {
+      const p = item.payload || {};
+      emitirLogPortal({
+        tag: item.tag,
+        rssi: p.Rssi || p.rssi || '',
+        antena: p.Antennaname || p.AntennaName || String(porta),
+        device: item.deviceRaw || device,
+        status_sensor: 'tag_retida',
+        message: 'Retida — aguardando próximo sentido'
+      });
+    }
+  }
+
   /** Mantém tags deste leitor enquanto aguarda o sentido. */
   function enfileirarTagPendente(deviceName, payload) {
     const key = normalizarChaveDevice(deviceName);
@@ -967,7 +1133,7 @@ module.exports = (app) => {
       device: key,
       tag,
       naFila: lista.length,
-      fase: 'aguardando'
+      bufferMs: BUFFER_TAGS_MS
     });
     return { buffered: lista.length, tag };
   }
@@ -1133,15 +1299,11 @@ module.exports = (app) => {
       if (!estadoAnterior) {
         const timeout = setTimeout(() => {
           sensoresEmAnalise.delete(chaveSensor);
-          limparFilaDevice(chaveSensor, 'sequencia_expirada');
-          console.log(
-            `Sequência expirada para ${chaveSensor}. Porta inicial: ${porta}`
-          );
+          // Mantém tags bufferizadas — serão enviadas no próximo sentido válido
+          notificarSequenciaExpirada(chaveSensor, porta, deviceLog);
         }, INTERVALO_MAXIMO);
 
-        // Nova passagem: zera fila — só entram tags DEPOIS deste 1º sensor
-        limparFilaDevice(chaveSensor, 'inicio_aguardando');
-
+        // Mantém tags pré-sensor já bufferizadas; serão enviadas no flush do sentido
         sensoresEmAnalise.set(chaveSensor, {
           primeiraPorta: porta,
           data: agora,
@@ -1194,10 +1356,8 @@ module.exports = (app) => {
         // Mesma porta de novo: reinicia a espera com esta como 1ª
         const timeout = setTimeout(() => {
           sensoresEmAnalise.delete(chaveSensor);
-          limparFilaDevice(chaveSensor, 'sequencia_expirada');
-          console.log(
-            `Sequência expirada para ${chaveSensor}. Porta inicial: ${porta}`
-          );
+          // Mantém tags bufferizadas — serão enviadas no próximo sentido válido
+          notificarSequenciaExpirada(chaveSensor, porta, deviceLog);
         }, INTERVALO_MAXIMO);
 
         sensoresEmAnalise.set(chaveSensor, {
@@ -1207,8 +1367,7 @@ module.exports = (app) => {
           deviceRaw
         });
 
-        // Reinício da 1ª porta: só tags a partir de agora
-        limparFilaDevice(chaveSensor, 'reinicio_aguardando');
+        // Reinício da 1ª porta: preserva fila (tags pré-sensor / aguardando)
 
         emitirLogPortal({
           tag: 'SENSOR',
@@ -1249,13 +1408,19 @@ module.exports = (app) => {
         });
       }
 
+      const rawParaTokem = deviceRaw || estadoAnterior.deviceRaw || chaveSensor;
       const validoAte = agora + SENTIDO_VALIDO_MS;
       const timeoutLimpeza = setTimeout(() => {
         sentidoPorDevice.delete(chaveSensor);
         console.log(`Sentido expirado para ${chaveSensor} (${tipoMovimento}).`);
+        emitirLogPortal({
+          tag: 'SENTIDO',
+          device: rawParaTokem || deviceLog || chaveSensor,
+          tokem: tokemPorSentido(rawParaTokem, tipoMovimento),
+          status_sensor: 'sentido_expirado',
+          message: `Sentido ${tipoMovimento} expirado`
+        });
       }, SENTIDO_VALIDO_MS);
-
-      const rawParaTokem = deviceRaw || estadoAnterior.deviceRaw || chaveSensor;
 
       const movimento = {
         tipo: tipoMovimento,
@@ -1344,33 +1509,11 @@ module.exports = (app) => {
 
     console.log('sentido device ' + deviceName + ':', movimento && movimento.tipo);
 
-    // Só bufferiza DEPOIS da 1ª porta (status aguardando).
-    // Antes de qualquer sensor → descarta a tag.
+    // Sem sentido ainda: bufferiza a tag (pré-sensor ou após 1º sensor).
+    // TTL: BUFFER_TAGS_MS (~15s). Ao fechar entrada/saída, flushTagsPendentes envia a fila.
     if (!movimento || !movimento.tipo) {
       const emAguardo = sensoresEmAnalise.has(deviceName);
-
-      if (!emAguardo) {
-        console.log('[x_naturgy] tag descartada (sem 1º sensor ainda):', {
-          device: deviceName,
-          tag: tagId
-        });
-        emitirLogPortal({
-          tag: tagId,
-          rssi,
-          antena,
-          device: deviceRaw || deviceName,
-          status_sensor: 'pre_sensor'
-        });
-        return res.status(200).json({
-          ok: true,
-          discarded: true,
-          fase: 'pre_sensor',
-          device: deviceName,
-          tag: tagId,
-          message: 'Tag descartada: aguardando o 1º sensor deste portal.'
-        });
-      }
-
+      const fase = emAguardo ? 'aguardando' : 'pre_sensor';
       const fila = enfileirarTagPendente(deviceName, payload);
 
       emitirLogPortal({
@@ -1378,19 +1521,21 @@ module.exports = (app) => {
         rssi,
         antena,
         device: deviceRaw || deviceName,
-        status_sensor: 'aguardando'
+        status_sensor: fase
       });
 
       return res.status(202).json({
         ok: true,
         buffered: true,
-        fase: 'aguardando',
-        status: 'aguardando',
+        fase,
+        status: fase,
         device: deviceName,
         tag: fila.tag,
         naFila: fila.buffered,
         bufferMs: BUFFER_TAGS_MS,
-        message: 'Tag bufferizada após o 1º sensor; será enviada ao concluir o sentido.'
+        message: emAguardo
+          ? 'Tag bufferizada após o 1º sensor; será enviada ao concluir o sentido.'
+          : 'Tag bufferizada (pré-sensor); será enviada ao identificar o sentido do portal.'
       });
     }
 
@@ -1507,10 +1652,36 @@ module.exports = (app) => {
       const deviceName = String(req.body?.deviceName || req.body?.Devicename || '').trim();
       const cor = Number(req.body?.cor);
       const tempo = Number(req.body?.tempo);
+      const name = deviceName.replace(/-[EeSs]$/, '');
+      const corLabel = cor === 1 ? 'verde' : (cor === 2 ? 'amarelo' : (cor === 4 ? 'vermelho' : String(cor)));
       const resultado = await acionarSinaleiro(deviceName, cor, tempo);
+
+      let statusLog = 'sinaleiro_erro';
+      if (resultado.ignored) statusLog = 'sinaleiro_ignorado';
+      else if (resultado.ok) statusLog = cor === 1 ? 'sinaleiro_verde' : (cor === 4 ? 'sinaleiro_vermelho' : 'sinaleiro_ok');
+
+      emitirLogPortal({
+        tag: 'SINALEIRO',
+        rssi: resultado.status != null ? String(resultado.status) : '',
+        device: name,
+        tokem: name,
+        status_sensor: statusLog,
+        message: resultado.ignored
+          ? (resultado.reason || 'ainda ativo')
+          : (`${corLabel} · HTTP ${resultado.status != null ? resultado.status : '—'}`)
+      });
+
       return res.status(200).json(resultado);
     } catch (error) {
       const msg = error.message || String(error);
+      const deviceName = String(req.body?.deviceName || req.body?.Devicename || '').trim().replace(/-[EeSs]$/, '');
+      emitirLogPortal({
+        tag: 'SINALEIRO',
+        device: deviceName,
+        tokem: deviceName,
+        status_sensor: 'sinaleiro_erro',
+        message: msg
+      });
       if (
         msg.includes('Informe deviceName') ||
         msg.includes('cor inválida') ||

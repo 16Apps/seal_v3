@@ -1,0 +1,1200 @@
+<%- contentFor('body') %>
+
+<style>
+  .pom-page { margin-bottom: 2rem; }
+
+  .pom-breadcrumb {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    margin-bottom: 0.35rem;
+  }
+  .pom-breadcrumb a { color: #94a3b8; text-decoration: none; }
+  .pom-breadcrumb a:hover { color: #e2e8f0; }
+
+  .pom-title {
+    font-size: 1.55rem;
+    font-weight: 700;
+    color: #f8fafc;
+    margin: 0 0 0.35rem;
+  }
+  .pom-subtitle {
+    font-size: 0.9rem;
+    color: #94a3b8;
+    max-width: 720px;
+    margin: 0;
+  }
+
+  .pom-datetime {
+    font-size: 0.85rem;
+    color: #cbd5e1;
+    text-align: right;
+  }
+  .pom-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    color: #4ade80;
+  }
+  .pom-live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6);
+    animation: pom-pulse 1.8s infinite;
+  }
+  .pom-fechado {
+    margin-top: 0.45rem;
+    max-width: 280px;
+    margin-left: auto;
+    padding: 0.4rem 0.55rem;
+    border-radius: 0.45rem;
+    border: 1px solid rgba(248, 113, 113, 0.35);
+    background: rgba(239, 68, 68, 0.12);
+    color: #fca5a5;
+    font-size: 0.72rem;
+    line-height: 1.35;
+    text-align: right;
+  }
+  .pom-fechado strong { color: #fecaca; font-weight: 600; }
+  .pom-fechado-btn {
+    display: inline-block;
+    margin-top: 0.35rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 0.35rem;
+    border: 1px solid rgba(74, 222, 128, 0.4);
+    background: rgba(34, 197, 94, 0.15);
+    color: #86efac;
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .pom-fechado-btn:hover {
+    background: rgba(34, 197, 94, 0.28);
+    color: #bbf7d0;
+  }
+  @keyframes pom-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
+    70% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+  }
+
+  .pom-panel {
+    border: 0;
+    border-radius: 0.85rem;
+    background: rgba(30, 41, 59, 0.72);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+  .pom-panel-fill { height: 100%; }
+  .pom-panel .card-body { padding: 1.1rem 1.25rem; }
+
+  .pom-kpi .icon-box {
+    width: 44px;
+    height: 44px;
+    border-radius: 0.65rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+  }
+  .pom-kpi-blue .icon-box { background: rgba(45, 156, 219, 0.2); color: #38bdf8; }
+  .pom-kpi-green .icon-box { background: rgba(34, 197, 94, 0.18); color: #4ade80; }
+  .pom-kpi-red .icon-box { background: rgba(239, 68, 68, 0.18); color: #f87171; }
+  .pom-kpi-purple .icon-box { background: rgba(155, 81, 224, 0.2); color: #c084fc; }
+  .pom-kpi-green .kpi-val { color: #4ade80; }
+  .pom-kpi-red .kpi-val { color: #f87171; }
+  .pom-kpi-purple .kpi-val { color: #c084fc; }
+  .pom-kpi .kpi-val {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #f8fafc;
+    line-height: 1.1;
+  }
+  .pom-kpi .kpi-lbl { font-size: 0.78rem; color: #94a3b8; }
+
+  .pom-section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #f1f5f9;
+    margin: 0;
+  }
+  .pom-section-sub {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    margin: 0.15rem 0 0;
+  }
+
+  .pom-busca-card {
+    height: auto !important;
+  }
+  .pom-busca-card .card-body {
+    padding: 0.75rem 1rem;
+  }
+  .pom-input-pedido {
+    font-size: 0.9rem;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    color: #e2e8f0;
+    border-radius: 0.5rem;
+    padding: 0.45rem 0.75rem;
+  }
+  .pom-input-pedido::placeholder { color: #64748b; }
+  .pom-input-pedido:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    background: rgba(15, 23, 42, 0.7);
+    color: #f8fafc;
+  }
+
+  .pom-btn-primary {
+    font-size: 0.85rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 0.5rem;
+    border: 0;
+    background: #2563eb;
+    color: #fff;
+    font-weight: 600;
+  }
+  .pom-btn-primary:disabled { opacity: 0.5; }
+  .pom-btn-ghost {
+    font-size: 0.85rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    background: rgba(15, 23, 42, 0.5);
+    color: #cbd5e1;
+  }
+  .pom-btn-ghost:disabled { opacity: 0.45; }
+
+  .pom-busca-split {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.75rem 1.25rem;
+  }
+  .pom-busca-pedido {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.5rem;
+    flex: 1 1 280px;
+  }
+  .pom-busca-gateways {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.45rem;
+    flex: 1 1 240px;
+    min-width: 0;
+    padding-left: 1rem;
+    border-left: 1px solid rgba(148, 163, 184, 0.18);
+  }
+  @media (max-width: 767.98px) {
+    .pom-busca-gateways {
+      padding-left: 0;
+      border-left: 0;
+      padding-top: 0.5rem;
+      border-top: 1px solid rgba(148, 163, 184, 0.18);
+      width: 100%;
+    }
+  }
+  .pom-gw-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+    margin-bottom: 0.15rem;
+  }
+  .pom-gw-label {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    margin: 0;
+  }
+  .pom-gw-params {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.35rem 0.75rem;
+    font-size: 0.68rem;
+    color: #94a3b8;
+    text-align: right;
+    max-width: 62%;
+  }
+  .pom-gw-param strong {
+    color: #cbd5e1;
+    font-weight: 600;
+  }
+  .pom-gw-param-lbl {
+    color: #64748b;
+  }
+  .pom-gw-chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 0;
+    width: 100%;
+  }
+  .pom-gw-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    max-width: 100%;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.35rem 0.65rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    background: rgba(37, 99, 235, 0.18);
+    color: #93c5fd;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+  }
+  .pom-gw-chip:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(248, 113, 113, 0.45);
+    color: #fca5a5;
+  }
+  .pom-gw-chip.is-ativo {
+    border-color: #22c55e;
+    background: rgba(34, 197, 94, 0.22);
+    color: #86efac;
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25);
+  }
+  .pom-gw-chip.is-ativo .pom-gw-chip-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #4ade80;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.55);
+    animation: pom-pulse 1.8s infinite;
+  }
+  .pom-gw-chip .pom-gw-chip-x {
+    font-size: 0.85rem;
+    opacity: 0.7;
+  }
+  .pom-gw-chip:hover .pom-gw-chip-x { opacity: 1; }
+  .pom-gw-chip.is-ativo:hover {
+    background: rgba(239, 68, 68, 0.22);
+    border-color: rgba(248, 113, 113, 0.5);
+    color: #fca5a5;
+    box-shadow: none;
+  }
+  .pom-gw-add {
+    width: 2.15rem;
+    height: 2.15rem;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    border: 1px dashed rgba(148, 163, 184, 0.4);
+    background: rgba(15, 23, 42, 0.45);
+    color: #93c5fd;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+  .pom-gw-add:hover {
+    border-color: #3b82f6;
+    color: #60a5fa;
+    background: rgba(37, 99, 235, 0.15);
+  }
+  .pom-gw-add.is-log-ativo {
+    border-style: solid;
+    border-color: #22c55e;
+    color: #86efac;
+    background: rgba(34, 197, 94, 0.18);
+  }
+  .pom-gw-log-wrap {
+    margin-left: auto;
+  }
+  .pom-gw-hint {
+    font-size: 0.72rem;
+    color: #64748b;
+  }
+
+  /* Painel log ao vivo — canto inferior direito */
+  .pom-log-panel {
+    position: fixed;
+    right: 0.85rem;
+    bottom: 0.85rem;
+    width: min(420px, calc(100vw - 1.7rem));
+    height: 50vh;
+    min-height: 160px;
+    z-index: 1080;
+    display: flex;
+    flex-direction: column;
+    border-radius: 0.65rem;
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    background: rgba(15, 23, 42, 0.96);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+    overflow: hidden;
+    transform: translateY(12px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+  }
+  .pom-log-panel.is-open {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+  .pom-log-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.45rem 0.65rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+    background: rgba(30, 41, 59, 0.9);
+    flex-shrink: 0;
+  }
+  .pom-log-title {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .pom-log-title .badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+  }
+  .pom-log-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  .pom-log-actions .btn {
+    padding: 0.15rem 0.4rem;
+    font-size: 0.72rem;
+    line-height: 1.2;
+  }
+  .pom-log-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.72rem;
+    color: #cbd5e1;
+  }
+  .pom-log-empty {
+    color: #64748b;
+    text-align: center;
+    padding: 1.25rem 0.5rem;
+  }
+  .pom-log-row {
+    display: grid;
+    grid-template-columns: 4.6rem 1fr auto;
+    gap: 0.35rem 0.5rem;
+    align-items: start;
+    padding: 0.28rem 0.2rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  }
+  .pom-log-row:last-child { border-bottom: 0; }
+  .pom-log-hora {
+    color: #64748b;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .pom-log-tag {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.7rem;
+    color: #e2e8f0;
+    word-break: break-all;
+  }
+  .pom-log-meta {
+    color: #64748b;
+    font-size: 0.65rem;
+    margin-top: 0.1rem;
+  }
+  .pom-log-status {
+    justify-self: end;
+  }
+  .pom-log-status .badge {
+    font-size: 0.62rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .pom-log-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.4rem 0.65rem;
+    border-top: 1px solid rgba(148, 163, 184, 0.18);
+    background: rgba(30, 41, 59, 0.85);
+    flex-shrink: 0;
+  }
+  .pom-log-foot-lbl {
+    font-size: 0.68rem;
+    color: #94a3b8;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .pom-log-foot-btns {
+    display: flex;
+    gap: 0.35rem;
+    flex-shrink: 0;
+  }
+  .pom-log-foot-btns .btn {
+    font-size: 0.72rem;
+    padding: 0.25rem 0.55rem;
+  }
+
+  .pom-alert {
+    border-radius: 0.65rem;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    background: rgba(245, 158, 11, 0.12);
+    color: #fde68a;
+    font-size: 0.85rem;
+    padding: 0.75rem 1rem;
+  }
+  .pom-alert strong { color: #fcd34d; }
+
+  .pom-table {
+    font-size: 0.8rem;
+    color: #e2e8f0;
+    margin-bottom: 0;
+  }
+  .pom-table thead th {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #94a3b8;
+    border-bottom-color: rgba(148, 163, 184, 0.15);
+    white-space: nowrap;
+    background: transparent;
+  }
+  .pom-table tbody td {
+    vertical-align: middle;
+    border-color: rgba(148, 163, 184, 0.08);
+  }
+  .pom-table tbody tr:hover td {
+    background: rgba(148, 163, 184, 0.04);
+  }
+
+  .pom-epc {
+    font-family: ui-monospace, monospace;
+    font-size: 0.75rem;
+    color: #93c5fd;
+  }
+  .pom-tag-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    line-height: 1.2;
+    margin-bottom: 0.15rem;
+  }
+  .pom-tag-label-nao {
+    color: #c084fc;
+  }
+  .pom-tag-label-ok {
+    color: #94a3b8;
+  }
+  .pom-rssi { font-weight: 600; font-size: 0.78rem; color: #4ade80; }
+  .pom-leitura-row { cursor: pointer; }
+  .pom-leitura-row:hover td { background: rgba(59, 130, 246, 0.08) !important; }
+  .pom-leitura-edit {
+    color: #94a3b8;
+    font-size: 0.95rem;
+    opacity: 0.75;
+    transition: opacity 0.15s, color 0.15s;
+  }
+  .pom-leitura-row:hover .pom-leitura-edit {
+    opacity: 1;
+    color: #60a5fa;
+  }
+
+  .pom-empty {
+    color: #64748b;
+    text-align: center;
+    padding: 3rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .pom-badge {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.55rem;
+    border-radius: 999px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .badge-pendente { background: rgba(245, 158, 11, 0.25); color: #fcd34d; }
+  .badge-parcial { background: rgba(45, 156, 219, 0.25); color: #7dd3fc; }
+  .badge-concluida { background: rgba(34, 197, 94, 0.25); color: #86efac; }
+  .badge-andamento { background: rgba(155, 81, 224, 0.25); color: #d8b4fe; }
+  .badge-excedente { background: rgba(168, 85, 247, 0.28); color: #e9d5ff; }
+  .badge-nao { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
+
+  .pom-item-st {
+    font-size: 0.68rem;
+    padding: 0.2rem 0.45rem;
+    border-radius: 999px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  /* Cores alinhadas aos KPIs: pendente=vermelho, concluido=verde, excedente=roxo, parcial=azul */
+  .item-st-pendente { background: rgba(239, 68, 68, 0.18); color: #f87171; }
+  .item-st-concluido { background: rgba(34, 197, 94, 0.2); color: #86efac; }
+  .item-st-excedente { background: rgba(155, 81, 224, 0.22); color: #c084fc; }
+  .item-st-parcial { background: rgba(45, 156, 219, 0.2); color: #38bdf8; }
+  .item-st-nao { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
+  .item-st-nao-lido { background: rgba(234, 179, 8, 0.22); color: #facc15; }
+
+  .pom-count-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.5rem;
+    height: 1.5rem;
+    padding: 0 0.45rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: rgba(37, 99, 235, 0.35);
+    color: #93c5fd;
+  }
+
+  .pom-panel-scroll {
+    max-height: calc(100vh - 340px);
+    overflow: auto;
+  }
+
+  .pom-ordem-card {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.35rem 0 1rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+    margin-bottom: 0.5rem;
+  }
+  .pom-ordem-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 0.65rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1.15rem;
+  }
+  .pom-ordem-icon.icon-st-pendente { background: rgba(239, 68, 68, 0.18); color: #f87171; }
+  .pom-ordem-icon.icon-st-parcial { background: rgba(45, 156, 219, 0.2); color: #38bdf8; }
+  .pom-ordem-icon.icon-st-concluido { background: rgba(34, 197, 94, 0.18); color: #4ade80; }
+  .pom-ordem-icon.icon-st-excedente { background: rgba(155, 81, 224, 0.2); color: #c084fc; }
+  .pom-ordem-icon.icon-st-nao { background: rgba(148, 163, 184, 0.15); color: #94a3b8; }
+
+  .pom-ordem-id {
+    font-weight: 600;
+    color: #f8fafc;
+    font-size: 0.88rem;
+  }
+  .pom-ordem-meta { font-size: 0.75rem; color: #94a3b8; }
+  .pom-ordem-actions {
+    flex-shrink: 0;
+    margin-left: auto;
+    align-self: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    justify-content: flex-end;
+  }
+  .pom-btn-registrar {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: 0.5rem;
+    border: 0;
+    background: #16a34a;
+    color: #fff;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .pom-btn-registrar:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: #334155;
+    color: #94a3b8;
+  }
+  .pom-btn-registrar:not(:disabled):hover {
+    background: #15803d;
+  }
+  .pom-btn-retorno {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 0.5rem;
+    border: 0;
+    background: #dc2626;
+    color: #fff;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .pom-btn-retorno:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: #334155;
+    color: #94a3b8;
+  }
+  .pom-btn-retorno:not(:disabled):hover {
+    background: #b91c1c;
+  }
+
+  .pom-progress {
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.15);
+    overflow: hidden;
+    margin-top: 0.35rem;
+  }
+  .pom-progress-bar {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #dc2626, #f87171);
+  }
+  .pom-progress-bar.bar-parcial {
+    background: linear-gradient(90deg, #0284c7, #38bdf8);
+  }
+  .pom-progress-bar.bar-concluido {
+    background: linear-gradient(90deg, #16a34a, #4ade80);
+  }
+  .pom-progress-bar.bar-excedente {
+    background: linear-gradient(90deg, #7c3aed, #c084fc);
+  }
+</style>
+
+<div ng-controller="portalPosicaoCtrl" ng-cloak class="app-container">
+
+  <div class="app-hero-header d-flex align-items-start justify-content-between flex-wrap gap-3">
+    <div>
+      <div class="pom-breadcrumb">
+        <i class="bi bi-house me-1"></i>
+        <a>Portal</a>
+        <span class="mx-1">›</span>
+        <span>Posição</span>
+      </div>
+      <h1 class="pom-title">Conferência de Pedido</h1>
+      <p class="pom-subtitle">
+        Consulte a ordem na integração e acompanhe as leituras RFID do portal em tempo real.
+      </p>
+    </div>
+    <div class="text-end">
+      <div class="pom-datetime">{{ _dataHoraTopo }}</div>
+      <div class="pom-live mt-1" ng-show="!_portalFechamento">
+        <span class="pom-live-dot"></span>
+        Em tempo real
+      </div>
+      <div class="pom-fechado" ng-show="_portalFechamento">
+        <div>
+          <i class="bi bi-door-closed me-1"></i>
+          Fechado por <strong>{{ _portalFechamento.nome }}</strong>
+          em {{ _portalFechamento.quando }}
+        </div>
+        <!-- <button type="button" class="pom-fechado-btn" ng-click="onAbrirPortalNovamente()">
+          <i class="bi bi-door-open me-1"></i>Abrir novamente
+        </button> -->
+      </div>
+    </div>
+  </div>
+
+  <div class="app-body pom-page">
+
+    <!-- Busca + Gateways aceitos -->
+    <div class="card pom-panel pom-busca-card mb-3">
+      <div class="card-body">
+        <div class="pom-busca-split">
+          <div class="pom-busca-pedido">
+            <div style="min-width: 220px; max-width: 360px; flex: 1 1 220px;">
+              <label class="form-label small text-secondary mb-1">Número do pedido</label>
+              <input type="text"
+                     class="form-control pom-input-pedido"
+                     ng-model="_idDoc"
+                     ng-keydown="$event.keyCode === 13 && onBuscarPedido()"
+                     placeholder="id_doc / orderkey / receiptkey"
+                     autocomplete="off"
+                     autofocus>
+            </div>
+            <button type="button"
+                    class="pom-btn-primary"
+                    ng-click="onBuscarPedido()"
+                    ng-disabled="_buscando || !_idDoc">
+              <span ng-show="!_buscando"><i class="bi bi-search me-1"></i>Buscar</span>
+              <span ng-show="_buscando"><span class="spinner-border spinner-border-sm me-1"></span>Buscando…</span>
+            </button>
+            <button type="button"
+                    class="pom-btn-ghost"
+                    ng-click="onLimparPedido()"
+                    ng-disabled="!_posicao && !_idDoc && !_itensNaoCadastrados.length">
+              Limpar
+            </button>
+          </div>
+
+          <div class="pom-busca-gateways">
+            <div class="pom-gw-head">
+              <div class="pom-gw-label">Gateways aceitos neste portal</div>
+              <div class="pom-gw-params" ng-if="_gatewayUltimaLeitura">
+                <span class="pom-gw-param">
+                  <span class="pom-gw-param-lbl">Ação:</span>
+                  <strong>{{ labelPortalAcao(_gatewayUltimaLeitura.portal_acao) }}</strong>
+                </span>
+                <span class="pom-gw-param"
+                      ng-if="_gatewayUltimaLeitura.portal_acao == 'checagem'">
+                  <span class="pom-gw-param-lbl">Registro Checagem:</span>
+                  <strong>{{ labelPortalRegistroOrdem(_gatewayUltimaLeitura.portal_registro_ordem) }}</strong>
+                </span>
+                <span class="pom-gw-param"
+                      ng-if="_gatewayUltimaLeitura.portal_acao == 'checagem'">
+                  <span class="pom-gw-param-lbl">Alertas:</span>
+                  <strong>{{ labelPortalAlertas(_gatewayUltimaLeitura.portal_alertas) }}</strong>
+                </span>
+              </div>
+            </div>
+            <div class="pom-gw-chips">
+              <button type="button"
+                      class="pom-gw-add"
+                      title="Vincular gateway"
+                      ng-click="onAbrirModalGateways()">
+                <i class="bi bi-plus-lg"></i>
+              </button>
+              <button type="button"
+                      class="pom-gw-chip"
+                      ng-class="{'is-ativo': isGatewayAtivo(g)}"
+                      ng-repeat="g in _listGatewaysAceitos track by g._id"
+                      title="Remover {{ g.descricao || g.tokem }}"
+                      ng-click="onRemoverGatewayAceito(g)">
+                <span class="pom-gw-chip-dot" ng-if="isGatewayAtivo(g)"></span>
+                <span class="text-truncate">{{ g.descricao || g.tokem || 'Gateway' }}</span>
+                <i class="bi bi-x pom-gw-chip-x"></i>
+              </button>
+              <span class="pom-gw-hint" ng-if="!_listGatewaysAceitos.length">
+                Nenhum vinculado — leituras serão descartadas
+              </span>
+              <button type="button"
+                      class="pom-gw-add pom-gw-log-wrap"
+                      ng-class="{'is-log-ativo': _portalLogAberto}"
+                      title="Log ao vivo"
+                      ng-click="onTogglePortalLog()">
+                <i class="bi bi-list-ul"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pom-alert mb-3" ng-show="_msgBusca || _itensNaoCadastrados.length">
+      <div ng-show="_msgBusca">{{ _msgBusca }}</div>
+      <div ng-show="_itensNaoCadastrados.length" class="mt-1">
+        <strong>Itens a cadastrar:</strong>
+        <span class="pom-epc">{{ _itensNaoCadastrados.join(', ') }}</span>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="row g-3 mb-3">
+      <div class="col-6 col-lg-3">
+        <div class="card pom-panel pom-kpi pom-kpi-blue">
+          <div class="card-body d-flex align-items-center gap-3">
+            <div class="icon-box"><i class="bi bi-box-seam"></i></div>
+            <div>
+              <div class="kpi-val">{{ totalEsperados() }}</div>
+              <div class="kpi-lbl">Total de itens esperados</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="card pom-panel pom-kpi pom-kpi-green">
+          <div class="card-body d-flex align-items-center gap-3">
+            <div class="icon-box"><i class="bi bi-check-circle"></i></div>
+            <div>
+              <div class="kpi-val">{{ totalConcluidos() }}</div>
+              <div class="kpi-lbl">Concluídos</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="card pom-panel pom-kpi pom-kpi-red">
+          <div class="card-body d-flex align-items-center gap-3">
+            <div class="icon-box"><i class="bi bi-hourglass-split"></i></div>
+            <div>
+              <div class="kpi-val">{{ totalPendentes() }}</div>
+              <div class="kpi-lbl">Pendentes</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="card pom-panel pom-kpi pom-kpi-purple">
+          <div class="card-body d-flex align-items-center gap-3">
+            <div class="icon-box"><i class="bi bi-exclamation-triangle"></i></div>
+            <div>
+              <div class="kpi-val">{{ totalExcedentes() }}</div>
+              <div class="kpi-lbl">Excedentes</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3">
+
+      <!-- Esquerda: Pedido -->
+      <div class="col-lg-5">
+        <div class="card pom-panel pom-panel-fill">
+          <div class="card-body">
+            <div ng-if="!_posicao && !_itensNaoCadastrados.length" class="pom-empty">
+              Informe o número do pedido e clique em Buscar.
+            </div>
+
+            <div class="pom-ordem-card" ng-if="_posicao">
+              <div class="pom-ordem-icon" ng-class="iconeStatusPedidoClass(_posicao.status)">
+                <i class="bi" ng-class="iconeStatusPedido(_posicao.status)"></i>
+              </div>
+              <div class="flex-grow-1 min-w-0">
+                <div class="pom-ordem-id">Pedido #{{ _posicao.id_doc }}</div>
+                <div class="pom-ordem-meta mt-1">
+                  {{ totalEsperados() }} item(ns) esperados · {{ capitalizarStatus(_posicao.status) }}
+                </div>
+                <div class="pom-progress">
+                  <div class="pom-progress-bar"
+                       ng-class="barraStatusPedidoClass(_posicao.status)"
+                       ng-style="{'width': progressoPct() + '%'}"></div>
+                </div>
+              </div>
+              <div class="pom-ordem-actions">
+                <button type="button"
+                        class="pom-btn-retorno"
+                        ng-show="podeRetornarPosicao()"
+                        ng-click="onRetornarPosicao()"
+                        ng-disabled="_retornando || _registrando"
+                        title="Gerar ordem de devolução (-RET) com os itens já lidos">
+                  <span ng-show="!_retornando"><i class="bi bi-arrow-return-left me-1"></i>Retorno</span>
+                  <span ng-show="_retornando"><span class="spinner-border spinner-border-sm me-1"></span>…</span>
+                </button>
+                <button type="button"
+                        class="pom-btn-registrar"
+                        ng-click="onRegistrarPosicao()"
+                        ng-disabled="!podeRegistrarPosicao()"
+                        title="{{ podeRegistrarPosicao() ? (isModoRetorno() ? 'Registrar devolução (status destino)' : 'Registrar posição concluída') : 'Disponível quando o pedido estiver concluído' }}">
+                  <span ng-show="!_registrando"><i class="bi bi-check2-circle me-1"></i>Registrar</span>
+                  <span ng-show="_registrando"><span class="spinner-border spinner-border-sm me-1"></span>Salvando…</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="pom-panel-scroll">
+              <table class="table pom-table" ng-if="!_posicao && _itensNaoCadastrados.length">
+                <thead>
+                  <tr>
+                    <th>Descrição</th>
+                    <th>Tag</th>
+                    <th>Inf.Extra</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr ng-repeat="id in _itensNaoCadastrados track by $index">
+                    <td class="text-secondary">—</td>
+                    <td class="text-secondary">—</td>
+                    <td><span class="pom-epc">{{ id }}</span></td>
+                    <td><span class="pom-item-st item-st-pendente">Não cadastrado</span></td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <table class="table pom-table" ng-if="_posicao">
+                <thead>
+                  <tr>
+                    <th>Descrição</th>
+                    <th>Tag</th>
+                    <th>Inf.Extra</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr ng-repeat="it in _posicao.itens track by (it._id || $index)">
+                    <td>{{ descricaoItem(it) }}</td>
+                    <td><span class="pom-epc">{{ it.tag || '—' }}</span></td>
+                    <td><span class="pom-epc">{{ it.inf_compl_1 || '—' }}</span></td>
+                    <td>
+                      <span class="pom-item-st"
+                            ng-class="itemStatusClass(statusExibicaoItem(it))">
+                        {{ capitalizarStatus(statusExibicaoItem(it)) }}
+                      </span>
+                      <span class="pom-item-st item-st-excedente ms-1"
+                            ng-if="isModoRetorno() && isExcedenteItem(it)"
+                            title="Item excedente na origem">Exc.</span>
+                    </td>
+                  </tr>
+                  <tr ng-if="!(_posicao.itens && _posicao.itens.length)">
+                    <td colspan="4" class="pom-empty py-4">Pedido sem itens.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Direita: Leituras RFID -->
+      <div class="col-lg-7">
+        <div class="card pom-panel pom-panel-fill">
+          <div class="card-body">
+            <div class="d-flex align-items-start justify-content-between gap-2 mb-3">
+              <div>
+                <h2 class="pom-section-title">Leituras RFID</h2>
+                <p class="pom-section-sub">Tags recebidas pelo Portal / Coletor </p>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <span class="pom-count-pill">{{ _leituras.length }}</span>
+                <button type="button" class="pom-btn-ghost py-1 px-2" style="font-size:0.75rem"
+                        ng-click="onLimparLeituras()" ng-disabled="!_leituras.length">
+                  Limpar
+                </button>
+              </div>
+            </div>
+
+            <div class="pom-panel-scroll">
+              <div ng-if="!_leituras.length" class="pom-empty">
+                Aguardando leituras…
+              </div>
+
+              <table class="table pom-table" ng-if="_leituras.length">
+                <thead>
+                  <tr>
+                    <th>Tag (EPC)</th>
+                    <th>Inf. Extra</th>
+                    <th>RSSI</th>
+                    <th>Qtd</th>
+                    <th>Data / Hora</th>
+                    <th>Tokem</th>
+                    <th style="width:1%"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="pom-leitura-row"
+                      ng-repeat="l in _leituras track by (l.tag + '-' + $index)"
+                      ng-click="onAbrirEditarItemLeitura(l)"
+                      title="{{ l.cadastrado ? 'Editar item' : 'Cadastrar item' }}">
+                    <td>
+                      <div class="pom-tag-label pom-tag-label-nao"
+                           ng-if="l._infoOk && l.cadastrado === false">Item não cadastrado</div>
+                      <div class="pom-tag-label pom-tag-label-ok"
+                           ng-if="l._infoOk && l.cadastrado">{{ l.descricao || '—' }}</div>
+                      <span class="pom-epc">{{ l.tag }}</span>
+                    </td>
+                    <td>
+                      <span class="pom-epc" ng-if="l.inf_compl_1">{{ l.inf_compl_1 }}</span>
+                      <span class="text-secondary" ng-if="!l.inf_compl_1">—</span>
+                    </td>
+                    <td>
+                      <span class="pom-rssi" ng-if="l.rssi !== '' && l.rssi != null">{{ l.rssi }} dB</span>
+                      <span class="text-secondary" ng-if="l.rssi === '' || l.rssi == null">—</span>
+                    </td>
+                    <td>{{ l.contagem }}x</td>
+                    <td class="text-nowrap">{{ formatarDataHora(l.data_hora) }}</td>
+                    <td>
+                      <div class="pom-tag-label pom-tag-label-ok" ng-if="descricaoGateway(l.tokem)">{{ descricaoGateway(l.tokem) }}</div>
+                      <span class="text-secondary">{{ l.tokem || '—' }}</span>
+                    </td>
+                    <td class="text-end pe-2">
+                      <i class="bi pom-leitura-edit"
+                         ng-class="l.cadastrado ? 'bi-pencil' : 'bi-plus-lg'"
+                         aria-hidden="true"></i>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Modal: cadastrar / editar item da leitura -->
+  <div class="modal fade" id="modalItemLeituraPosicao" tabindex="-1" aria-labelledby="modalItemLeituraPosicaoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content" style="background:#1e293b; color:#e2e8f0; border:1px solid rgba(148,163,184,0.2);">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title" id="modalItemLeituraPosicaoLabel">
+            <i class="bi bi-tag me-2"></i>
+            <span ng-if="_itemEdit && !_itemEdit.cadastrado">Cadastrar item</span>
+            <span ng-if="_itemEdit && _itemEdit.cadastrado">Editar item</span>
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body" ng-if="_itemEdit">
+          <div class="mb-3">
+            <label class="form-label small text-secondary mb-1">Tag (EPC)</label>
+            <div class="pom-epc">{{ _itemEdit.tag }}</div>
+          </div>
+
+          <div ng-show="_itemEdit._carregando" class="text-secondary small mb-3">
+            <span class="spinner-border spinner-border-sm me-1"></span>Carregando…
+          </div>
+
+          <div class="mb-3" ng-hide="_itemEdit._carregando">
+            <label class="form-label small text-secondary mb-1">Categoria</label>
+            <select class="form-select pom-input-pedido"
+                    ng-model="_itemEdit.id_categoria"
+                    ng-change="onItemEditCategoriaChange()"
+                    ng-options="c._id as c.descricao for c in _listCategorias">
+              <option value="">Selecione uma categoria…</option>
+            </select>
+          </div>
+
+          <div class="mb-1" ng-hide="_itemEdit._carregando">
+            <label class="form-label small text-secondary mb-1">{{ _itemEdit.labelInf1 || 'Inf. Extra' }}</label>
+            <input type="text"
+                   class="form-control pom-input-pedido"
+                   ng-model="_itemEdit.inf_compl1"
+                   placeholder="Informe {{ _itemEdit.labelInf1 || 'Inf. Extra' }}"
+                   autocomplete="off">
+            <div class="form-text text-secondary small" ng-if="_itemEdit.cadastrado">
+              Ao alterar a categoria, o valor de {{ _itemEdit.labelInf1 || 'Inf. Extra' }} é mantido.
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button"
+                  class="btn btn-primary"
+                  ng-click="onSalvarItemLeitura()"
+                  ng-disabled="_salvandoItem || !_itemEdit || !_itemEdit.id_categoria || _itemEdit._carregando">
+            <span ng-show="!_salvandoItem"><i class="bi bi-check2 me-1"></i>Salvar</span>
+            <span ng-show="_salvandoItem"><span class="spinner-border spinner-border-sm me-1"></span>Salvando…</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Painel: log ao vivo (canto inferior direito) -->
+  <div class="pom-log-panel" ng-class="{'is-open': _portalLogAberto}" ng-cloak>
+    <div class="pom-log-head">
+      <h6 class="pom-log-title">
+        <i class="bi bi-terminal"></i>
+        Log ao vivo
+        <span class="badge bg-secondary" ng-show="_portalLog.length">{{ _portalLog.length }}</span>
+      </h6>
+      <div class="pom-log-actions">
+        <button type="button"
+                class="btn btn-outline-secondary btn-sm"
+                title="Limpar"
+                ng-click="onLimparPortalLog()"
+                ng-disabled="!_portalLog.length">
+          <i class="bi bi-trash"></i>
+        </button>
+        <button type="button"
+                class="btn btn-outline-secondary btn-sm"
+                title="Fechar"
+                ng-click="onTogglePortalLog(false)">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+    </div>
+    <div class="pom-log-body" id="pomLogBody">
+      <div class="pom-log-empty" ng-show="!_portalLog.length">
+        Aguardando leituras dos gateways vinculados…
+      </div>
+      <div class="pom-log-row" ng-repeat="l in _portalLog track by $index">
+        <div class="pom-log-hora">{{ l.hora || l.data_hora }}</div>
+        <div>
+          <div class="pom-log-tag">{{ l.tag || '—' }}</div>
+          <div class="pom-log-meta">
+            <span ng-show="l.device">{{ l.device }}</span>
+            <span ng-show="l.tokem"> · {{ l.tokem }}</span>
+            <span ng-show="l.antena"> · porta {{ l.antena }}</span>
+            <span ng-show="l.rssi"> · RSSI {{ l.rssi }}</span>
+            <span ng-show="l.message"> · {{ l.message }}</span>
+          </div>
+        </div>
+        <div class="pom-log-status">
+          <span class="badge"
+                ng-class="{
+                  'bg-secondary': l.status_raw == 'pre_sensor' || l.status_raw == 'sensor_descartado' || l.status_raw == 'sensor_expirado' || l.status_raw == 'sensor_ignorado' || l.status_raw == 'sentido_expirado' || l.status_raw == 'sequencia_expirada',
+                  'bg-warning text-dark': l.status_raw == 'aguardando' || l.status_raw == 'sensor_1' || l.status_raw == 'tag_retida',
+                  'bg-success': l.status_raw == 'entrada' || l.status_raw == 'sensor_entrada' || l.status_raw == 'sinaleiro_ok' || l.status_raw == 'sinaleiro_verde',
+                  'bg-info text-dark': l.status_raw == 'saida' || l.status_raw == 'sensor_saida',
+                  'bg-danger': l.status_raw == 'sinaleiro_erro' || l.status_raw == 'sinaleiro_vermelho' || l.status_raw == 'sinaleiro_ignorado'
+                }">{{ l.status_sensor }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="pom-log-foot">
+      <div class="pom-log-foot-lbl" title="{{ deviceSinaleiroAtual() }}">
+        Sinaleiro: <strong>{{ deviceSinaleiroAtual() || '—' }}</strong>
+      </div>
+      <div class="pom-log-foot-btns">
+        <button type="button"
+                class="btn btn-success btn-sm"
+                ng-click="onAcionarSinaleiro(1)"
+                ng-disabled="_sinaleiroAcionando || !deviceSinaleiroAtual()">
+          <i class="bi bi-circle-fill me-1"></i>Verde
+        </button>
+        <button type="button"
+                class="btn btn-danger btn-sm"
+                ng-click="onAcionarSinaleiro(4)"
+                ng-disabled="_sinaleiroAcionando || !deviceSinaleiroAtual()">
+          <i class="bi bi-circle-fill me-1"></i>Vermelho
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: vincular gateways aceitos (dentro do ng-controller) -->
+  <div class="modal fade" id="modalGatewaysPosicao" tabindex="-1" aria-labelledby="modalGatewaysPosicaoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content" style="background:#1e293b; color:#e2e8f0; border:1px solid rgba(148,163,184,0.2);">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title" id="modalGatewaysPosicaoLabel">
+            <i class="bi bi-broadcast-pin me-2"></i>Vincular gateway
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-secondary small mb-3">
+            Selecione os coletores cujas leituras este portal deve aceitar. A escolha fica salva neste navegador.
+          </p>
+
+          <div ng-show="_carregandoGateways" class="text-secondary small">
+            <span class="spinner-border spinner-border-sm me-1"></span>Carregando gateways…
+          </div>
+
+          <div ng-show="!_carregandoGateways && !_listGatewaysDisponiveis.length" class="text-secondary small">
+            <span ng-if="!_listGatewaysTodos.length">Nenhum gateway cadastrado na conta.</span>
+            <span ng-if="_listGatewaysTodos.length">Todos os gateways já estão vinculados.</span>
+          </div>
+
+          <div class="list-group" ng-show="!_carregandoGateways && _listGatewaysDisponiveis.length">
+            <button type="button"
+                    class="list-group-item list-group-item-action d-flex align-items-center gap-3"
+                    style="background:rgba(15,23,42,0.55); color:#e2e8f0; border-color:rgba(148,163,184,0.15); cursor:pointer;"
+                    ng-repeat="g in _listGatewaysDisponiveis track by g._id"
+                    ng-click="onAdicionarGatewayAceito(g)">
+              <i class="bi bi-plus-circle text-primary flex-shrink-0"></i>
+              <div class="flex-grow-1 min-w-0 text-start">
+                <div class="fw-semibold">{{ g.descricao || 'Sem descrição' }}</div>
+                <small class="text-secondary">
+                  {{ g.tokem || 'Sem token' }}
+                  <span ng-show="g.modo"> · {{ g.modo == 'fixo' ? 'Fixo' : 'Móvel' }}</span>
+                </small>
+              </div>
+            </button>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
