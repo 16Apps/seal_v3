@@ -4,8 +4,10 @@ const moment = require('moment');
 
 const Gateway = require('../models/gateway');
 
-const ip_server = 'http://localhost:3000';
+const ip_server = 'https://sealv3-production.up.railway.app';
+// const ip_server = 'http://localhost:3000';
 const ip_middleware = 'http://10.10.20.99:5107';
+
 
 const INFOR_HOMOLOGACAO = {
   baseUrl: 'http://localhost:3000',
