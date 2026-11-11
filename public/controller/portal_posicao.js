@@ -34,9 +34,9 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
         });
     };
 
-    /** Evita portal_log + socket recolocarem a tag logo após sair pelo sentido contrário. */
+    /** Após remoção por sentido contrário, bloqueia reentrada na lista (tag ainda perto do leitor). */
     var _resolvidoSemOrdemAte = {};
-    var RESOLVIDO_SEM_ORDEM_MS = 8000;
+    var RESOLVIDO_SEM_ORDEM_MS = 10000;
 
     function sentidoDeTokemOuStatus(tokem, status) {
         var st = String(status || '').toLowerCase();
@@ -67,6 +67,7 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
     function marcarResolvidoSemOrdem(chave) {
         if (!chave) return;
         _resolvidoSemOrdemAte[chave] = Date.now() + RESOLVIDO_SEM_ORDEM_MS;
+        agendarSalvarLeiturasLocal();
     }
 
     function foiResolvidoSemOrdemRecente(chave) {
@@ -86,6 +87,7 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
         $scope._leituras = ($scope._leituras || []).filter(function (l) {
             return $scope.normalizaTag(l && l.tag) !== chave;
         });
+        agendarSalvarLeiturasLocal();
     }
 
     function marcarLeituraSemOrdem(linha, sentido) {
@@ -135,6 +137,7 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
             existente.aguardandoSensor = false;
             existente.faseBuffer = null;
             marcarLeituraSemOrdem(existente, sentidoAgora || sentidoAnterior);
+            agendarSalvarLeiturasLocal();
             return 'atualizada';
         }
 
@@ -395,6 +398,7 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
             if (log.tokem) existente.tokem = log.tokem;
             else if (log.device && !existente.tokem) existente.tokem = log.device;
             if (semOrdem) marcarLeituraSemOrdem(existente, existente.sentido || '');
+            agendarSalvarLeiturasLocal();
             return existente;
         }
 
@@ -422,6 +426,7 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
             }
         }
         agendarLookupTag(chave, log.tag, linha);
+        agendarSalvarLeiturasLocal();
         return linha;
     }
 
@@ -676,6 +681,104 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
 
     function salvarIdsGatewaysAceitos(ids) {
         localStorage.setItem(chaveGatewaysAceitos(), JSON.stringify((ids || []).map(String)));
+    }
+
+    /** Persistência Leituras RFID (por conta) — sobrevive a restart / F5. */
+    function chaveLeiturasRfid() {
+        return 'portal_posicao_leituras_' + (($scope._regConta && $scope._regConta._id) || '');
+    }
+
+    var _timerSalvarLeituras = null;
+
+    function serializarLeituraLocal(l) {
+        if (!l || !l.tag) return null;
+        return {
+            tag: l.tag,
+            rssi: l.rssi != null ? l.rssi : '',
+            contagem: l.contagem || 1,
+            data_hora: l.data_hora || '',
+            tokem: l.tokem || '',
+            device: l.device || '',
+            excedente: !!l.excedente,
+            cadastrado: l.cadastrado,
+            descricao: l.descricao || '',
+            inf_compl_1: l.inf_compl_1 || '',
+            id_categoria: l.id_categoria || null,
+            id_item: l.id_item || null,
+            ean: l.ean || '',
+            _infoOk: !!l._infoOk,
+            aguardandoSensor: !!l.aguardandoSensor,
+            faseBuffer: l.faseBuffer || null,
+            semOrdem: !!l.semOrdem,
+            pendenteSentidoContrario: !!l.pendenteSentidoContrario,
+            sentido: l.sentido || ''
+        };
+    }
+
+    function salvarLeiturasLocalAgora() {
+        try {
+            var idConta = ($scope._regConta && $scope._regConta._id) || '';
+            if (!idConta) return;
+            var agora = Date.now();
+            var resolvidoVivo = {};
+            Object.keys(_resolvidoSemOrdemAte || {}).forEach(function (k) {
+                if (_resolvidoSemOrdemAte[k] > agora) resolvidoVivo[k] = _resolvidoSemOrdemAte[k];
+            });
+            var payload = {
+                v: 1,
+                leituras: ($scope._leituras || []).map(serializarLeituraLocal).filter(Boolean),
+                resolvidoAte: resolvidoVivo
+            };
+            localStorage.setItem(chaveLeiturasRfid(), JSON.stringify(payload));
+        } catch (e) {
+            console.warn('[portal_posicao] salvar leituras localStorage:', e && e.message);
+        }
+    }
+
+    function agendarSalvarLeiturasLocal() {
+        if (_timerSalvarLeituras) clearTimeout(_timerSalvarLeituras);
+        _timerSalvarLeituras = setTimeout(function () {
+            _timerSalvarLeituras = null;
+            salvarLeiturasLocalAgora();
+        }, 300);
+    }
+
+    function carregarLeiturasLocal() {
+        try {
+            var idConta = ($scope._regConta && $scope._regConta._id) || '';
+            if (!idConta) return;
+            var raw = localStorage.getItem(chaveLeiturasRfid());
+            // Sem chave ainda: mantém vazio e grava estado inicial
+            if (raw == null) {
+                salvarLeiturasLocalAgora();
+                return;
+            }
+            var data = JSON.parse(raw);
+            var lista = Array.isArray(data) ? data : (data && data.leituras);
+            if (!Array.isArray(lista)) lista = [];
+
+            $scope._leituras = [];
+            $scope._mapLeituras = {};
+            lista.forEach(function (l) {
+                var linha = serializarLeituraLocal(l);
+                if (!linha) return;
+                var chave = $scope.normalizaTag(linha.tag);
+                if (!chave) return;
+                $scope._leituras.push(linha);
+                $scope._mapLeituras[chave] = linha;
+            });
+
+            var agora = Date.now();
+            _resolvidoSemOrdemAte = {};
+            var resolvido = (data && data.resolvidoAte) || {};
+            Object.keys(resolvido).forEach(function (k) {
+                if (Number(resolvido[k]) > agora) _resolvidoSemOrdemAte[k] = Number(resolvido[k]);
+            });
+        } catch (e) {
+            console.warn('[portal_posicao] carregar leituras localStorage:', e && e.message);
+            $scope._leituras = [];
+            $scope._mapLeituras = {};
+        }
     }
 
     function indexarGatewayPorTokems(g, mapaObj, mapaAceito) {
@@ -1039,6 +1142,7 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
         $scope._regColaborador = uteisService.getCookie('_colaborador') || {};
         $scope._dataHoraTopo = formatarTopo();
         carregarFechamentoPortal();
+        carregarLeiturasLocal();
         registrarListenersFechamentoPortal();
         timerRelogio = setInterval(function () {
             $scope._dataHoraTopo = formatarTopo();
@@ -2021,6 +2125,7 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
             var k = $scope.normalizaTag(l && l.tag);
             if (k) $scope._mapLeituras[k] = l;
         });
+        agendarSalvarLeiturasLocal();
     };
 
     $scope.podeRegistrarPosicao = function () {
@@ -2441,6 +2546,8 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
     $scope.onLimparLeituras = function () {
         $scope._leituras = [];
         $scope._mapLeituras = {};
+        // Persiste vazio também (após limpar / finalizar ordem)
+        salvarLeiturasLocalAgora();
     };
 
     /** Após finalizar/registrar ordem: zera o painel de Leituras RFID. */
@@ -2647,6 +2754,11 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
         var chave = $scope.normalizaTag(leitura.tag);
         if (!chave) return;
 
+        // Sem ordem: tag removida por sentido contrário fica bloqueada 10s
+        if (!pedidoCarregadoAgora() && foiResolvidoSemOrdemRecente(chave)) {
+            return;
+        }
+
         var agora = leitura.data_leitura || agoraFormatado();
         var pedidoCarregado = !!($scope._posicao && Array.isArray($scope._posicao.itens));
         var itemPedido = tagPertenceAoPedido(chave);
@@ -2717,6 +2829,7 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
                     foraDaOrdem: false,
                     cadastrado: atualizada && atualizada.cadastrado
                 });
+                agendarSalvarLeiturasLocal();
                 return;
             }
         }
@@ -2755,6 +2868,7 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
                 foraDaOrdem: foraDaOrdem,
                 cadastrado: existente.cadastrado
             });
+            agendarSalvarLeiturasLocal();
             return;
         }
 
@@ -2811,6 +2925,7 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
                 delete $scope._mapLeituras[$scope.normalizaTag(removida.tag)];
             }
         }
+        agendarSalvarLeiturasLocal();
     };
 
     $scope.onConectarSocket = function () {
@@ -2959,6 +3074,11 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
             var deviceBase = baseDeviceSinaleiroTokem(data.device || data.tokem || '');
 
             if (status === 'pre_sensor' || status === 'aguardando' || status === 'tag_retida') {
+                var chaveBuf = $scope.normalizaTag(data.tag);
+                // Removida por sentido contrário: não lista de novo na janela de 10s
+                if (chaveBuf && foiResolvidoSemOrdemRecente(chaveBuf)) {
+                    return;
+                }
                 upsertLeituraAguardando(data, status);
                 marcarTagBufferDevice(deviceBase, data.tag);
                 // Tag após 1º sensor já implica sensor visto
@@ -3074,6 +3194,11 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
 
     $scope.$on('$destroy', function () {
         resetSucessoPedido();
+        if (_timerSalvarLeituras) {
+            clearTimeout(_timerSalvarLeituras);
+            _timerSalvarLeituras = null;
+        }
+        salvarLeiturasLocalAgora();
         if (timerRelogio) {
             clearInterval(timerRelogio);
             timerRelogio = null;
