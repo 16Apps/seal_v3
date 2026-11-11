@@ -5,10 +5,10 @@ app.service('uteisService', ['$rootScope', '$http', function ($rootScope, $http)
   const service = this;
   // service.ipAPI = 'http://localhost:3000';
   service.ipAPI = 'https://sealv3-production.up.railway.app';
-
   //service.ipAPI = 'https://sealairtracking-3d3268c3e73f.herokuapp.com'
   // service.ipAPI = 'https://connectiot-app.azurewebsites.net'
 
+  // service.ipAPI = 'http://10.10.20.101:3000';
 
   // api
   

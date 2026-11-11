@@ -5,12 +5,15 @@ const moment = require('moment');
 const Gateway = require('../models/gateway');
 
 const ip_server = 'https://sealv3-production.up.railway.app';
+// const ip_server = 'http://10.10.20.101:3000';
 // const ip_server = 'http://localhost:3000';
-const ip_middleware = 'http://10.10.20.99:5107';
+
+
+const ip_middleware = 'http://10.10.20.99:5107'; 
 
 
 const INFOR_HOMOLOGACAO = {
-  baseUrl: 'http://localhost:3000',
+  baseUrl: ip_server,
   tokenUrl: 'https://mingle-sso.inforcloudsuite.com:443/BLUELOGISTICA_TST/as/token.oauth2',
   receiptsUrl: 'https://mingle-ionapi.inforcloudsuite.com/BLUELOGISTICA_TST/WM/wmwebservice_rest/BLUELOGISTICA_TST_BLUELOGISTICA_TST_SCE_PRD_0_wmwhse2/receipts',
   rfidUrl: 'https://mingle-ionapi.inforcloudsuite.com/BLUELOGISTICA_TST/APIFLOWS/bluelogistica/rfid',
@@ -21,7 +24,7 @@ const INFOR_HOMOLOGACAO = {
 };
 
 const INFOR = {
-  baseUrl: 'http://localhost:3000',
+  baseUrl: ip_server,
   tokenUrl: 'https://mingle-sso.inforcloudsuite.com:443/BLUELOGISTICA_PRD/as/token.oauth2',
   receiptsUrl: 'https://mingle-ionapi.inforcloudsuite.com/BLUELOGISTICA_PRD/WM/wmwebservice_rest/BLUELOGISTICA_PRD_BLUELOGISTICA_PRD_SCE_PRD_0_wmwhse2/receipts',
   pickdetailsBaseUrl: 'https://mingle-ionapi.inforcloudsuite.com/BLUELOGISTICA_PRD/WM/wmwebservice_rest/BLUELOGISTICA_PRD_BLUELOGISTICA_PRD_SCE_PRD_0_wmwhse2/pickdetails',
@@ -41,7 +44,7 @@ const tagsPendentesPorDevice = new Map(); // chave -> [{ tag, payload, receivedA
 const flushEmAndamento = new Map(); // chave -> Promise (evita flush concorrente no mesmo leitor)
 
 const INTERVALO_MAXIMO = 10 * 1000;   // espera da 2ª porta
-const SENTIDO_VALIDO_MS = 20 * 1000;  // mantém sentido e descarta sensores nesse período
+const SENTIDO_VALIDO_MS = 10 * 1000;  // mantém sentido e descarta sensores nesse período
 // Poda entre passagens: cobre espera da 2ª porta (10s) + folga
 const BUFFER_TAGS_MS = INTERVALO_MAXIMO + 5 * 1000; // 15s
 const REGISTRO_URL = ip_server + '/_bd/registro';
@@ -88,6 +91,7 @@ function formatarErroInfor(error, contexto) {
 }
 
 function responderErroInfor(res, error, contexto) {
+  console.log('responderErroInfor', error, contexto);
   if (res.headersSent) return;
   const { status, body } = formatarErroInfor(error, contexto);
   return res.status(status).json(body);
@@ -228,13 +232,97 @@ function extrairToidsDeReceiptdetails(receiptdetails) {
  * A posição gerada leva tag (EPC p/ checagem RFID) + inf_compl_1 (id da API).
  * Só grava Posicao se TODOS os ids estiverem cadastrados.
  */
-async function montarPosicaoPorInfCompl1(id_conta, id_doc, idsUnicos) {
-  const Item = require('../models/item');
-  const Categoria = require('../models/categoria');
+/**
+ * Resolve localização Naturgy da conta: Recebimento (entrada) ou Saída (pick).
+ * Usado em id_nivel_loc2 — GET /x_naturgy/:id_posicao decide o endpoint Infor por descricao.
+ * @param {string} id_conta
+ * @param {'pickdetails'|'receiptdetails'|string} origem
+ */
+async function resolverLocalizacaoNaturgy(id_conta, origem) {
+  const Localizacao = require('../models/localizacao');
+  const isEntrada = String(origem || '').toLowerCase() === 'receiptdetails';
+  const descricao = isEntrada ? 'Recebimento' : 'Saída';
+
+  let loc = await Localizacao.findOne({
+    id_conta,
+    descricao: new RegExp('^' + descricao + '$', 'i')
+  });
+
+  if (!loc) {
+    loc = await Localizacao.create({
+      id_conta,
+      id_nivel: null,
+      ativo: 1,
+      descricao
+    });
+    console.log('[x_naturgy] Localização criada:', { id_conta, descricao, _id: loc._id });
+  }
+
+  return loc;
+}
+
+/**
+ * @param {string} id_conta
+ * @param {string} id_doc
+ * @param {string[]} idsUnicos
+ * @param {'pickdetails'|'receiptdetails'} [origem] — define id_nivel_loc2 (Saída / Recebimento)
+ */
+/**
+ * Cria/recria Posicao (opcionalmente vazia) com loc Naturgy conforme origem.
+ */
+async function criarPosicaoNaturgy(id_conta, id_doc, itensPosicao, origem) {
   const Posicao = require('../models/posicao');
   const shortid = require('shortid');
+  const agora = new Date();
 
+  await Posicao.deleteMany({ id_conta, id_doc });
+
+  let id_nivel_loc1 = '';
+  let id_nivel_loc2 = '';
+  if (origem) {
+    try {
+      const loc = await resolverLocalizacaoNaturgy(id_conta, origem);
+      if (loc) {
+        id_nivel_loc2 = String(loc._id);
+        if (loc.id_nivel) id_nivel_loc1 = String(loc.id_nivel);
+      }
+    } catch (eLoc) {
+      console.warn('[x_naturgy] falha ao resolver localização:', eLoc && eLoc.message);
+    }
+  }
+
+  return Posicao.create({
+    _id: shortid.generate(),
+    id_conta,
+    id_colaborador: '',
+    ativo: '1',
+    id_doc,
+    descricao: id_doc,
+    tipo: 'conferencia',
+    status: 'pendente',
+    status_data: agora,
+    partida_data: agora,
+    tolerancia: 30,
+    id_nivel_loc1,
+    id_nivel_loc2,
+    total_itens: Array.isArray(itensPosicao) ? itensPosicao.length : 0,
+    total_concluido: 0,
+    itens: itensPosicao || []
+  });
+}
+
+async function montarPosicaoPorInfCompl1(id_conta, id_doc, idsUnicos, origem) {
+  const Item = require('../models/item');
+  const Categoria = require('../models/categoria');
+  const shortid = require('shortid');
+
+  // Recebimento: permite ordem sem itens (itens entram pelas leituras RFID)
   if (!idsUnicos.length) {
+    if (String(origem || '').toLowerCase() === 'receiptdetails') {
+      const posicao = await criarPosicaoNaturgy(id_conta, id_doc, [], 'receiptdetails');
+      console.log('[x_naturgy] Posicao Recebimento vazia:', { id_conta, id_doc, _id: posicao && posicao._id });
+      return { itensResposta: [], itensPosicao: [], posicao };
+    }
     return { itensResposta: [], itensPosicao: [], posicao: null };
   }
 
@@ -334,22 +422,7 @@ async function montarPosicaoPorInfCompl1(id_conta, id_doc, idsUnicos) {
     return { itensResposta, itensPosicao: [], posicao: null };
   }
 
-  await Posicao.deleteMany({ id_conta, id_doc });
-
-  const posicao = await Posicao.create({
-    _id: shortid.generate(),
-    id_conta,
-    id_colaborador: '',
-    ativo: '1',
-    id_doc,
-    descricao: id_doc,
-    tipo: 'conferencia',
-    status: 'pendente',
-    status_data: agora,
-    partida_data: agora,
-    tolerancia: 30,
-    itens: itensPosicao
-  });
+  const posicao = await criarPosicaoNaturgy(id_conta, id_doc, itensPosicao, origem);
 
   return { itensResposta, itensPosicao, posicao };
 }
@@ -361,7 +434,7 @@ module.exports = (app) => {
     try {
       const io = app.get('io');
       if (!io) return;
-      io.emit('x_naturgy_portal_log', {
+      const payload = {
         data_hora: moment().utcOffset(-3).format('YYYY-MM-DD HH:mm:ss'),
         tag: dados.tag || '',
         rssi: dados.rssi != null ? String(dados.rssi) : '',
@@ -370,7 +443,9 @@ module.exports = (app) => {
         tokem: dados.tokem || '',
         antena: dados.antena || '',
         message: dados.message || ''
-      });
+      };
+      if (dados.tags_buffer != null) payload.tags_buffer = Number(dados.tags_buffer) || 0;
+      io.emit('x_naturgy_portal_log', payload);
     } catch (e) {
       console.warn('[x_naturgy] emitirLogPortal:', e.message);
     }
@@ -380,12 +455,29 @@ module.exports = (app) => {
     return 'portal:' + String(idConta || '');
   }
 
-  /** True se portal_movimentacao está aberto (alguém na room portal:{id_conta}). */
+  /** True se portal da conta está aberto (room portal:{id_conta}). */
   function portalOnline(idConta) {
     try {
       const io = app.get('io');
       if (!io || !idConta) return false;
       const room = io.sockets.adapter.rooms.get(roomPortalConta(idConta));
+      return !!(room && room.size > 0);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * True se o gateway (nome base, ex. P01) está vinculado a algum portal aberto
+   * (room portal_gw:{base}). Usado só pela sirene de leitura com portal/GW inativo.
+   */
+  function portalGatewayOnline(tokem) {
+    try {
+      const io = app.get('io');
+      if (!io || !tokem) return false;
+      const base = String(tokem).trim().replace(/-[EeSs]$/, '');
+      if (!base) return false;
+      const room = io.sockets.adapter.rooms.get('portal_gw:' + base);
       return !!(room && room.size > 0);
     } catch (e) {
       return false;
@@ -441,21 +533,34 @@ module.exports = (app) => {
     };
   }
 
-  async function sinaleiroSePortalFechado(gateway) {
-    if (!gateway || !gateway.tokem) return;
-    if (portalOnline(gateway.id_conta)) return;
+  /**
+   * Sirene vermelha no leitor se nenhum portal tiver esse gateway ativo.
+   * Debounce interno: acionarSinaleiro ignora enquanto o timeout GPO anterior estiver ativo.
+   */
+  async function sinaleiroSeGatewaySemPortal(deviceName) {
+    const name = String(deviceName || '').trim();
+    if (!name) return;
+    if (portalGatewayOnline(name)) return;
 
     try {
-      const r = await acionarSinaleiro(gateway.tokem, 4, 10000);
+      const r = await acionarSinaleiro(name, 4, 10000);
       if (r.ignored) return;
-      console.log('[x_naturgy] sinaleiro portal fechado:', {
-        tokem: gateway.tokem,
+      console.log('[x_naturgy] sinaleiro gateway sem portal:', {
+        device: name.replace(/-[EeSs]$/, ''),
         ok: r.ok,
         status: r.status
       });
     } catch (e) {
-      console.warn('[x_naturgy] sinaleiro portal fechado:', e.message);
+      console.warn('[x_naturgy] sinaleiro gateway sem portal:', e.message);
     }
+  }
+
+  /**
+   * Leitura registrada com sentido + gateway sem portal ativo → sirene nesse leitor.
+   */
+  async function sinaleiroSePortalFechado(gateway) {
+    if (!gateway || !gateway.tokem) return;
+    await sinaleiroSeGatewaySemPortal(gateway.tokem);
   }
 
   app.post('/api/get-token', async (req, res) => {
@@ -516,10 +621,11 @@ module.exports = (app) => {
         return res.status(200).json({ ok: true, itens: [], posicao: null });
       }
 
-      const { itensResposta, posicao } = await montarPosicaoPorInfCompl1(id_conta, id, idsUnicos);
+      const { itensResposta, posicao } = await montarPosicaoPorInfCompl1(id_conta, id, idsUnicos, 'pickdetails');
 
       return res.status(200).json({
         ok: true,
+        origem: 'pickdetails',
         itens: itensResposta,
         posicao
       });
@@ -575,17 +681,25 @@ module.exports = (app) => {
       const idsUnicos = extrairToidsDeReceiptdetails(receiptdetails);
       console.log('[x_naturgy/receiptdetails] linhas:', receiptdetails.length, 'ids:', idsUnicos);
 
+      // Sem toids: ainda cria Posicao vazia (itens virão das leituras RFID)
       if (!idsUnicos.length) {
-        console.log('[x_naturgy/receiptdetails] raw keys:', raw && typeof raw === 'object' ? Object.keys(raw) : typeof raw);
-        return res.status(200).json({ ok: true, itens: [], posicao: null, detalhes: receiptdetails.length });
+        console.log(
+          '[x_naturgy/receiptdetails] receipt OK sem IDs — criando posição vazia. raw keys:',
+          raw && typeof raw === 'object' ? Object.keys(raw) : typeof raw,
+          'detalhes:',
+          receiptdetails.length
+        );
       }
 
-      const { itensResposta, posicao } = await montarPosicaoPorInfCompl1(id_conta, id, idsUnicos);
+      const { itensResposta, posicao } = await montarPosicaoPorInfCompl1(id_conta, id, idsUnicos, 'receiptdetails');
 
       return res.status(200).json({
         ok: true,
+        origem: 'receiptdetails',
         itens: itensResposta,
-        posicao
+        posicao,
+        detalhes: receiptdetails.length,
+        vazia: !idsUnicos.length
       });
     } catch (error) {
       console.error('[x_naturgy/receiptdetails] Erro:', error.response?.data || error.message);
@@ -660,7 +774,7 @@ module.exports = (app) => {
           console.log('[x_naturgy/ordem] pickdetails ids:', idsPick.length);
 
           if (idsPick.length) {
-            const { itensResposta, posicao } = await montarPosicaoPorInfCompl1(id_conta, id, idsPick);
+            const { itensResposta, posicao } = await montarPosicaoPorInfCompl1(id_conta, id, idsPick, 'pickdetails');
             return responderOrdemComItens(res, 'pickdetails', itensResposta, posicao);
           }
         } else {
@@ -684,15 +798,20 @@ module.exports = (app) => {
           const idsReceipt = extrairToidsDeReceiptdetails(receiptdetails);
           console.log('[x_naturgy/ordem] receiptdetails linhas:', receiptdetails.length, 'ids:', idsReceipt);
 
-          if (idsReceipt.length) {
-            const { itensResposta, posicao } = await montarPosicaoPorInfCompl1(id_conta, id, idsReceipt);
-            return responderOrdemComItens(res, 'receiptdetails', itensResposta, posicao);
-          }
-
-          console.log(
-            '[x_naturgy/ordem] receipt OK mas sem IDs. raw keys:',
-            raw && typeof raw === 'object' ? Object.keys(raw) : typeof raw
+          // Recebimento: mesmo sem IDs cria posição vazia (itens via RFID)
+          const { itensResposta, posicao } = await montarPosicaoPorInfCompl1(
+            id_conta,
+            id,
+            idsReceipt,
+            'receiptdetails'
           );
+          if (!idsReceipt.length) {
+            console.log(
+              '[x_naturgy/ordem] receipt OK sem IDs — posição vazia. raw keys:',
+              raw && typeof raw === 'object' ? Object.keys(raw) : typeof raw
+            );
+          }
+          return responderOrdemComItens(res, 'receiptdetails', itensResposta, posicao);
         } else {
           console.log(
             '[x_naturgy/ordem] receiptdetails sem sucesso:',
@@ -726,6 +845,7 @@ module.exports = (app) => {
       const Posicao = require("../models/posicao");
       const Localizacao = require("../models/localizacao");
       const Item = require("../models/item");
+      const Categoria = require("../models/categoria");
 
       const posicao = await Posicao.findById(id_posicao);
       if (!posicao) {
@@ -738,19 +858,49 @@ module.exports = (app) => {
       }
 
 
+      const descLoc = String(localizacao.descricao || '').trim().toLowerCase();
+
       // Recebimento
-      if (localizacao.descricao == 'Recebimento') {
+      if (descLoc === 'recebimento') {
 
         const _naturgyEntrada = {
           receiptkey: posicao.id_doc,
           receiptdetails: []
         };
 
+        // Fallback: se item.ean vazio (itens imputados), resolve SKU via categoria.ean
+        const idsCatSku = [...new Set(
+          (posicao.itens || [])
+            .filter((it) => it && !String(it.ean || '').trim() && it.id_categoria)
+            .map((it) => {
+              const c = it.id_categoria;
+              if (typeof c === 'object' && c && c._id != null) return String(c._id).trim();
+              return String(c).trim();
+            })
+            .filter(Boolean)
+        )];
+        const eanPorCategoria = new Map();
+        if (idsCatSku.length) {
+          const catsSku = await Categoria.find({ _id: { $in: idsCatSku } })
+            .select('_id ean')
+            .lean();
+          for (const cat of catsSku) {
+            if (cat && cat._id) eanPorCategoria.set(String(cat._id), String(cat.ean || '').trim());
+          }
+        }
+
         for (const item of posicao.itens) {
+          let sku = String(item.ean || '').trim();
+          if (!sku && item.id_categoria) {
+            const idCat = typeof item.id_categoria === 'object' && item.id_categoria && item.id_categoria._id != null
+              ? String(item.id_categoria._id).trim()
+              : String(item.id_categoria).trim();
+            sku = eanPorCategoria.get(idCat) || '';
+          }
 
           _naturgyEntrada.receiptdetails.push({
             receiptkey: posicao.id_doc,
-            sku: item.ean,
+            sku,
             qtyreceived: 1, // item.quantidade,
             toid: item.inf_compl_1,
             lottable02: posicao.descricao  == 'testeceg' ? 'TESTE178502' : posicao.descricao
@@ -781,8 +931,8 @@ module.exports = (app) => {
       }
 
       // Saída
-      console.log("localizacao.descricao: " + localizacao.descricao)
-      if (localizacao.descricao == 'Saída') {
+      console.log("localizacao.descricao: " + localizacao.descricao);
+      if (descLoc === 'saída' || descLoc === 'saida') {
         const resultados = [];
 
         for (const item of posicao.itens) {
@@ -890,6 +1040,8 @@ module.exports = (app) => {
    * Obtém um token novo a cada chamada.
    */
   app.post('/x_naturgy/rfid', async (req, res) => {
+    console.log('req.body: ' + JSON.stringify(req.body));
+
     try {
       const payload = req.body;
       console.log('[x_naturgy/rfid] payload:', payload);
@@ -1072,13 +1224,31 @@ module.exports = (app) => {
     tagsPendentesPorDevice.delete(key);
   }
 
+  /** Remove tags > BUFFER_TAGS_MS e devolve a fila viva deste leitor. */
+  function podarTagsPendentesDevice(deviceName) {
+    const key = normalizarChaveDevice(deviceName);
+    const agora = Date.now();
+    const lista = tagsPendentesPorDevice.get(key) || [];
+    const viva = lista.filter((t) => agora - (t.receivedAt || 0) <= BUFFER_TAGS_MS);
+    if (viva.length !== lista.length) {
+      console.log('[x_naturgy] poda fila por idade:', {
+        device: key,
+        antes: lista.length,
+        depois: viva.length
+      });
+    }
+    if (viva.length) tagsPendentesPorDevice.set(key, viva);
+    else tagsPendentesPorDevice.delete(key);
+    return viva;
+  }
+
   /**
    * Sequência 1ª→2ª porta expirou: NÃO apaga a fila de tags.
    * Tags lidas durante a definição do sentido ficam retidas para o próximo flush.
    */
   function notificarSequenciaExpirada(chaveSensor, porta, deviceLog) {
     const key = normalizarChaveDevice(chaveSensor);
-    const fila = tagsPendentesPorDevice.get(key) || [];
+    const fila = podarTagsPendentesDevice(chaveSensor);
     const device = deviceLog || chaveSensor;
 
     console.log(
@@ -1107,6 +1277,11 @@ module.exports = (app) => {
         status_sensor: 'tag_retida',
         message: 'Retida — aguardando próximo sentido'
       });
+    }
+
+    // Portal fechado + houve 1º sensor + tag(s) na fila → sirene (não espera 2ª porta)
+    if (fila.length > 0) {
+      sinaleiroSeGatewaySemPortal(chaveSensor).catch(function () { /* ignore */ });
     }
   }
 
@@ -1318,13 +1493,22 @@ module.exports = (app) => {
           primeiraPorta: porta
         });
 
+        // Portal fechado + 1º sensor + tag(s) vivas no buffer → sirene
+        const filaPre = podarTagsPendentesDevice(chaveSensor);
         emitirLogPortal({
           tag: 'SENSOR',
           rssi: '',
           antena: String(porta),
           device: deviceLog,
-          status_sensor: 'sensor_1'
+          status_sensor: 'sensor_1',
+          tags_buffer: filaPre.length,
+          message: filaPre.length
+            ? `${filaPre.length} tag(s) no buffer`
+            : ''
         });
+        if (filaPre.length > 0) {
+          await sinaleiroSeGatewaySemPortal(chaveSensor);
+        }
 
         return res.json({
           success: true,
@@ -1371,13 +1555,21 @@ module.exports = (app) => {
 
         // Reinício da 1ª porta: preserva fila (tags pré-sensor / aguardando)
 
+        const filaRestart = podarTagsPendentesDevice(chaveSensor);
         emitirLogPortal({
           tag: 'SENSOR',
           rssi: '',
           antena: String(porta),
           device: deviceLog,
-          status_sensor: 'sensor_1'
+          status_sensor: 'sensor_1',
+          tags_buffer: filaRestart.length,
+          message: filaRestart.length
+            ? `Reinício 1ª porta · ${filaRestart.length} tag(s) no buffer`
+            : `A porta ${porta} foi recebida de novo; reiniciando sequência.`
         });
+        if (filaRestart.length > 0) {
+          await sinaleiroSeGatewaySemPortal(chaveSensor);
+        }
 
         return res.json({
           success: true,
@@ -1525,6 +1717,11 @@ module.exports = (app) => {
         device: deviceRaw || deviceName,
         status_sensor: fase
       });
+
+      // Portal fechado + 1º sensor já ativo + tag → sirene neste leitor
+      if (emAguardo) {
+        await sinaleiroSeGatewaySemPortal(deviceName);
+      }
 
       return res.status(202).json({
         ok: true,

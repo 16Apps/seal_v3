@@ -13,6 +13,7 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
 
     $scope._idDoc = '';
     $scope._buscando = false;
+    $scope._buscandoModo = null; // 'auto' | 'recebimento' | 'saida'
     $scope._posicao = null;
     $scope._origem = null; // 'posicao' | 'pickdetails' | 'receiptdetails' | null
     $scope._itensNaoCadastrados = []; // tags da API que a ordem pediu e faltam no Seal
@@ -25,6 +26,120 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
     $scope._leituras = [];
     $scope._mapLeituras = {};
     var MAX_LEITURAS = 200;
+
+    /** Há tag(s) lidas sem ordem aguardando leitura no sentido contrário (-E ↔ -S). */
+    $scope.temLeiturasSemOrdemPendentes = function () {
+        return ($scope._leituras || []).some(function (l) {
+            return !!(l && l.pendenteSentidoContrario);
+        });
+    };
+
+    /** Evita portal_log + socket recolocarem a tag logo após sair pelo sentido contrário. */
+    var _resolvidoSemOrdemAte = {};
+    var RESOLVIDO_SEM_ORDEM_MS = 8000;
+
+    function sentidoDeTokemOuStatus(tokem, status) {
+        var st = String(status || '').toLowerCase();
+        if (st === 'entrada' || st === 'sensor_entrada') return 'entrada';
+        if (st === 'saida' || st === 'saída' || st === 'sensor_saida') return 'saida';
+        var t = String(tokem || '').trim();
+        // Aceita P02-E, P02-E-E (sufixo duplicado) — usa o último -E/-S
+        var m = t.match(/-([EeSs])(?:-[EeSs])*$/);
+        if (m) {
+            var s = m[1].toUpperCase();
+            if (s === 'E') return 'entrada';
+            if (s === 'S') return 'saida';
+        }
+        return '';
+    }
+
+    function sentidoOposto(sentido) {
+        if (sentido === 'entrada') return 'saida';
+        if (sentido === 'saida') return 'entrada';
+        return '';
+    }
+
+    function sentidoDaLinha(linha) {
+        if (!linha) return '';
+        return linha.sentido || sentidoDeTokemOuStatus(linha.tokem, '') || '';
+    }
+
+    function marcarResolvidoSemOrdem(chave) {
+        if (!chave) return;
+        _resolvidoSemOrdemAte[chave] = Date.now() + RESOLVIDO_SEM_ORDEM_MS;
+    }
+
+    function foiResolvidoSemOrdemRecente(chave) {
+        if (!chave) return false;
+        var ate = _resolvidoSemOrdemAte[chave];
+        if (!ate) return false;
+        if (Date.now() > ate) {
+            delete _resolvidoSemOrdemAte[chave];
+            return false;
+        }
+        return true;
+    }
+
+    function removerLeituraPorChave(chave) {
+        if (!chave) return;
+        delete $scope._mapLeituras[chave];
+        $scope._leituras = ($scope._leituras || []).filter(function (l) {
+            return $scope.normalizaTag(l && l.tag) !== chave;
+        });
+    }
+
+    function marcarLeituraSemOrdem(linha, sentido) {
+        if (!linha) return;
+        linha.semOrdem = true;
+        linha.pendenteSentidoContrario = true;
+        if (sentido) linha.sentido = sentido;
+    }
+
+    /**
+     * Sem ordem: -E fica na lista até -S (e vice-versa).
+     * @returns {'removida'|'atualizada'|'nova'|'ignorada'}
+     */
+    function processarLeituraSemOrdemSentido(opts) {
+        opts = opts || {};
+        var tag = opts.tag;
+        var tokem = opts.tokem || '';
+        var status = opts.status || '';
+        var rssi = opts.rssi;
+        var chave = $scope.normalizaTag(tag);
+        if (!chave || String(tag).toUpperCase() === 'SENSOR') return 'ignorada';
+        if (pedidoCarregadoAgora()) return 'ignorada';
+
+        var sentidoAgora = sentidoDeTokemOuStatus(tokem, status);
+        var existente = $scope._mapLeituras[chave];
+
+        // Acabou de sair pelo sentido contrário (evento duplicado socket/log)
+        if (!existente && foiResolvidoSemOrdemRecente(chave)) {
+            return 'ignorada';
+        }
+
+        if (existente && existente.pendenteSentidoContrario) {
+            var sentidoAnterior = sentidoDaLinha(existente);
+            if (
+                sentidoAnterior
+                && sentidoAgora
+                && sentidoAgora === sentidoOposto(sentidoAnterior)
+            ) {
+                removerLeituraPorChave(chave);
+                marcarResolvidoSemOrdem(chave);
+                return 'removida';
+            }
+            existente.contagem = (existente.contagem || 0) + 1;
+            existente.data_hora = agoraFormatado();
+            if (rssi != null && rssi !== '') existente.rssi = rssi;
+            if (tokem) existente.tokem = tokem;
+            existente.aguardandoSensor = false;
+            existente.faseBuffer = null;
+            marcarLeituraSemOrdem(existente, sentidoAgora || sentidoAnterior);
+            return 'atualizada';
+        }
+
+        return 'nova';
+    }
 
     // tokem normalizado → { descricao, tokem }
     $scope._mapGatewayPorTokem = {};
@@ -70,6 +185,9 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
     var _audioLiberado = false;
     var _ultimoAlertaMs = 0;
     var ALERTA_DEBOUNCE_MS = 250;
+    /** Janela do sinaleiro: inibe novos alertas (áudio+sirene) após um disparo. */
+    var SIRENE_ALERTA_MS = 10000;
+    var _alertaInibidoAte = 0;
 
     // Ordem completa → aguarda 10s → verde + success; excedente no meio → cancela e vermelho + warning
     var DELAY_SUCESSO_PEDIDO_MS = 10000;
@@ -111,26 +229,33 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
         return true;
     }
 
-    /** Alerta: beep-warning + sinaleiro vermelho (mesmo debounce). */
-    function tocarAlertaAviso() {
-        var tocou = tocarAudioPortal(_audioAlerta);
-        if (tocou) {
-            tocarSinaleiroPortal(4, 10000);
-        } else if (!_audioLiberado) {
-            // Ainda sem gesto do usuário: tenta só o sinaleiro
-            tocarSinaleiroPortal(4, 10000);
-        }
+    /**
+     * Alerta: beep-warning + sinaleiro vermelho.
+     * Após disparar, inibe novos alertas pela janela do sinaleiro (SIRENE_ALERTA_MS).
+     * @param {string} [deviceOverride] — nome base do leitor (ex. log aguardando)
+     */
+    function tocarAlertaAviso(deviceOverride) {
+        var agora = Date.now();
+        if (agora < _alertaInibidoAte) return;
+
+        _alertaInibidoAte = agora + SIRENE_ALERTA_MS;
+        tocarAudioPortal(_audioAlerta);
+        tocarSinaleiroPortal(4, SIRENE_ALERTA_MS, deviceOverride);
     }
 
     function tocarSucessoPedido() {
         tocarAudioPortal(_audioSucesso);
     }
 
-    /** Dispara beep: sem ordem | excedente | não cadastrado. */
+    function pedidoCarregadoAgora() {
+        return !!($scope._posicao && Array.isArray($scope._posicao.itens));
+    }
+
+    /** Dispara beep: excedente | não cadastrado (com ordem). Sem ordem: alerta via tag+sensor no log. */
     function avaliarAlertaLeitura(opts) {
         opts = opts || {};
         if (!opts.pedidoCarregado) {
-            tocarAlertaAviso();
+            // Sem ordem: alerta só quando houver tag + sensor (incl. tag no buffer)
             return;
         }
         if (opts.foraDaOrdem) {
@@ -142,18 +267,209 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
         }
     }
 
+    /** Alinha com BUFFER_TAGS_MS do backend (~15s). */
+    var BUFFER_TAGS_UI_MS = 15000;
+    /** deviceBase lower → { tagUpper: timestampMs } */
+    var _bufferTagsPorDevice = {};
+    /** deviceBase lower → timestampMs da última porta de sensor vista */
+    var _sensorVistoPorDevice = {};
+
+    function marcarTagBufferDevice(deviceBase, tag) {
+        var base = String(deviceBase || '').trim();
+        var t = String(tag || '').trim();
+        if (!base || !t || t.toUpperCase() === 'SENSOR') return;
+        var k = base.toLowerCase();
+        if (!_bufferTagsPorDevice[k]) _bufferTagsPorDevice[k] = {};
+        _bufferTagsPorDevice[k][t.toUpperCase()] = Date.now();
+    }
+
+    function marcarSensorVistoDevice(deviceBase) {
+        var base = String(deviceBase || '').trim();
+        if (!base) return;
+        _sensorVistoPorDevice[base.toLowerCase()] = Date.now();
+    }
+
+    function podarEstadoBufferDevice(deviceBase) {
+        var base = String(deviceBase || '').trim();
+        if (!base) return;
+        var k = base.toLowerCase();
+        var agora = Date.now();
+        var tags = _bufferTagsPorDevice[k];
+        if (tags) {
+            Object.keys(tags).forEach(function (t) {
+                if (agora - tags[t] > BUFFER_TAGS_UI_MS) delete tags[t];
+            });
+            if (!Object.keys(tags).length) delete _bufferTagsPorDevice[k];
+        }
+        if (_sensorVistoPorDevice[k] != null && agora - _sensorVistoPorDevice[k] > BUFFER_TAGS_UI_MS) {
+            delete _sensorVistoPorDevice[k];
+        }
+    }
+
+    function temTagESensorNoDevice(deviceBase) {
+        var base = String(deviceBase || '').trim();
+        if (!base) return false;
+        podarEstadoBufferDevice(base);
+        var k = base.toLowerCase();
+        if (_sensorVistoPorDevice[k] == null) return false;
+        var tags = _bufferTagsPorDevice[k];
+        return !!(tags && Object.keys(tags).length);
+    }
+
+    function limparEstadoBufferDevice(deviceBase) {
+        var base = String(deviceBase || '').trim();
+        if (!base) return;
+        var k = base.toLowerCase();
+        delete _bufferTagsPorDevice[k];
+        delete _sensorVistoPorDevice[k];
+    }
+
+    function limparSensorVistoDevice(deviceBase) {
+        var base = String(deviceBase || '').trim();
+        if (!base) return;
+        delete _sensorVistoPorDevice[base.toLowerCase()];
+    }
+
+    function destacarGatewayPorDeviceBase(deviceBase) {
+        if (!deviceBase) return;
+        var gwHit = ($scope._listGatewaysAceitos || []).find(function (g) {
+            var t = String((g && (g.tokem || g.descricao)) || '').trim().replace(/-[EeSs]$/, '');
+            return t && t.toLowerCase() === String(deviceBase).toLowerCase();
+        });
+        if (gwHit) $scope._gatewayUltimaLeitura = gwHit;
+    }
+
+    /**
+     * Sem ordem + já houve tag (mesmo em buffer, ≤15s) e qualquer sensor neste leitor → áudio + sirene.
+     */
+    function alertaSemOrdemTagESensor(deviceBase) {
+        if (pedidoCarregadoAgora()) return;
+        if (!temTagESensorNoDevice(deviceBase)) return;
+        destacarGatewayPorDeviceBase(deviceBase);
+        tocarAlertaAviso(deviceBase || null);
+    }
+
     document.addEventListener('click', liberarAudioAlerta, { once: true });
     document.addEventListener('touchstart', liberarAudioAlerta, { once: true });
 
-    function tocarSinaleiroPortal(cor, tempo) {
-        var name = $scope.deviceSinaleiroAtual && $scope.deviceSinaleiroAtual();
+    function tocarSinaleiroPortal(cor, tempo, deviceOverride) {
+        var name = deviceOverride
+            ? String(deviceOverride).trim().replace(/-[EeSs]$/, '')
+            : ($scope.deviceSinaleiroAtual && $scope.deviceSinaleiroAtual());
         if (!name) return;
         $http.post(uteisService.apiUrl_() + '/x_naturgy/sinaleiro', {
             deviceName: name,
             cor: Number(cor),
-            tempo: tempo != null ? Number(tempo) : 10000
+            tempo: tempo != null ? Number(tempo) : SIRENE_ALERTA_MS
         }).catch(function (err) {
             console.warn('[portal_posicao] sinaleiro auto:', err && err.message);
+        });
+    }
+
+    /**
+     * Inclui/atualiza tag bufferizada (pré-sensor / aguardando / retida) na lista de leituras.
+     */
+    function upsertLeituraAguardando(log, fase) {
+        if (!log || !log.tag || String(log.tag).toUpperCase() === 'SENSOR') return null;
+        var chave = $scope.normalizaTag(log.tag);
+        if (!chave) return null;
+
+        // Tag acabou de sair pelo sentido contrário — não recoloca pelo buffer
+        if (!pedidoCarregadoAgora() && foiResolvidoSemOrdemRecente(chave)) {
+            return null;
+        }
+
+        var faseBuffer = String(fase || log.status_sensor || 'aguardando').toLowerCase();
+        if (faseBuffer !== 'pre_sensor' && faseBuffer !== 'tag_retida') faseBuffer = 'aguardando';
+
+        var agora = agoraFormatado();
+        var semOrdem = !pedidoCarregadoAgora();
+        var existente = $scope._mapLeituras[chave];
+        if (existente) {
+            existente.contagem = (existente.contagem || 0) + 1;
+            existente.data_hora = agora;
+            if (log.rssi != null && log.rssi !== '') existente.rssi = log.rssi;
+            existente.aguardandoSensor = true;
+            existente.faseBuffer = faseBuffer;
+            if (log.device) existente.device = log.device;
+            if (log.tokem) existente.tokem = log.tokem;
+            else if (log.device && !existente.tokem) existente.tokem = log.device;
+            if (semOrdem) marcarLeituraSemOrdem(existente, existente.sentido || '');
+            return existente;
+        }
+
+        var linha = {
+            tag: log.tag,
+            rssi: log.rssi != null ? log.rssi : '',
+            contagem: 1,
+            data_hora: agora,
+            tokem: log.tokem || log.device || '',
+            device: log.device || '',
+            excedente: false,
+            cadastrado: null,
+            descricao: '',
+            _infoOk: false,
+            aguardandoSensor: true,
+            faseBuffer: faseBuffer
+        };
+        if (semOrdem) marcarLeituraSemOrdem(linha, '');
+        $scope._mapLeituras[chave] = linha;
+        $scope._leituras.unshift(linha);
+        if ($scope._leituras.length > MAX_LEITURAS) {
+            var removida = $scope._leituras.pop();
+            if (removida) {
+                delete $scope._mapLeituras[$scope.normalizaTag(removida.tag)];
+            }
+        }
+        agendarLookupTag(chave, log.tag, linha);
+        return linha;
+    }
+
+    /** Sirene vermelha 30s nos gateways aceitos deste portal (ao fechar a aba). */
+    var SIRENE_FECHAMENTO_MS = 30000;
+    var _sireneFechamentoEnviada = false;
+
+    function baseDeviceSinaleiroTokem(tokem) {
+        return String(tokem || '').trim().replace(/-[EeSs]$/, '');
+    }
+
+    function devicesSinaleiroDoPortal() {
+        var map = {};
+        ($scope._listGatewaysAceitos || []).forEach(function (g) {
+            if (!g) return;
+            var base = baseDeviceSinaleiroTokem(g.tokem || g.descricao);
+            if (base) map[base] = true;
+        });
+        return Object.keys(map);
+    }
+
+    function dispararSireneFechamentoPortal() {
+        if (_sireneFechamentoEnviada) return;
+        var devices = devicesSinaleiroDoPortal();
+        if (!devices.length) return;
+        _sireneFechamentoEnviada = true;
+
+        var url = uteisService.apiUrl_() + '/x_naturgy/sinaleiro';
+        console.log('[portal_posicao] sirene fechamento 30s', devices);
+
+        devices.forEach(function (deviceName) {
+            var body = JSON.stringify({
+                deviceName: deviceName,
+                cor: 4,
+                tempo: SIRENE_FECHAMENTO_MS
+            });
+            try {
+                if (typeof fetch === 'function') {
+                    fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: body,
+                        keepalive: true
+                    }).catch(function () { /* aba fechando */ });
+                } else if (navigator.sendBeacon) {
+                    navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
+                }
+            } catch (e) { /* ignore */ }
         });
     }
 
@@ -291,6 +607,7 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
         _onPageHidePortal = function () {
             if (_ignorandoUnloadPortal) return;
             salvarFechamentoPortal();
+            dispararSireneFechamentoPortal();
             // Avisa o servidor antes da aba morrer (fallback: disconnect no server.js)
             try {
                 if ($scope.socket && $scope._regConta && $scope._regConta._id) {
@@ -439,16 +756,17 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
     };
 
     /**
-     * Gateway: Checagem + Com Divergência + Sem Alertas.
+     * Gateway: Checagem + Sem Divergência + Sem Alertas.
      * Item cadastrado fora da ordem → inclui como esperado (não alerta).
+     * Só item não cadastrado → excedente + alerta.
      */
-    function gatewayChecagemComDivergenciaSemAlerta(g) {
+    function gatewayChecagemSemDivergenciaSemAlerta(g) {
         if (!g) return false;
         var acao = String(g.portal_acao || '').trim().toLowerCase();
         var reg = String(g.portal_registro_ordem || '').trim().toLowerCase();
         var alerta = String(g.portal_alertas || '0').trim().toLowerCase();
         return acao === 'checagem'
-            && reg === 'com_divergencia'
+            && reg === 'sem_divergencia'
             && alerta !== 'itens_fora_ordem';
     }
 
@@ -470,6 +788,8 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
         if (!$scope._posicao) return null;
         if (!$scope._posicao.itens) $scope._posicao.itens = [];
 
+        var eanInfo = (info && (info.ean || eanDeCategoriaId(info.id_categoria))) || '';
+
         var existente = tagPertenceAoPedido(chave);
         if (existente) {
             if (isExcedenteItem(existente)) {
@@ -489,19 +809,25 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
                 if (info.inf_compl_1 && !existente.inf_compl_1) {
                     existente.inf_compl_1 = info.inf_compl_1;
                 }
+                if (!existente.ean) {
+                    existente.ean = eanInfo || eanDeCategoriaId(existente.id_categoria);
+                }
+            } else if (!existente.ean) {
+                existente.ean = eanDeCategoriaId(existente.id_categoria);
             }
             if (leitura && leitura.rssi != null) existente.rssi = leitura.rssi;
             return existente;
         }
 
+        var idCatNovo = (info && info.id_categoria) || null;
         var item = {
             _id: 'div-' + chave,
             tag: (leitura && leitura.tag) || chave,
             id_item: (info && info.id_item) || null,
-            id_categoria: (info && info.id_categoria) || null,
+            id_categoria: idCatNovo,
             descricao: (info && info.descricao) || '',
             inf_compl_1: (info && (info.inf_compl_1 || info.inf_compl1)) || '',
-            ean: '',
+            ean: eanInfo || eanDeCategoriaId(idCatNovo) || '',
             rssi: leitura && leitura.rssi != null ? leitura.rssi : '',
             quantidade: 1,
             status: 'concluido',
@@ -515,11 +841,12 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
     }
 
     /**
-     * Após lookup: com divergência, cadastrado entra na ordem; não cadastrado = excedente+alerta.
+     * Após lookup (Checagem + Sem Divergência + Sem Alertas):
+     * cadastrado entra na ordem; não cadastrado = excedente+alerta.
      */
     function resolverDivergenciaAposLookup(linha, info) {
         if (!linha || !info) return;
-        if (!gatewayChecagemComDivergenciaSemAlerta($scope._gatewayUltimaLeitura)) return;
+        if (!gatewayChecagemSemDivergenciaSemAlerta($scope._gatewayUltimaLeitura)) return;
         if (!$scope._posicao || $scope.isModoRetorno()) return;
 
         var chave = $scope.normalizaTag(linha.tag);
@@ -1068,6 +1395,16 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
         return (cat && cat.descricao) || (typeof idCat === 'object' ? (idCat.descricao || '') : '');
     }
 
+    /** EAN (SKU Infor) a partir da categoria — usado em recebimento / Sem Divergência. */
+    function eanDeCategoriaId(idCat) {
+        if (!idCat) return '';
+        if (typeof idCat === 'object' && idCat.ean) return String(idCat.ean).trim();
+        if (!_mapCategorias) return '';
+        var id = typeof idCat === 'object' ? idCat._id : idCat;
+        var cat = _mapCategorias[String(id || '').trim()];
+        return (cat && cat.ean) ? String(cat.ean).trim() : '';
+    }
+
     function aplicarInfoNaLinha(linha, info) {
         if (!linha || !info) return;
         var eraDesconhecido = linha.cadastrado == null;
@@ -1078,29 +1415,35 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
         if (info.id_categoria) linha.id_categoria = info.id_categoria;
         linha._infoOk = true;
 
-        // Com divergência: cadastrado fora da ordem → inclui; não cadastrado → excedente+alerta
+        // Sem divergência: cadastrado fora da ordem → inclui; não cadastrado → excedente+alerta
         if (eraDesconhecido) {
             resolverDivergenciaAposLookup(linha, info);
         }
 
         // Não cadastrado: alerta só se ainda não coberto por “sem ordem” / “excedente”
         // (esses já disparam em onRecebeLeitura). Aqui cobre item esperado da ordem.
-        // Em modo divergência o alerta de fora da ordem já foi tratado acima.
+        // Em modo Sem Divergência o alerta de fora da ordem já foi tratado acima.
         if (eraDesconhecido && linha.cadastrado === false
-            && !gatewayChecagemComDivergenciaSemAlerta($scope._gatewayUltimaLeitura)) {
+            && !gatewayChecagemSemDivergenciaSemAlerta($scope._gatewayUltimaLeitura)) {
             var temPedido = !!($scope._posicao && Array.isArray($scope._posicao.itens));
             if (temPedido && !linha.excedente) {
                 tocarAlertaAviso();
             }
         }
 
-        // Atualiza descrição / inf_compl do item no pedido, se existir
+        // Atualiza descrição / inf_compl / ean do item no pedido, se existir
         var chave = $scope.normalizaTag(linha.tag);
         var ped = chave ? tagPertenceAoPedido(chave) : null;
         if (ped) {
             if (info.descricao) ped.descricao = info.descricao;
             if (linha.inf_compl_1 && !ped.inf_compl_1) ped.inf_compl_1 = linha.inf_compl_1;
+            if (info.id_categoria && !ped.id_categoria) ped.id_categoria = info.id_categoria;
+            if (!ped.ean) {
+                ped.ean = info.ean || eanDeCategoriaId(ped.id_categoria || info.id_categoria) || '';
+            }
         }
+        if (info.ean) linha.ean = info.ean;
+        else if (info.id_categoria && !linha.ean) linha.ean = eanDeCategoriaId(info.id_categoria);
     }
 
     function infoCacheUtil(info) {
@@ -1230,14 +1573,21 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
                 var idCat = item.id_categoria
                     ? (typeof item.id_categoria === 'object' ? item.id_categoria._id : item.id_categoria)
                     : null;
-                return resolverDescricaoItem(item).then(function (desc) {
-                    return {
-                        cadastrado: true,
-                        descricao: desc,
-                        inf_compl_1: inf,
-                        id_item: item._id,
-                        id_categoria: idCat
-                    };
+                return carregarCategoriasOnce().then(function () {
+                    return resolverDescricaoItem(item).then(function (desc) {
+                        var ean = eanDeCategoriaId(idCat);
+                        if (!ean && item.id_categoria && typeof item.id_categoria === 'object') {
+                            ean = String(item.id_categoria.ean || '').trim();
+                        }
+                        return {
+                            cadastrado: true,
+                            descricao: desc,
+                            inf_compl_1: inf,
+                            id_item: item._id,
+                            id_categoria: idCat,
+                            ean: ean || ''
+                        };
+                    });
                 });
             }).catch(function () {
                 return tentar(idx + 1);
@@ -1438,7 +1788,104 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
         return posicao;
     }
 
-    $scope.onBuscarPedido = async function () {
+    /**
+     * Extrai IDs não cadastrados da resposta da API (ordem / pick / receipt).
+     */
+    function extrairItensNaoCadastrados(integ) {
+        if (!integ) return [];
+        if (Array.isArray(integ.itens_nao_cadastrados) && integ.itens_nao_cadastrados.length) {
+            return integ.itens_nao_cadastrados;
+        }
+        return (integ.itens || [])
+            .filter(function (it) { return it && it.cadastrado === false; })
+            .map(function (it) { return it.id; });
+    }
+
+    /**
+     * Aplica resposta de integração (ordem / pickdetails / receiptdetails) no portal.
+     * @returns {Promise<boolean>} true se carregou posição
+     */
+    async function aplicarRespostaIntegracaoPedido(integ, opts) {
+        opts = opts || {};
+        var permitirFallbackLocal = opts.permitirFallbackLocal !== false;
+        var labelModo = opts.labelModo || '';
+
+        if (!integ) {
+            $scope._msgBusca = 'Erro ao consultar a integração.';
+            uteisService.onToast($scope._msgBusca, 'error', 3500, 'top-end');
+            return false;
+        }
+
+        $scope._origem = integ.origem || null;
+        $scope._itensNaoCadastrados = extrairItensNaoCadastrados(integ);
+
+        if (integ.motivo === 'ordem_nao_encontrada') {
+            if (permitirFallbackLocal) {
+                var posLocal = await buscarPosicaoLocal(String($scope._idDoc || '').trim());
+                if (posLocal) {
+                    $scope._posicao = prepararPosicaoCarregada(
+                        await enriquecerDescricoesPosicao(posLocal)
+                    );
+                    semearCacheDoPedido($scope._posicao);
+                    $scope._origem = 'posicao';
+                    $scope._itensNaoCadastrados = [];
+                    uteisService.onToast('Pedido encontrado na posição (local).', 'success', 2000, 'top-end');
+                    return true;
+                }
+            }
+            $scope._msgBusca = labelModo
+                ? ('Ordem não encontrada em ' + labelModo + '.')
+                : 'Ordem não encontrada.';
+            uteisService.onToast($scope._msgBusca, 'warning', 3000, 'top-end');
+            return false;
+        }
+
+        if (integ.motivo === 'itens_nao_cadastrados' || ($scope._itensNaoCadastrados.length && !integ.posicao)) {
+            $scope._msgBusca = 'Ordem encontrada, mas todos os itens precisam estar cadastrados (inf_compl1) antes de criar a posição.';
+            uteisService.onToast(
+                'Cadastre os inf_compl1: ' + ($scope._itensNaoCadastrados.join(', ') || '—'),
+                'warning',
+                5000,
+                'top-end'
+            );
+            return false;
+        }
+
+        if (integ.ok === false) {
+            $scope._msgBusca = integ.error || integ.mensagem || 'Falha na integração.';
+            uteisService.onToast($scope._msgBusca, 'error', 4000, 'top-end');
+            return false;
+        }
+
+        if (!integ.posicao) {
+            $scope._msgBusca = labelModo
+                ? ('Ordem não encontrada em ' + labelModo + '.')
+                : 'Ordem não encontrada.';
+            uteisService.onToast($scope._msgBusca, 'warning', 3000, 'top-end');
+            return false;
+        }
+
+        $scope._posicao = prepararPosicaoCarregada(
+            await enriquecerDescricoesPosicao(integ.posicao)
+        );
+        semearCacheDoPedido($scope._posicao);
+        $scope._origem = integ.origem || opts.origemPadrao || 'ordem';
+        uteisService.onToast(
+            'Pedido carregado (' + $scope._origem + ') — '
+                + (($scope._posicao.itens || []).length) + ' item(ns).',
+            'success',
+            2500,
+            'top-end'
+        );
+        return true;
+    }
+
+    /**
+     * Busca pedido.
+     * @param {string} [modoForcado] — ''/undefined = /ordem (auto);
+     *   'recebimento' → receiptdetails; 'saida' → pickdetails
+     */
+    $scope.onBuscarPedido = async function (modoForcado) {
         var idDoc = String($scope._idDoc || '').trim();
         if (!idDoc) {
             uteisService.onToast('Informe o número do pedido.', 'warning', 2500, 'top-end');
@@ -1449,7 +1896,11 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
             return;
         }
 
+        var modo = String(modoForcado || '').trim().toLowerCase();
+        if (modo === 'saída') modo = 'saida';
+
         $scope._buscando = true;
+        $scope._buscandoModo = modo || 'auto';
         resetSucessoPedido();
         $scope._posicao = null;
         $scope._origem = null;
@@ -1478,79 +1929,43 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
 
             var idApi = String(($scope._regConta && $scope._regConta.id_api) || '').trim();
 
-            // Com id_api: sempre sincroniza via /ordem (recria posicao com todos os itens
-            // cadastrados). Evita ficar preso numa posicao antiga incompleta.
+            // Recebimento / Saída forçados exigem id_api
+            if ((modo === 'recebimento' || modo === 'saida') && !idApi) {
+                $scope._msgBusca = 'Conta sem id_api — não é possível forçar Recebimento/Saída.';
+                uteisService.onToast($scope._msgBusca, 'warning', 3500, 'top-end');
+                return;
+            }
+
             if (idApi) {
+                var pathApi;
+                var labelModo = '';
+                var origemPadrao = 'ordem';
+                var permitirFallbackLocal = true;
+
+                if (modo === 'recebimento') {
+                    pathApi = '/receiptdetails/';
+                    labelModo = 'Recebimento';
+                    origemPadrao = 'receiptdetails';
+                    permitirFallbackLocal = false;
+                } else if (modo === 'saida') {
+                    pathApi = '/pickdetails/';
+                    labelModo = 'Saída';
+                    origemPadrao = 'pickdetails';
+                    permitirFallbackLocal = false;
+                } else {
+                    pathApi = '/ordem/';
+                }
+
                 var urlOrdem = '/' + encodeURIComponent(idApi)
-                    + '/ordem/' + encodeURIComponent(idDoc)
+                    + pathApi + encodeURIComponent(idDoc)
                     + '?id_conta=' + encodeURIComponent($scope._regConta._id);
 
                 var integ = await uteisService.getBase(urlOrdem);
-
-                if (!integ) {
-                    $scope._msgBusca = 'Erro ao consultar a integração.';
-                    uteisService.onToast($scope._msgBusca, 'error', 3500, 'top-end');
-                    return;
-                }
-
-                $scope._origem = integ.origem || null;
-                $scope._itensNaoCadastrados = Array.isArray(integ.itens_nao_cadastrados)
-                    ? integ.itens_nao_cadastrados
-                    : [];
-
-                if (integ.motivo === 'ordem_nao_encontrada') {
-                    // Fallback: posição local já existente
-                    var posLocal = await buscarPosicaoLocal(idDoc);
-                    if (posLocal) {
-                        $scope._posicao = prepararPosicaoCarregada(
-                            await enriquecerDescricoesPosicao(posLocal)
-                        );
-                        semearCacheDoPedido($scope._posicao);
-                        $scope._origem = 'posicao';
-                        $scope._itensNaoCadastrados = [];
-                        uteisService.onToast('Pedido encontrado na posição (local).', 'success', 2000, 'top-end');
-                        return;
-                    }
-                    $scope._msgBusca = 'Ordem não encontrada.';
-                    uteisService.onToast($scope._msgBusca, 'warning', 3000, 'top-end');
-                    return;
-                }
-
-                if (integ.motivo === 'itens_nao_cadastrados') {
-                    $scope._msgBusca = 'Ordem encontrada, mas todos os itens precisam estar cadastrados (inf_compl1) antes de criar a posição.';
-                    uteisService.onToast(
-                        'Cadastre os inf_compl1: ' + ($scope._itensNaoCadastrados.join(', ') || '—'),
-                        'warning',
-                        5000,
-                        'top-end'
-                    );
-                    return;
-                }
-
-                if (integ.ok === false) {
-                    $scope._msgBusca = integ.error || integ.mensagem || 'Falha na integração.';
-                    uteisService.onToast($scope._msgBusca, 'error', 4000, 'top-end');
-                    return;
-                }
-
-                if (!integ.posicao) {
-                    $scope._msgBusca = 'Ordem não encontrada.';
-                    uteisService.onToast($scope._msgBusca, 'warning', 3000, 'top-end');
-                    return;
-                }
-
-                $scope._posicao = prepararPosicaoCarregada(
-                    await enriquecerDescricoesPosicao(integ.posicao)
-                );
-                semearCacheDoPedido($scope._posicao);
-                $scope._origem = integ.origem || 'ordem';
-                uteisService.onToast(
-                    'Pedido carregado (' + $scope._origem + ') — '
-                        + (($scope._posicao.itens || []).length) + ' item(ns).',
-                    'success',
-                    2500,
-                    'top-end'
-                );
+                await aplicarRespostaIntegracaoPedido(integ, {
+                    permitirFallbackLocal: permitirFallbackLocal,
+                    labelModo: labelModo,
+                    origemPadrao: origemPadrao
+                });
                 return;
             }
 
@@ -1574,8 +1989,17 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
             uteisService.onToast($scope._msgBusca, 'error', 3500, 'top-end');
         } finally {
             $scope._buscando = false;
+            $scope._buscandoModo = null;
             $timeout(function () { $scope.$applyAsync(); });
         }
+    };
+
+    $scope.onBuscarRecebimento = function () {
+        return $scope.onBuscarPedido('recebimento');
+    };
+
+    $scope.onBuscarSaida = function () {
+        return $scope.onBuscarPedido('saida');
     };
 
     $scope.onLimparPedido = function () {
@@ -1588,6 +2012,15 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
         $scope._registrando = false;
         $scope._retornando = false;
         $scope._modoRetorno = false;
+        // Mantém só tags sem ordem aguardando sentido contrário
+        $scope._leituras = ($scope._leituras || []).filter(function (l) {
+            return !!(l && l.pendenteSentidoContrario);
+        });
+        $scope._mapLeituras = {};
+        ($scope._leituras || []).forEach(function (l) {
+            var k = $scope.normalizaTag(l && l.tag);
+            if (k) $scope._mapLeituras[k] = l;
+        });
     };
 
     $scope.podeRegistrarPosicao = function () {
@@ -1652,12 +2085,14 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
             statusFinal = statusItemParaPosicao(it.status || it._status_origem);
         }
 
+        var eanFinal = String(it.ean || '').trim() || eanDeCategoriaId(idCat || it.id_categoria) || '';
+
         return {
             _id: idItem,
             id_item: it.id_item || null,
             id_categoria: idCat || null,
             tag: it.tag || '',
-            ean: it.ean || '',
+            ean: eanFinal,
             rssi: it.rssi != null ? String(it.rssi) : '',
             inf_compl_1: it.inf_compl_1 || it.inf_compl1 || '',
             inf_compl_2: it.inf_compl_2 || it.inf_compl2 || '',
@@ -1952,7 +2387,7 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
 
                 function limparAposRegistro() {
                     $scope.onLimparPedido();
-                    $scope.onLimparLeituras();
+                    limparLeiturasAposFinalizarOrdem();
                 }
 
                 // Ordens de retorno/recebimento internas: não integra Naturgy
@@ -1970,6 +2405,7 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
                 }
 
                 // Mantém GET /x_naturgy/:id_posicao — decide Recebimento vs Saída pela loc. nível 2
+
                 var idPos = (docSalvo && docSalvo._id) || idPosRegistro;
                 return $http.get(
                     uteisService.apiUrl_() + '/x_naturgy/' + encodeURIComponent(idPos),
@@ -2007,6 +2443,11 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
         $scope._mapLeituras = {};
     };
 
+    /** Após finalizar/registrar ordem: zera o painel de Leituras RFID. */
+    function limparLeiturasAposFinalizarOrdem() {
+        $scope.onLimparLeituras();
+    }
+
     function labelInf1DaCategoria(idCat) {
         if (!idCat || !_mapCategorias) return 'Inf. Extra';
         var cat = _mapCategorias[String(idCat)];
@@ -2034,6 +2475,23 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
         if (typeof valor === 'object') return String(valor._id || '').trim();
         return String(valor).trim();
     }
+
+    /** Abre o mesmo modal de edição a partir de um item do pedido/ordem. */
+    $scope.onAbrirEditarItemPedido = function (it) {
+        if (!it || !it.tag) {
+            uteisService.onToast('Item sem tag para editar.', 'warning', 2500, 'top-end');
+            return;
+        }
+        $scope.onAbrirEditarItemLeitura({
+            tag: it.tag,
+            id_item: it.id_item || null,
+            id_categoria: it.id_categoria || null,
+            inf_compl_1: it.inf_compl_1 || '',
+            cadastrado: !!(it.id_item || it.inf_compl_1),
+            descricao: it.descricao || '',
+            _pedidoItem: it
+        });
+    };
 
     $scope.onAbrirEditarItemLeitura = function (linha) {
         if (!linha || !linha.tag) return;
@@ -2150,12 +2608,17 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
                 ($scope._leituras || []).forEach(function (l) {
                     if ($scope.normalizaTag(l.tag) === chave) aplicarInfoNaLinha(l, info);
                 });
-                var ped = tagPertenceAoPedido(chave);
+                var ped = tagPertenceAoPedido(chave)
+                    || (edit.linha && edit.linha._pedidoItem)
+                    || null;
                 if (ped) {
                     ped.descricao = descCat || ped.descricao;
                     ped.inf_compl_1 = payload.inf_compl1;
-                    if (!ped.id_item) ped.id_item = payload._id;
-                    if (!ped.id_categoria) ped.id_categoria = edit.id_categoria;
+                    ped.id_item = payload._id || ped.id_item;
+                    ped.id_categoria = edit.id_categoria || ped.id_categoria;
+                    if (cat && cat.ean != null && String(cat.ean).trim() !== '') {
+                        ped.ean = String(cat.ean).trim();
+                    }
                 }
 
                 if (_modalItemEdit) _modalItemEdit.hide();
@@ -2188,7 +2651,7 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
         var pedidoCarregado = !!($scope._posicao && Array.isArray($scope._posicao.itens));
         var itemPedido = tagPertenceAoPedido(chave);
         var modoRet = $scope.isModoRetorno();
-        var modoDivergencia = !modoRet && gatewayChecagemComDivergenciaSemAlerta($scope._gatewayUltimaLeitura);
+        var modoSemDivergencia = !modoRet && gatewayChecagemSemDivergenciaSemAlerta($scope._gatewayUltimaLeitura);
         var foraDaOrdem = false;
         if (pedidoCarregado) {
             // RET: tudo que está na lista é esperado na devolução; só tag nova é excedente
@@ -2213,10 +2676,10 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
             } else if (itemPedido && !isExcedenteItem(itemPedido)) {
                 marcarItemPedidoConcluido(itemPedido, leitura);
                 foraDaOrdem = false;
-            } else if (modoDivergencia) {
-                // Checagem + Com Divergência + Sem Alertas:
+            } else if (modoSemDivergencia) {
+                // Checagem + Sem Divergência + Sem Alertas:
                 // cadastrado → inclui na ordem / atualiza qtd esperada / sem alerta
-                // não cadastrado → excedente (como hoje)
+                // não cadastrado → excedente
                 var cachedDiv = $scope._mapInfoTag[chave];
                 if (cachedDiv && cachedDiv.cadastrado === true) {
                     adicionarItemEsperadoAoPedido(leitura, chave, cachedDiv);
@@ -2234,6 +2697,30 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
             atualizarStatusPedido();
         }
 
+        var sentidoAgora = sentidoDeTokemOuStatus(leitura.tokem, leitura.status_sensor || leitura.sentido);
+
+        // Sem ordem: -E sai da lista ao ler -S (e vice-versa); ignora eco duplicado
+        if (!pedidoCarregado) {
+            var acaoSemOrdem = processarLeituraSemOrdemSentido({
+                tag: leitura.tag,
+                tokem: leitura.tokem,
+                status: leitura.status_sensor || leitura.sentido,
+                rssi: leitura.rssi
+            });
+            if (acaoSemOrdem === 'removida' || acaoSemOrdem === 'ignorada') {
+                return;
+            }
+            if (acaoSemOrdem === 'atualizada') {
+                var atualizada = $scope._mapLeituras[chave];
+                avaliarAlertaLeitura({
+                    pedidoCarregado: false,
+                    foraDaOrdem: false,
+                    cadastrado: atualizada && atualizada.cadastrado
+                });
+                return;
+            }
+        }
+
         var existente = $scope._mapLeituras[chave];
 
         if (existente) {
@@ -2242,6 +2729,16 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
             existente.data_hora = agora;
             existente.tokem = leitura.tokem || existente.tokem;
             existente.excedente = foraDaOrdem || !!existente.excedente;
+            // Passou do buffer: sentido concluído / registro chegou
+            existente.aguardandoSensor = false;
+            existente.faseBuffer = null;
+            if (!pedidoCarregado) {
+                marcarLeituraSemOrdem(existente, sentidoAgora || sentidoDaLinha(existente));
+            } else {
+                existente.semOrdem = false;
+                existente.pendenteSentidoContrario = false;
+                if (sentidoAgora) existente.sentido = sentidoAgora;
+            }
             if (!existente._infoOk) {
                 agendarLookupTag(chave, leitura.tag, existente);
             } else if (foraDaOrdem) {
@@ -2250,7 +2747,7 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
                 if (noPedido && !noPedido.descricao && existente.descricao) {
                     noPedido.descricao = existente.descricao;
                 }
-            } else if (modoDivergencia && existente.cadastrado === true && existente.excedente) {
+            } else if (modoSemDivergencia && existente.cadastrado === true && existente.excedente) {
                 existente.excedente = false;
             }
             avaliarAlertaLeitura({
@@ -2258,6 +2755,11 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
                 foraDaOrdem: foraDaOrdem,
                 cadastrado: existente.cadastrado
             });
+            return;
+        }
+
+        // Sem ordem + resolvida há pouco: não recria
+        if (!pedidoCarregado && foiResolvidoSemOrdemRecente(chave)) {
             return;
         }
 
@@ -2272,15 +2774,20 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
             descricao: '',
             _infoOk: false
         };
+        if (!pedidoCarregado) {
+            marcarLeituraSemOrdem(linha, sentidoAgora);
+        } else if (sentidoAgora) {
+            linha.sentido = sentidoAgora;
+        }
 
         var cached = $scope._mapInfoTag[chave];
         if (cached && infoCacheUtil(cached)) {
             aplicarInfoNaLinha(linha, cached);
-            // Após aplicar cache em modo divergência, sincroniza flag excedente
-            if (modoDivergencia && linha.cadastrado === true) {
+            // Após aplicar cache em modo Sem Divergência, sincroniza flag excedente
+            if (modoSemDivergencia && linha.cadastrado === true) {
                 foraDaOrdem = false;
                 linha.excedente = false;
-            } else if (modoDivergencia && linha.cadastrado === false) {
+            } else if (modoSemDivergencia && linha.cadastrado === false) {
                 foraDaOrdem = true;
                 linha.excedente = true;
             }
@@ -2446,6 +2953,71 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
         if ($scope._portalLog.length > $scope._portalLogMax) {
             $scope._portalLog.length = $scope._portalLogMax;
         }
+
+        // Sem ordem: sirene quando houver tag (mesmo em buffer) + qualquer sensor neste leitor
+        if (!pedidoCarregadoAgora()) {
+            var deviceBase = baseDeviceSinaleiroTokem(data.device || data.tokem || '');
+
+            if (status === 'pre_sensor' || status === 'aguardando' || status === 'tag_retida') {
+                upsertLeituraAguardando(data, status);
+                marcarTagBufferDevice(deviceBase, data.tag);
+                // Tag após 1º sensor já implica sensor visto
+                if (status === 'aguardando') marcarSensorVistoDevice(deviceBase);
+                alertaSemOrdemTagESensor(deviceBase);
+            } else if (
+                status === 'sensor_1'
+                || status === 'sensor_entrada'
+                || status === 'sensor_saida'
+            ) {
+                marcarSensorVistoDevice(deviceBase);
+                // Backend informa tags vivas (≥ poda 15s) neste leitor
+                if (Number(data.tags_buffer) > 0) {
+                    marcarTagBufferDevice(deviceBase, '__buffer__');
+                } else {
+                    // Sem tag viva no servidor: não reaproveitar marcador antigo
+                    podarEstadoBufferDevice(deviceBase);
+                    var kBuf = String(deviceBase || '').toLowerCase();
+                    if (_bufferTagsPorDevice[kBuf]) {
+                        delete _bufferTagsPorDevice[kBuf]['__BUFFER__'];
+                        if (!Object.keys(_bufferTagsPorDevice[kBuf]).length) {
+                            delete _bufferTagsPorDevice[kBuf];
+                        }
+                    }
+                }
+                alertaSemOrdemTagESensor(deviceBase);
+            } else if (status === 'entrada' || status === 'saida') {
+                limparEstadoBufferDevice(deviceBase);
+                // -E ↔ -S: remove se sentido contrário; senão marca/atualiza pendência
+                if (data.tag && String(data.tag).toUpperCase() !== 'SENSOR') {
+                    var acaoLog = processarLeituraSemOrdemSentido({
+                        tag: data.tag,
+                        tokem: data.tokem,
+                        status: status,
+                        rssi: data.rssi
+                    });
+                    if (acaoLog === 'nova') {
+                        var chaveLog = $scope.normalizaTag(data.tag);
+                        if (chaveLog && !foiResolvidoSemOrdemRecente(chaveLog)) {
+                            upsertLeituraAguardando(data, 'aguardando');
+                            var nova = $scope._mapLeituras[chaveLog];
+                            if (nova) {
+                                nova.aguardandoSensor = false;
+                                nova.faseBuffer = null;
+                                marcarLeituraSemOrdem(
+                                    nova,
+                                    sentidoDeTokemOuStatus(data.tokem, status)
+                                );
+                                if (data.tokem) nova.tokem = data.tokem;
+                            }
+                        }
+                    }
+                }
+            } else if (status === 'sequencia_expirada' || status === 'sentido_expirado') {
+                // Sequência acabou: esquece o sensor; tags seguem com TTL de 15s
+                limparSensorVistoDevice(deviceBase);
+                podarEstadoBufferDevice(deviceBase);
+            }
+        }
     };
 
     $scope.onTogglePortalLog = function (forcar) {
@@ -2509,6 +3081,10 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
         if (_timerLookupTag) {
             clearTimeout(_timerLookupTag);
             _timerLookupTag = null;
+        }
+        if (!_ignorandoUnloadPortal) {
+            salvarFechamentoPortal();
+            dispararSireneFechamentoPortal();
         }
         removerListenersFechamentoPortal();
         if ($scope.socket) {

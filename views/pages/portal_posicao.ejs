@@ -88,6 +88,15 @@
   }
   .pom-panel-fill { height: 100%; }
   .pom-panel .card-body { padding: 1.1rem 1.25rem; }
+  .pom-panel.is-alerta-sem-ordem {
+    background: rgba(90, 24, 24, 0.55);
+    box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.4), 0 1px 3px rgba(0, 0, 0, 0.25);
+  }
+  .pom-panel.is-alerta-sem-ordem .pom-section-title { color: #fecaca; }
+  .pom-panel.is-alerta-sem-ordem .pom-section-sub { color: #fca5a5; }
+  .pom-leitura-row.is-sem-ordem td {
+    background: rgba(239, 68, 68, 0.1) !important;
+  }
 
   .pom-kpi .icon-box {
     width: 44px;
@@ -158,6 +167,26 @@
     font-weight: 600;
   }
   .pom-btn-primary:disabled { opacity: 0.5; }
+  .pom-btn-recebimento {
+    font-size: 0.85rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(34, 197, 94, 0.45);
+    background: rgba(22, 163, 74, 0.18);
+    color: #86efac;
+    font-weight: 600;
+  }
+  .pom-btn-recebimento:disabled { opacity: 0.5; }
+  .pom-btn-saida {
+    font-size: 0.85rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(251, 146, 60, 0.45);
+    background: rgba(234, 88, 12, 0.18);
+    color: #fdba74;
+    font-weight: 600;
+  }
+  .pom-btn-saida:disabled { opacity: 0.5; }
   .pom-btn-ghost {
     font-size: 0.85rem;
     padding: 0.45rem 0.9rem;
@@ -497,6 +526,12 @@
   .pom-tag-label-ok {
     color: #94a3b8;
   }
+  .pom-tag-label-aguardando {
+    color: #fbbf24;
+  }
+  .pom-leitura-row.is-aguardando td {
+    background: rgba(245, 158, 11, 0.08) !important;
+  }
   .pom-rssi { font-weight: 600; font-size: 0.78rem; color: #4ade80; }
   .pom-leitura-row { cursor: pointer; }
   .pom-leitura-row:hover td { background: rgba(59, 130, 246, 0.08) !important; }
@@ -718,12 +753,28 @@
                      autocomplete="off"
                      autofocus>
             </div>
-            <button type="button"
+            <!-- <button type="button"
                     class="pom-btn-primary"
                     ng-click="onBuscarPedido()"
                     ng-disabled="_buscando || !_idDoc">
-              <span ng-show="!_buscando"><i class="bi bi-search me-1"></i>Buscar</span>
-              <span ng-show="_buscando"><span class="spinner-border spinner-border-sm me-1"></span>Buscando…</span>
+              <span ng-show="!(_buscando && _buscandoModo == 'auto')"><i class="bi bi-search me-1"></i>Buscar</span>
+              <span ng-show="_buscando && _buscandoModo == 'auto'"><span class="spinner-border spinner-border-sm me-1"></span>Buscando…</span>
+            </button> -->
+            <button type="button"
+                    class="pom-btn-recebimento"
+                    ng-click="onBuscarRecebimento()"
+                    ng-disabled="_buscando || !_idDoc"
+                    title="Força busca na API de Recebimento (receiptkey)">
+              <span ng-show="!(_buscando && _buscandoModo == 'recebimento')"><i class="bi bi-box-arrow-in-down me-1"></i>Recebimento</span>
+              <span ng-show="_buscando && _buscandoModo == 'recebimento'"><span class="spinner-border spinner-border-sm me-1"></span>Recebimento…</span>
+            </button>
+            <button type="button"
+                    class="pom-btn-saida"
+                    ng-click="onBuscarSaida()"
+                    ng-disabled="_buscando || !_idDoc"
+                    title="Força busca na API de Saída (orderkey / pickdetails)">
+              <span ng-show="!(_buscando && _buscandoModo == 'saida')"><i class="bi bi-box-arrow-up me-1"></i>Saída</span>
+              <span ng-show="_buscando && _buscandoModo == 'saida'"><span class="spinner-border spinner-border-sm me-1"></span>Saída…</span>
             </button>
             <button type="button"
                     class="pom-btn-ghost"
@@ -915,10 +966,14 @@
                     <th>Tag</th>
                     <th>Inf.Extra</th>
                     <th>Status</th>
+                    <th style="width:1%"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr ng-repeat="it in _posicao.itens track by (it._id || $index)">
+                  <tr class="pom-leitura-row"
+                      ng-repeat="it in _posicao.itens track by (it._id || $index)"
+                      ng-click="onAbrirEditarItemPedido(it)"
+                      title="{{ it.tag ? 'Editar item' : 'Item sem tag' }}">
                     <td>{{ descricaoItem(it) }}</td>
                     <td><span class="pom-epc">{{ it.tag || '—' }}</span></td>
                     <td><span class="pom-epc">{{ it.inf_compl_1 || '—' }}</span></td>
@@ -931,9 +986,14 @@
                             ng-if="isModoRetorno() && isExcedenteItem(it)"
                             title="Item excedente na origem">Exc.</span>
                     </td>
+                    <td class="text-end pe-2">
+                      <i class="bi bi-pencil pom-leitura-edit"
+                         ng-if="it.tag"
+                         aria-hidden="true"></i>
+                    </td>
                   </tr>
                   <tr ng-if="!(_posicao.itens && _posicao.itens.length)">
-                    <td colspan="4" class="pom-empty py-4">Pedido sem itens.</td>
+                    <td colspan="5" class="pom-empty py-4">Pedido sem itens.</td>
                   </tr>
                 </tbody>
               </table>
@@ -944,19 +1004,23 @@
 
       <!-- Direita: Leituras RFID -->
       <div class="col-lg-7">
-        <div class="card pom-panel pom-panel-fill">
+        <div class="card pom-panel pom-panel-fill"
+             ng-class="{'is-alerta-sem-ordem': temLeiturasSemOrdemPendentes()}">
           <div class="card-body">
             <div class="d-flex align-items-start justify-content-between gap-2 mb-3">
               <div>
                 <h2 class="pom-section-title">Leituras RFID</h2>
-                <p class="pom-section-sub">Tags recebidas pelo Portal / Coletor </p>
+                <p class="pom-section-sub"
+                   ng-if="!temLeiturasSemOrdemPendentes()">Tags recebidas pelo Portal / Coletor </p>
+                <p class="pom-section-sub"
+                   ng-if="temLeiturasSemOrdemPendentes()">Sem ordem — aguarde leitura no sentido contrário</p>
               </div>
               <div class="d-flex align-items-center gap-2">
                 <span class="pom-count-pill">{{ _leituras.length }}</span>
-                <button type="button" class="pom-btn-ghost py-1 px-2" style="font-size:0.75rem"
+                <!-- <button type="button" class="pom-btn-ghost py-1 px-2" style="font-size:0.75rem"
                         ng-click="onLimparLeituras()" ng-disabled="!_leituras.length">
                   Limpar
-                </button>
+                </button> -->
               </div>
             </div>
 
@@ -979,14 +1043,32 @@
                 </thead>
                 <tbody>
                   <tr class="pom-leitura-row"
+                      ng-class="{'is-aguardando': l.aguardandoSensor, 'is-sem-ordem': l.pendenteSentidoContrario && !l.aguardandoSensor}"
                       ng-repeat="l in _leituras track by (l.tag + '-' + $index)"
                       ng-click="onAbrirEditarItemLeitura(l)"
-                      title="{{ l.cadastrado ? 'Editar item' : 'Cadastrar item' }}">
+                      title="{{ l.aguardandoSensor ? (l.faseBuffer === 'pre_sensor' ? 'Tag no buffer (pré-sensor)' : (l.faseBuffer === 'tag_retida' ? 'Tag retida no buffer' : 'Aguardando 2º sensor')) : (l.pendenteSentidoContrario ? ('Sem ordem · aguarda sentido contrário' + (l.sentido ? (' (viu ' + l.sentido + ')') : '')) : (l.cadastrado ? 'Editar item' : 'Cadastrar item')) }}">
                     <td>
+                      <div class="pom-tag-label pom-tag-label-aguardando"
+                           ng-if="l.aguardandoSensor && l.faseBuffer === 'pre_sensor'">
+                        <i class="bi bi-hourglass-split me-1"></i>Buffer · pré-sensor
+                      </div>
+                      <div class="pom-tag-label pom-tag-label-aguardando"
+                           ng-if="l.aguardandoSensor && l.faseBuffer === 'tag_retida'">
+                        <i class="bi bi-hourglass-split me-1"></i>Buffer · retida
+                      </div>
+                      <div class="pom-tag-label pom-tag-label-aguardando"
+                           ng-if="l.aguardandoSensor && l.faseBuffer !== 'pre_sensor' && l.faseBuffer !== 'tag_retida'">
+                        <i class="bi bi-hourglass-split me-1"></i>Aguardando 2º sensor
+                      </div>
                       <div class="pom-tag-label pom-tag-label-nao"
-                           ng-if="l._infoOk && l.cadastrado === false">Item não cadastrado</div>
+                           ng-if="!l.aguardandoSensor && l.pendenteSentidoContrario"
+                           style="color:#f87171">
+                        <i class="bi bi-arrow-left-right me-1"></i>Sem ordem · {{ l.sentido === 'entrada' ? 'aguarda saída' : (l.sentido === 'saida' ? 'aguarda entrada' : 'aguarda sentido contrário') }}
+                      </div>
+                      <div class="pom-tag-label pom-tag-label-nao"
+                           ng-if="!l.aguardandoSensor && !l.pendenteSentidoContrario && l._infoOk && l.cadastrado === false">Item não cadastrado</div>
                       <div class="pom-tag-label pom-tag-label-ok"
-                           ng-if="l._infoOk && l.cadastrado">{{ l.descricao || '—' }}</div>
+                           ng-if="!l.aguardandoSensor && !l.pendenteSentidoContrario && l._infoOk && l.cadastrado">{{ l.descricao || '—' }}</div>
                       <span class="pom-epc">{{ l.tag }}</span>
                     </td>
                     <td>

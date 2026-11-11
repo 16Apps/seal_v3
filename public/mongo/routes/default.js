@@ -23,10 +23,11 @@ const readline = require('readline');
 const axios = require('axios'); // se for enviar via HTTP
 const moment = require('moment');
 
-// const baseUrl = 'https://connectiot-app.azurewebsites.net';
-const baseUrl = 'https://sealv3-production.up.railway.app';
 // const baseUrl = 'http://localhost:3000';
+const baseUrl = 'https://sealv3-production.up.railway.app';
+
 // const baseUrl = 'http://10.10.20.101:3000';
+// const baseUrl = 'https://connectiot-app.azurewebsites.net';
 
 module.exports = (app, dbConnection) => {
 

@@ -28,14 +28,18 @@ const { setTimeout: sleep } = require('timers/promises');
 const moment = require('moment')
 const cron = require('node-cron');
 
-// let _urlRegistro = 'https://connectiot-app.azurewebsites.net/_bd/registro';
+
 let _urlRegistro = 'https://sealv3-production.up.railway.app/_bd/registro';
 let _urlRegistroLocal = 'http://localhost:3000/_bd/registro';
 
-
-// let _urlServer = 'https://connectiot-app.azurewebsites.net';
 let _urlServer = 'https://sealv3-production.up.railway.app';
 let _urlServerLocal = 'http://localhost:3000';
+
+// let _urlRegistro = 'https://connectiot-app.azurewebsites.net/_bd/registro';
+// let _urlServer = 'https://connectiot-app.azurewebsites.net';
+
+// let _urlRegistro = 'https://10.10.20.101/_bd/registro';
+// let _urlServer = 'http://10.10.20.101:3000';
 
 module.exports = (app, dbConnection) => {
 
