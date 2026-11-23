@@ -424,347 +424,214 @@ module.exports = (app, dbConnection) => {
         };
     }
 
-    app.post('/_bd/tracking', async (req, res) => {
-        try {
-            const body = req.body || {};
-            const tokem = strId(body.tokem);
-            let tag = strId(body.tag);
+    /**
+     * Processa uma única leitura de tracking.
+     * Retorna o objeto de resposta (não envia HTTP).
+     */
+    async function processarLeituraTracking(body, req) {
+        body = body || {};
+        const tokem = strId(body.tokem);
+        let tag = strId(body.tag);
 
-            if (!tokem || !tag) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Informe tokem e tag.'
-                });
-            }
-
-            const dataLeitura = parseDataLeituraBrasil(body.data_leitura);
-            const rssiNum = Number(body.rssi);
-
-            const gateway = await resolverGatewayPorTokem(tokem);
-            if (!gateway) {
-                return res.status(200).json({
-                    success: true,
-                    ignored: true,
-                    message: `Gateway ${tokem} não cadastrado/ativo`
-                });
-            }
-
-            if (!gateway.id_tracking_regra) {
-                return res.status(200).json({
-                    success: true,
-                    ignored: true,
-                    message: `Gateway ${gateway.tokem} sem regra de tracking vinculada`
-                });
-            }
-
-            const regra = await TrackingRegra.findOne({
-                _id: gateway.id_tracking_regra,
-                ativo: 1
-            });
-            if (!regra) {
-                return res.status(200).json({
-                    success: true,
-                    ignored: true,
-                    message: `Regra de tracking ${gateway.id_tracking_regra} não encontrada/ativa`
-                });
-            }
-
-            const loc = resolverLocalizacao(body, gateway);
-
-            let item = await Item.findOne({ tag, id_conta: gateway.id_conta });
-            if (!item) {
-                return res.status(200).json({
-                    success: true,
-                    ignored: true,
-                    message: `Item ${tag} não cadastrado na conta`
-                });
-            }
-            if (item.tag_secundaria) {
-                tag = String(item.tag_secundaria).trim();
-                const primario = await Item.findOne({ tag, id_conta: gateway.id_conta });
-                if (!primario) {
-                    return res.status(200).json({
-                        success: true,
-                        ignored: true,
-                        message: `Item primário ${tag} não cadastrado na conta`
-                    });
-                }
-                item = primario;
-            }
-
-            try {
-                const io = req.app.get('io');
-                if (io) {
-                    const payloadSocket = Object.assign({}, body, {
-                        data_leitura: dataLeitura,
-                        via: 'tracking',
-                        id_tracking_regra: regra._id
-                    });
-                    io.emit(gateway._id, payloadSocket);
-                    io.emit(gateway.id_conta, payloadSocket);
-                }
-            } catch (e) { /* ignore */ }
-
-            const janelaSeg = numParam(regra.janela_analise);
-            const toleranciaSeg = numParam(regra.tolerancia_sem_leitura); // tempo de permanência / lock
-            const limiarRssiRegra = limiarRssi(regra.minima_rssi); // 30 → -30; 0 → null (ignora)
-            const agora = dataLeitura.getTime();
-
-            // Filtro absoluto de RSSI (ex.: param 30 = -30; leitura -35 é ignorada)
-            if (limiarRssiRegra != null && !rssiAtendeMinimo(rssiNum, regra)) {
-                return res.status(200).json({
-                    success: true,
-                    ignored: true,
-                    message: `Leitura ignorada por RSSI (${rssiNum} dBm < mínimo ${limiarRssiRegra} dBm)`,
-                    rssi: rssiNum,
-                    minima_rssi_param: regra.minima_rssi,
-                    limiar_rssi: limiarRssiRegra
-                });
-            }
-
-            const leituraDoc = {
-                data_leitura: dataLeitura,
-                rssi: Number.isFinite(rssiNum) ? rssiNum : null,
-                antena: body.antena != null ? String(body.antena) : '',
-                tokem: tokem,
-                id_gateway: gateway._id,
-                bateria: body.bateria != null ? String(body.bateria) : '',
-                temperatura: body.temperatura != null ? String(body.temperatura) : '',
-                latitude: body.latitude != null ? String(body.latitude) : '',
-                longitude: body.longitude != null ? String(body.longitude) : '',
-                id_nivel_loc1: loc.id_nivel_loc1,
-                id_nivel_loc2: loc.id_nivel_loc2,
-                id_nivel_loc3: loc.id_nivel_loc3,
-                id_nivel_loc4: loc.id_nivel_loc4,
-                id_nivel_loc1_final: loc.id_nivel_loc1_final,
-                id_nivel_loc2_final: loc.id_nivel_loc2_final,
-                id_nivel_loc3_final: loc.id_nivel_loc3_final,
-                id_nivel_loc4_final: loc.id_nivel_loc4_final
+        if (!tokem || !tag) {
+            return {
+                success: false,
+                ignored: true,
+                message: 'Informe tokem e tag.',
+                tag: tag || null,
+                tokem: tokem || null
             };
+        }
 
-            const ultimoRegistro = await Registro.findOne({ tag, id_conta: gateway.id_conta })
-                .sort({ createdAt: -1 })
-                .limit(1);
+        const dataLeitura = parseDataLeituraBrasil(body.data_leitura);
+        const rssiNum = Number(body.rssi);
 
-            /**
-             * Tolerância / tempo de permanência (se > 0):
-             * - dentro do tempo + MESMO LOCAL (preenchido) → atualiza data_permanecia
-             * - dentro do tempo + outro gateway/local → IGNORA (não vira permanência no local novo)
-             * - após o tempo (gap) → novo ciclo (entrada), mesmo no mesmo local
-             */
-            let forcarNovoCiclo = false;
-            let gapPermanencia = null;
+        const gateway = await resolverGatewayPorTokem(tokem);
+        if (!gateway) {
+            return {
+                success: true,
+                ignored: true,
+                message: `Gateway ${tokem} não cadastrado/ativo`,
+                tag, tokem
+            };
+        }
 
-            if (toleranciaSeg > 0 && ultimoRegistro) {
-                const refUltima =
-                    ultimoRegistro.data_permanecia ||
-                    ultimoRegistro.updatedAt ||
-                    ultimoRegistro.data_registro;
+        if (!gateway.id_tracking_regra) {
+            return {
+                success: true,
+                ignored: true,
+                message: `Gateway ${gateway.tokem} sem regra de tracking vinculada`,
+                tag, tokem
+            };
+        }
 
-                const gap = diffSegundos(refUltima, dataLeitura);
-                gapPermanencia = gap;
-                const mesmoGateway = strId(ultimoRegistro.id_gateway) === strId(gateway._id);
-                const mesmoLocal = mesmoLocalReal(
-                    ultimoRegistro.id_nivel_loc1, ultimoRegistro.id_nivel_loc2,
-                    ultimoRegistro.id_nivel_loc3, ultimoRegistro.id_nivel_loc4,
-                    loc.id_nivel_loc1, loc.id_nivel_loc2, loc.id_nivel_loc3, loc.id_nivel_loc4
-                );
+        const regra = await TrackingRegra.findOne({
+            _id: gateway.id_tracking_regra,
+            ativo: 1
+        });
+        if (!regra) {
+            return {
+                success: true,
+                ignored: true,
+                message: `Regra de tracking ${gateway.id_tracking_regra} não encontrada/ativa`,
+                tag, tokem
+            };
+        }
 
-                if (gap >= 0 && gap <= toleranciaSeg) {
-                    // Permanência só no mesmo local real — troca A→B nunca atualiza como permanência
-                    if (mesmoLocal) {
-                        const aplicado = await atualizarPermanencia({
-                            gateway, item, tag, loc, leitura: leituraDoc, dataLeitura, ultimoRegistro
-                        });
-                        return res.status(200).json({
-                            success: true,
-                            ignored: false,
-                            applied: true,
-                            permanence: true,
-                            message: aplicado.retorno,
-                            status: aplicado.status,
-                            gap_segundos: gap,
-                            tolerancia_segundos: toleranciaSeg,
-                            id_registro: aplicado.registro && aplicado.registro._id,
-                            regra: { _id: regra._id, descricao: regra.descricao }
-                        });
-                    }
+        const loc = resolverLocalizacao(body, gateway);
 
-                    // Outro gateway / outro local ainda dentro da tolerância → não rouba
-                    return res.status(200).json({
-                        success: true,
-                        ignored: true,
-                        message: mesmoGateway
-                            ? `Leitura ignorada: local diferente dentro da tolerância (${gap}s / ${toleranciaSeg}s)`
-                            : `Leitura ignorada: outro gateway dentro da tolerância (${gap}s / ${toleranciaSeg}s desde a última leitura)`,
-                        gap_segundos: gap,
-                        tolerancia_segundos: toleranciaSeg,
-                        id_gateway_atual: ultimoRegistro.id_gateway,
-                        id_gateway_candidato: gateway._id
-                    });
-                }
-
-                // Gap > tolerância → próximo apply abre novo ciclo (entrada)
-                if (gap > toleranciaSeg) {
-                    forcarNovoCiclo = true;
-                }
-            }
-
-            // Sem janela de análise → aplica direto (respeita tempo_minimo_local se > 0)
-            if (janelaSeg <= 0) {
-                const tMin = tempoMinimoLocalOk(item, regra, loc, dataLeitura);
-                if (!tMin.ok) {
-                    return res.status(200).json({
-                        success: true,
-                        ignored: true,
-                        pending: true,
-                        message: tMin.motivo
-                    });
-                }
-
-                const aplicado = await aplicarLocalizacao({
-                    gateway, item, tag, loc, leitura: leituraDoc, dataLeitura, ultimoRegistro,
-                    forcarNovoCiclo, gapSegundos: gapPermanencia
-                });
-
-                return res.status(200).json({
+        let item = await Item.findOne({ tag, id_conta: gateway.id_conta });
+        if (!item) {
+            return {
+                success: true,
+                ignored: true,
+                message: `Item ${tag} não cadastrado na conta`,
+                tag, tokem
+            };
+        }
+        if (item.tag_secundaria) {
+            tag = String(item.tag_secundaria).trim();
+            const primario = await Item.findOne({ tag, id_conta: gateway.id_conta });
+            if (!primario) {
+                return {
                     success: true,
-                    ignored: false,
-                    applied: true,
-                    ciclo: !!aplicado.ciclo,
-                    message: aplicado.retorno,
-                    status: aplicado.status,
-                    gap_segundos: gapPermanencia,
-                    id_registro: aplicado.registro && aplicado.registro._id,
-                    regra: { _id: regra._id, descricao: regra.descricao }
-                });
+                    ignored: true,
+                    message: `Item primário ${tag} não cadastrado na conta`,
+                    tag, tokem
+                };
             }
+            item = primario;
+        }
 
-            // Guarda na janela de análise
-            await TrackingGuarda.updateMany(
-                {
-                    id_conta: gateway.id_conta,
-                    tag: tag,
-                    status: 'aberto',
-                    janela_fim: { $lt: dataLeitura }
-                },
-                { $set: { status: 'expirado', motivo: 'Janela de análise expirada' } }
+        try {
+            const io = req.app.get('io');
+            if (io) {
+                const payloadSocket = Object.assign({}, body, {
+                    data_leitura: dataLeitura,
+                    via: 'tracking',
+                    id_tracking_regra: regra._id
+                });
+                io.emit(gateway._id, payloadSocket);
+                io.emit(gateway.id_conta, payloadSocket);
+            }
+        } catch (e) { /* ignore */ }
+
+        const janelaSeg = numParam(regra.janela_analise);
+        const toleranciaSeg = numParam(regra.tolerancia_sem_leitura);
+        const limiarRssiRegra = limiarRssi(regra.minima_rssi);
+        const agora = dataLeitura.getTime();
+
+        if (limiarRssiRegra != null && !rssiAtendeMinimo(rssiNum, regra)) {
+            return {
+                success: true,
+                ignored: true,
+                message: `Leitura ignorada por RSSI (${rssiNum} dBm < mínimo ${limiarRssiRegra} dBm)`,
+                rssi: rssiNum,
+                minima_rssi_param: regra.minima_rssi,
+                limiar_rssi: limiarRssiRegra,
+                tag, tokem
+            };
+        }
+
+        const leituraDoc = {
+            data_leitura: dataLeitura,
+            rssi: Number.isFinite(rssiNum) ? rssiNum : null,
+            antena: body.antena != null ? String(body.antena) : '',
+            tokem: tokem,
+            id_gateway: gateway._id,
+            bateria: body.bateria != null ? String(body.bateria) : '',
+            temperatura: body.temperatura != null ? String(body.temperatura) : '',
+            latitude: body.latitude != null ? String(body.latitude) : '',
+            longitude: body.longitude != null ? String(body.longitude) : '',
+            id_nivel_loc1: loc.id_nivel_loc1,
+            id_nivel_loc2: loc.id_nivel_loc2,
+            id_nivel_loc3: loc.id_nivel_loc3,
+            id_nivel_loc4: loc.id_nivel_loc4,
+            id_nivel_loc1_final: loc.id_nivel_loc1_final,
+            id_nivel_loc2_final: loc.id_nivel_loc2_final,
+            id_nivel_loc3_final: loc.id_nivel_loc3_final,
+            id_nivel_loc4_final: loc.id_nivel_loc4_final
+        };
+
+        const ultimoRegistro = await Registro.findOne({ tag, id_conta: gateway.id_conta })
+            .sort({ createdAt: -1 })
+            .limit(1);
+
+        let forcarNovoCiclo = false;
+        let gapPermanencia = null;
+
+        if (toleranciaSeg > 0 && ultimoRegistro) {
+            const refUltima =
+                ultimoRegistro.data_permanecia ||
+                ultimoRegistro.updatedAt ||
+                ultimoRegistro.data_registro;
+
+            const gap = diffSegundos(refUltima, dataLeitura);
+            gapPermanencia = gap;
+            const mesmoGateway = strId(ultimoRegistro.id_gateway) === strId(gateway._id);
+            const mesmoLocal = mesmoLocalReal(
+                ultimoRegistro.id_nivel_loc1, ultimoRegistro.id_nivel_loc2,
+                ultimoRegistro.id_nivel_loc3, ultimoRegistro.id_nivel_loc4,
+                loc.id_nivel_loc1, loc.id_nivel_loc2, loc.id_nivel_loc3, loc.id_nivel_loc4
             );
 
-            let guarda = await TrackingGuarda.findOne({
-                id_conta: gateway.id_conta,
-                tag: tag,
-                status: 'aberto',
-                janela_fim: { $gte: dataLeitura }
-            }).sort({ createdAt: -1 });
+            if (gap >= 0 && gap <= toleranciaSeg) {
+                if (mesmoLocal) {
+                    const aplicado = await atualizarPermanencia({
+                        gateway, item, tag, loc, leitura: leituraDoc, dataLeitura, ultimoRegistro
+                    });
+                    return {
+                        success: true,
+                        ignored: false,
+                        applied: true,
+                        permanence: true,
+                        message: aplicado.retorno,
+                        status: aplicado.status,
+                        gap_segundos: gap,
+                        tolerancia_segundos: toleranciaSeg,
+                        id_registro: aplicado.registro && aplicado.registro._id,
+                        regra: { _id: regra._id, descricao: regra.descricao },
+                        tag, tokem
+                    };
+                }
 
-            if (!guarda) {
-                guarda = new TrackingGuarda({
-                    _id: shortid.generate(),
-                    id_conta: gateway.id_conta,
-                    id_tracking_regra: regra._id,
-                    id_item: item._id,
-                    tag: tag,
-                    status: 'aberto',
-                    janela_inicio: dataLeitura,
-                    janela_fim: new Date(agora + janelaSeg * 1000),
-                    leituras: [],
-                    confirmacoes: 0
-                });
-            }
-
-            guarda.leituras.push(leituraDoc);
-
-            const avaliacao = avaliarGuarda(guarda, regra);
-            guarda.confirmacoes = avaliacao.confirmacoes || 0;
-
-            if (avaliacao.candidato && avaliacao.candidato.amostra) {
-                const a = avaliacao.candidato.amostra;
-                guarda.melhor_rssi = avaliacao.candidato.melhor_rssi;
-                guarda.id_gateway_vencedor = a.id_gateway;
-                guarda.id_nivel_loc1 = a.id_nivel_loc1;
-                guarda.id_nivel_loc2 = a.id_nivel_loc2;
-                guarda.id_nivel_loc3 = a.id_nivel_loc3;
-                guarda.id_nivel_loc4 = a.id_nivel_loc4;
-                guarda.id_nivel_loc1_final = a.id_nivel_loc1_final;
-                guarda.id_nivel_loc2_final = a.id_nivel_loc2_final;
-                guarda.id_nivel_loc3_final = a.id_nivel_loc3_final;
-                guarda.id_nivel_loc4_final = a.id_nivel_loc4_final;
-            }
-
-            if (!avaliacao.ok) {
-                guarda.motivo = avaliacao.motivo;
-                await guarda.save();
-                return res.status(200).json({
+                return {
                     success: true,
-                    ignored: false,
-                    pending: true,
-                    message: avaliacao.motivo,
-                    guarda: {
-                        _id: guarda._id,
-                        leituras: guarda.leituras.length,
-                        confirmacoes: guarda.confirmacoes,
-                        janela_inicio: guarda.janela_inicio,
-                        janela_fim: guarda.janela_fim,
-                        melhor_rssi: guarda.melhor_rssi
-                    },
-                    regra: { _id: regra._id, descricao: regra.descricao }
-                });
+                    ignored: true,
+                    message: mesmoGateway
+                        ? `Leitura ignorada: local diferente dentro da tolerância (${gap}s / ${toleranciaSeg}s)`
+                        : `Leitura ignorada: outro gateway dentro da tolerância (${gap}s / ${toleranciaSeg}s desde a última leitura)`,
+                    gap_segundos: gap,
+                    tolerancia_segundos: toleranciaSeg,
+                    id_gateway_atual: ultimoRegistro.id_gateway,
+                    id_gateway_candidato: gateway._id,
+                    tag, tokem
+                };
             }
 
-            const locVencedor = {
-                id_nivel_loc1: guarda.id_nivel_loc1 || '',
-                id_nivel_loc2: guarda.id_nivel_loc2 || '',
-                id_nivel_loc3: guarda.id_nivel_loc3 || '',
-                id_nivel_loc4: guarda.id_nivel_loc4 || '',
-                id_nivel_loc1_final: guarda.id_nivel_loc1_final || '',
-                id_nivel_loc2_final: guarda.id_nivel_loc2_final || '',
-                id_nivel_loc3_final: guarda.id_nivel_loc3_final || '',
-                id_nivel_loc4_final: guarda.id_nivel_loc4_final || ''
-            };
+            if (gap > toleranciaSeg) {
+                forcarNovoCiclo = true;
+            }
+        }
 
-            const tMin = tempoMinimoLocalOk(item, regra, locVencedor, dataLeitura);
+        if (janelaSeg <= 0) {
+            const tMin = tempoMinimoLocalOk(item, regra, loc, dataLeitura);
             if (!tMin.ok) {
-                guarda.motivo = tMin.motivo;
-                await guarda.save();
-                return res.status(200).json({
+                return {
                     success: true,
-                    ignored: false,
+                    ignored: true,
                     pending: true,
                     message: tMin.motivo,
-                    guarda: {
-                        _id: guarda._id,
-                        leituras: guarda.leituras.length,
-                        confirmacoes: guarda.confirmacoes
-                    }
-                });
+                    tag, tokem
+                };
             }
 
-            let gatewayAplicar = gateway;
-            if (guarda.id_gateway_vencedor && String(guarda.id_gateway_vencedor) !== String(gateway._id)) {
-                const gwWin = await Gateway.findOne({ _id: guarda.id_gateway_vencedor, ativo: 1 });
-                if (gwWin) gatewayAplicar = gwWin;
-            }
-
-            const leituraVencedora = (avaliacao.candidato && avaliacao.candidato.amostra) || leituraDoc;
             const aplicado = await aplicarLocalizacao({
-                gateway: gatewayAplicar,
-                item,
-                tag,
-                loc: locVencedor,
-                leitura: leituraVencedora,
-                dataLeitura,
-                ultimoRegistro,
-                forcarNovoCiclo,
-                gapSegundos: gapPermanencia
+                gateway, item, tag, loc, leitura: leituraDoc, dataLeitura, ultimoRegistro,
+                forcarNovoCiclo, gapSegundos: gapPermanencia
             });
 
-            guarda.status = 'aplicado';
-            guarda.motivo = aplicado.retorno;
-            guarda.id_registro = aplicado.registro && aplicado.registro._id;
-            await guarda.save();
-
-            return res.status(200).json({
+            return {
                 success: true,
                 ignored: false,
                 applied: true,
@@ -773,14 +640,204 @@ module.exports = (app, dbConnection) => {
                 status: aplicado.status,
                 gap_segundos: gapPermanencia,
                 id_registro: aplicado.registro && aplicado.registro._id,
+                regra: { _id: regra._id, descricao: regra.descricao },
+                tag, tokem
+            };
+        }
+
+        await TrackingGuarda.updateMany(
+            {
+                id_conta: gateway.id_conta,
+                tag: tag,
+                status: 'aberto',
+                janela_fim: { $lt: dataLeitura }
+            },
+            { $set: { status: 'expirado', motivo: 'Janela de análise expirada' } }
+        );
+
+        let guarda = await TrackingGuarda.findOne({
+            id_conta: gateway.id_conta,
+            tag: tag,
+            status: 'aberto',
+            janela_fim: { $gte: dataLeitura }
+        }).sort({ createdAt: -1 });
+
+        if (!guarda) {
+            guarda = new TrackingGuarda({
+                _id: shortid.generate(),
+                id_conta: gateway.id_conta,
+                id_tracking_regra: regra._id,
+                id_item: item._id,
+                tag: tag,
+                status: 'aberto',
+                janela_inicio: dataLeitura,
+                janela_fim: new Date(agora + janelaSeg * 1000),
+                leituras: [],
+                confirmacoes: 0
+            });
+        }
+
+        guarda.leituras.push(leituraDoc);
+
+        const avaliacao = avaliarGuarda(guarda, regra);
+        guarda.confirmacoes = avaliacao.confirmacoes || 0;
+
+        if (avaliacao.candidato && avaliacao.candidato.amostra) {
+            const a = avaliacao.candidato.amostra;
+            guarda.melhor_rssi = avaliacao.candidato.melhor_rssi;
+            guarda.id_gateway_vencedor = a.id_gateway;
+            guarda.id_nivel_loc1 = a.id_nivel_loc1;
+            guarda.id_nivel_loc2 = a.id_nivel_loc2;
+            guarda.id_nivel_loc3 = a.id_nivel_loc3;
+            guarda.id_nivel_loc4 = a.id_nivel_loc4;
+            guarda.id_nivel_loc1_final = a.id_nivel_loc1_final;
+            guarda.id_nivel_loc2_final = a.id_nivel_loc2_final;
+            guarda.id_nivel_loc3_final = a.id_nivel_loc3_final;
+            guarda.id_nivel_loc4_final = a.id_nivel_loc4_final;
+        }
+
+        if (!avaliacao.ok) {
+            guarda.motivo = avaliacao.motivo;
+            await guarda.save();
+            return {
+                success: true,
+                ignored: false,
+                pending: true,
+                message: avaliacao.motivo,
                 guarda: {
                     _id: guarda._id,
                     leituras: guarda.leituras.length,
                     confirmacoes: guarda.confirmacoes,
-                    melhor_rssi: guarda.melhor_rssi,
-                    id_gateway_vencedor: guarda.id_gateway_vencedor
+                    janela_inicio: guarda.janela_inicio,
+                    janela_fim: guarda.janela_fim,
+                    melhor_rssi: guarda.melhor_rssi
                 },
-                regra: { _id: regra._id, descricao: regra.descricao }
+                regra: { _id: regra._id, descricao: regra.descricao },
+                tag, tokem
+            };
+        }
+
+        const locVencedor = {
+            id_nivel_loc1: guarda.id_nivel_loc1 || '',
+            id_nivel_loc2: guarda.id_nivel_loc2 || '',
+            id_nivel_loc3: guarda.id_nivel_loc3 || '',
+            id_nivel_loc4: guarda.id_nivel_loc4 || '',
+            id_nivel_loc1_final: guarda.id_nivel_loc1_final || '',
+            id_nivel_loc2_final: guarda.id_nivel_loc2_final || '',
+            id_nivel_loc3_final: guarda.id_nivel_loc3_final || '',
+            id_nivel_loc4_final: guarda.id_nivel_loc4_final || ''
+        };
+
+        const tMin = tempoMinimoLocalOk(item, regra, locVencedor, dataLeitura);
+        if (!tMin.ok) {
+            guarda.motivo = tMin.motivo;
+            await guarda.save();
+            return {
+                success: true,
+                ignored: false,
+                pending: true,
+                message: tMin.motivo,
+                guarda: {
+                    _id: guarda._id,
+                    leituras: guarda.leituras.length,
+                    confirmacoes: guarda.confirmacoes
+                },
+                tag, tokem
+            };
+        }
+
+        let gatewayAplicar = gateway;
+        if (guarda.id_gateway_vencedor && String(guarda.id_gateway_vencedor) !== String(gateway._id)) {
+            const gwWin = await Gateway.findOne({ _id: guarda.id_gateway_vencedor, ativo: 1 });
+            if (gwWin) gatewayAplicar = gwWin;
+        }
+
+        const leituraVencedora = (avaliacao.candidato && avaliacao.candidato.amostra) || leituraDoc;
+        const aplicado = await aplicarLocalizacao({
+            gateway: gatewayAplicar,
+            item,
+            tag,
+            loc: locVencedor,
+            leitura: leituraVencedora,
+            dataLeitura,
+            ultimoRegistro,
+            forcarNovoCiclo,
+            gapSegundos: gapPermanencia
+        });
+
+        guarda.status = 'aplicado';
+        guarda.motivo = aplicado.retorno;
+        guarda.id_registro = aplicado.registro && aplicado.registro._id;
+        await guarda.save();
+
+        return {
+            success: true,
+            ignored: false,
+            applied: true,
+            ciclo: !!aplicado.ciclo,
+            message: aplicado.retorno,
+            status: aplicado.status,
+            gap_segundos: gapPermanencia,
+            id_registro: aplicado.registro && aplicado.registro._id,
+            guarda: {
+                _id: guarda._id,
+                leituras: guarda.leituras.length,
+                confirmacoes: guarda.confirmacoes,
+                melhor_rssi: guarda.melhor_rssi,
+                id_gateway_vencedor: guarda.id_gateway_vencedor
+            },
+            regra: { _id: regra._id, descricao: regra.descricao },
+            tag, tokem
+        };
+    }
+
+    app.post('/_bd/tracking', async (req, res) => {
+        try {
+            const raw = req.body;
+            const isArray = Array.isArray(raw);
+            const lista = isArray
+                ? raw
+                : (raw && typeof raw === 'object' ? [raw] : []);
+
+            if (!lista.length) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Envie um objeto ou um array de leituras.'
+                });
+            }
+
+            // Sequencial: guarda/tolerância dependem da ordem
+            const results = [];
+            for (var i = 0; i < lista.length; i++) {
+                const itemBody = lista[i];
+                if (!itemBody || typeof itemBody !== 'object' || Array.isArray(itemBody)) {
+                    results.push({
+                        success: false,
+                        ignored: true,
+                        message: 'Item inválido no array (esperado objeto).',
+                        index: i
+                    });
+                    continue;
+                }
+                const r = await processarLeituraTracking(itemBody, req);
+                r.index = i;
+                results.push(r);
+            }
+
+            // Objeto único → mesma resposta de antes (compatível)
+            if (!isArray) {
+                const r = results[0];
+                const statusCode = (r && r.success === false && r.message === 'Informe tokem e tag.') ? 400 : 200;
+                return res.status(statusCode).json(r);
+            }
+
+            return res.status(200).json({
+                success: true,
+                total: results.length,
+                applied: results.filter(function (r) { return r.applied; }).length,
+                pending: results.filter(function (r) { return r.pending; }).length,
+                ignored: results.filter(function (r) { return r.ignored; }).length,
+                results: results
             });
 
         } catch (err) {
