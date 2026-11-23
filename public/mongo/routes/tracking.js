@@ -151,9 +151,10 @@ module.exports = (app, dbConnection) => {
     }
 
     /**
-     * Avalia a guarda: leituras_minima, confirmacoes_consecutivas.
-     * Só considera leituras que passam no limiar de RSSI (se minima_rssi > 0).
-     * Qualquer parâmetro 0 é ignorado.
+     * Avalia a guarda (disputa na janela):
+     * - filtra RSSI mínimo (se > 0)
+     * - exige leituras_minima / confirmacoes_consecutivas (0 = ignora)
+     * - vencedor = gateway com MAIS leituras; empate → melhor RSSI (-31 ganha de -50)
      */
     function avaliarGuarda(guarda, regra) {
         const leiturasBrutas = Array.isArray(guarda.leituras) ? guarda.leituras.slice() : [];
@@ -182,12 +183,14 @@ module.exports = (app, dbConnection) => {
             return { ok: false, motivo: `Aguardando leituras mínimas (${leituras.length}/${leiturasMin})` };
         }
 
+        // Disputa por gateway (cada um com seu local)
         const grupos = {};
         leituras.forEach(function (l) {
-            const k = chaveLocal(l.id_nivel_loc1, l.id_nivel_loc2, l.id_nivel_loc3, l.id_nivel_loc4);
+            const k = strId(l.id_gateway) || ('loc:' + chaveLocal(l.id_nivel_loc1, l.id_nivel_loc2, l.id_nivel_loc3, l.id_nivel_loc4));
             if (!grupos[k]) {
                 grupos[k] = {
                     key: k,
+                    id_gateway: strId(l.id_gateway),
                     count: 0,
                     melhor_rssi: -Infinity,
                     amostra: l,
@@ -198,7 +201,7 @@ module.exports = (app, dbConnection) => {
             g.count += 1;
             g.leituras.push(l);
             const r = Number(l.rssi);
-            // -37 > -38 → melhor sinal
+            // -31 > -50 → melhor sinal
             if (Number.isFinite(r) && r > g.melhor_rssi) {
                 g.melhor_rssi = r;
                 g.amostra = l;
@@ -207,19 +210,21 @@ module.exports = (app, dbConnection) => {
 
         const ordenados = Object.keys(grupos).map(function (k) { return grupos[k]; })
             .sort(function (a, b) {
-                if (b.melhor_rssi !== a.melhor_rssi) return b.melhor_rssi - a.melhor_rssi;
-                return b.count - a.count;
+                // 1º mais leituras; 2º melhor RSSI
+                if (b.count !== a.count) return b.count - a.count;
+                return b.melhor_rssi - a.melhor_rssi;
             });
 
         const vencedor = ordenados[0];
         if (!vencedor) {
-            return { ok: false, motivo: 'Sem candidato de localização' };
+            return { ok: false, motivo: 'Sem candidato de gateway/localização' };
         }
 
+        // Confirmações consecutivas do gateway vencedor no fim da série
         let consecutivas = 0;
         for (var i = leituras.length - 1; i >= 0; i--) {
             const l = leituras[i];
-            const k = chaveLocal(l.id_nivel_loc1, l.id_nivel_loc2, l.id_nivel_loc3, l.id_nivel_loc4);
+            const k = strId(l.id_gateway) || ('loc:' + chaveLocal(l.id_nivel_loc1, l.id_nivel_loc2, l.id_nivel_loc3, l.id_nivel_loc4));
             if (k === vencedor.key) consecutivas += 1;
             else break;
         }
@@ -227,7 +232,7 @@ module.exports = (app, dbConnection) => {
         if (confMin > 0 && consecutivas < confMin) {
             return {
                 ok: false,
-                motivo: `Aguardando confirmações consecutivas (${consecutivas}/${confMin})`,
+                motivo: `Aguardando confirmações consecutivas do gateway vencedor (${consecutivas}/${confMin})`,
                 candidato: vencedor,
                 confirmacoes: consecutivas
             };
@@ -235,10 +240,49 @@ module.exports = (app, dbConnection) => {
 
         return {
             ok: true,
-            motivo: 'Critérios da regra atendidos',
+            motivo: 'Disputa resolvida na janela',
             candidato: vencedor,
             confirmacoes: consecutivas
         };
+    }
+
+    /**
+     * Tolerância só para o gateway/local ganhador (ou o mesmo da presença atual):
+     * - dentro do tempo → permanência
+     * - após gap → novo ciclo
+     * Outro gateway ganhando disputa → troca de local (entrada), sem ignorar por tolerância.
+     */
+    function resolverToleranciaVencedor({ ultimoRegistro, gatewayVencedorId, locVencedor, dataLeitura, toleranciaSeg }) {
+        if (!ultimoRegistro || toleranciaSeg <= 0) {
+            return { soPermanencia: false, forcarNovoCiclo: false, gap: null };
+        }
+
+        const refUltima =
+            ultimoRegistro.data_permanecia ||
+            ultimoRegistro.updatedAt ||
+            ultimoRegistro.data_registro;
+        const gap = diffSegundos(refUltima, dataLeitura);
+
+        const mesmoGateway = strId(ultimoRegistro.id_gateway) === strId(gatewayVencedorId);
+        const mesmoLocal = mesmoLocalReal(
+            ultimoRegistro.id_nivel_loc1, ultimoRegistro.id_nivel_loc2,
+            ultimoRegistro.id_nivel_loc3, ultimoRegistro.id_nivel_loc4,
+            locVencedor.id_nivel_loc1, locVencedor.id_nivel_loc2,
+            locVencedor.id_nivel_loc3, locVencedor.id_nivel_loc4
+        );
+
+        // Tolerância só se o vencedor é o mesmo gateway ou o mesmo local da presença atual
+        if (!(mesmoGateway || mesmoLocal)) {
+            return { soPermanencia: false, forcarNovoCiclo: false, gap: gap, trocaLocal: true };
+        }
+
+        if (gap >= 0 && gap <= toleranciaSeg) {
+            return { soPermanencia: true, forcarNovoCiclo: false, gap: gap };
+        }
+        if (gap > toleranciaSeg) {
+            return { soPermanencia: false, forcarNovoCiclo: true, gap: gap };
+        }
+        return { soPermanencia: false, forcarNovoCiclo: false, gap: gap };
     }
 
     /**
@@ -557,17 +601,17 @@ module.exports = (app, dbConnection) => {
             .sort({ createdAt: -1 })
             .limit(1);
 
-        let forcarNovoCiclo = false;
-        let gapPermanencia = null;
-
+        /**
+         * Keep-alive rápido: SOMENTE mesmo gateway + mesmo local dentro da tolerância
+         * → atualiza permanência sem abrir disputa.
+         * Outro gateway NÃO é ignorado: entra na janela para disputar.
+         */
         if (toleranciaSeg > 0 && ultimoRegistro) {
             const refUltima =
                 ultimoRegistro.data_permanecia ||
                 ultimoRegistro.updatedAt ||
                 ultimoRegistro.data_registro;
-
             const gap = diffSegundos(refUltima, dataLeitura);
-            gapPermanencia = gap;
             const mesmoGateway = strId(ultimoRegistro.id_gateway) === strId(gateway._id);
             const mesmoLocal = mesmoLocalReal(
                 ultimoRegistro.id_nivel_loc1, ultimoRegistro.id_nivel_loc2,
@@ -575,46 +619,55 @@ module.exports = (app, dbConnection) => {
                 loc.id_nivel_loc1, loc.id_nivel_loc2, loc.id_nivel_loc3, loc.id_nivel_loc4
             );
 
-            if (gap >= 0 && gap <= toleranciaSeg) {
-                if (mesmoLocal) {
-                    const aplicado = await atualizarPermanencia({
-                        gateway, item, tag, loc, leitura: leituraDoc, dataLeitura, ultimoRegistro
-                    });
-                    return {
-                        success: true,
-                        ignored: false,
-                        applied: true,
-                        permanence: true,
-                        message: aplicado.retorno,
-                        status: aplicado.status,
-                        gap_segundos: gap,
-                        tolerancia_segundos: toleranciaSeg,
-                        id_registro: aplicado.registro && aplicado.registro._id,
-                        regra: { _id: regra._id, descricao: regra.descricao },
-                        tag, tokem
-                    };
-                }
-
+            if (mesmoGateway && mesmoLocal && gap >= 0 && gap <= toleranciaSeg) {
+                const aplicado = await atualizarPermanencia({
+                    gateway, item, tag, loc, leitura: leituraDoc, dataLeitura, ultimoRegistro
+                });
                 return {
                     success: true,
-                    ignored: true,
-                    message: mesmoGateway
-                        ? `Leitura ignorada: local diferente dentro da tolerância (${gap}s / ${toleranciaSeg}s)`
-                        : `Leitura ignorada: outro gateway dentro da tolerância (${gap}s / ${toleranciaSeg}s desde a última leitura)`,
+                    ignored: false,
+                    applied: true,
+                    permanence: true,
+                    message: aplicado.retorno,
+                    status: aplicado.status,
                     gap_segundos: gap,
                     tolerancia_segundos: toleranciaSeg,
-                    id_gateway_atual: ultimoRegistro.id_gateway,
-                    id_gateway_candidato: gateway._id,
+                    id_registro: aplicado.registro && aplicado.registro._id,
+                    regra: { _id: regra._id, descricao: regra.descricao },
+                    tag, tokem
+                };
+            }
+        }
+
+        // Sem janela → aplica direto; tolerância só se for o mesmo gateway/local
+        if (janelaSeg <= 0) {
+            const tol = resolverToleranciaVencedor({
+                ultimoRegistro,
+                gatewayVencedorId: gateway._id,
+                locVencedor: loc,
+                dataLeitura,
+                toleranciaSeg
+            });
+
+            if (tol.soPermanencia) {
+                const aplicado = await atualizarPermanencia({
+                    gateway, item, tag, loc, leitura: leituraDoc, dataLeitura, ultimoRegistro
+                });
+                return {
+                    success: true,
+                    ignored: false,
+                    applied: true,
+                    permanence: true,
+                    message: aplicado.retorno,
+                    status: aplicado.status,
+                    gap_segundos: tol.gap,
+                    tolerancia_segundos: toleranciaSeg,
+                    id_registro: aplicado.registro && aplicado.registro._id,
+                    regra: { _id: regra._id, descricao: regra.descricao },
                     tag, tokem
                 };
             }
 
-            if (gap > toleranciaSeg) {
-                forcarNovoCiclo = true;
-            }
-        }
-
-        if (janelaSeg <= 0) {
             const tMin = tempoMinimoLocalOk(item, regra, loc, dataLeitura);
             if (!tMin.ok) {
                 return {
@@ -628,7 +681,8 @@ module.exports = (app, dbConnection) => {
 
             const aplicado = await aplicarLocalizacao({
                 gateway, item, tag, loc, leitura: leituraDoc, dataLeitura, ultimoRegistro,
-                forcarNovoCiclo, gapSegundos: gapPermanencia
+                forcarNovoCiclo: !!tol.forcarNovoCiclo,
+                gapSegundos: tol.gap
             });
 
             return {
@@ -638,13 +692,14 @@ module.exports = (app, dbConnection) => {
                 ciclo: !!aplicado.ciclo,
                 message: aplicado.retorno,
                 status: aplicado.status,
-                gap_segundos: gapPermanencia,
+                gap_segundos: tol.gap,
                 id_registro: aplicado.registro && aplicado.registro._id,
                 regra: { _id: regra._id, descricao: regra.descricao },
                 tag, tokem
             };
         }
 
+        // --- Disputa na janela: todos os gateways entram na guarda ---
         await TrackingGuarda.updateMany(
             {
                 id_conta: gateway.id_conta,
@@ -710,7 +765,9 @@ module.exports = (app, dbConnection) => {
                     confirmacoes: guarda.confirmacoes,
                     janela_inicio: guarda.janela_inicio,
                     janela_fim: guarda.janela_fim,
-                    melhor_rssi: guarda.melhor_rssi
+                    melhor_rssi: guarda.melhor_rssi,
+                    id_gateway_vencedor: guarda.id_gateway_vencedor || null,
+                    leituras_vencedor: avaliacao.candidato ? avaliacao.candidato.count : 0
                 },
                 regra: { _id: regra._id, descricao: regra.descricao },
                 tag, tokem
@@ -727,6 +784,57 @@ module.exports = (app, dbConnection) => {
             id_nivel_loc3_final: guarda.id_nivel_loc3_final || '',
             id_nivel_loc4_final: guarda.id_nivel_loc4_final || ''
         };
+
+        let gatewayAplicar = gateway;
+        if (guarda.id_gateway_vencedor && String(guarda.id_gateway_vencedor) !== String(gateway._id)) {
+            const gwWin = await Gateway.findOne({ _id: guarda.id_gateway_vencedor, ativo: 1 });
+            if (gwWin) gatewayAplicar = gwWin;
+        }
+
+        // Tolerância APÓS a disputa, só se o vencedor for o mesmo gateway/local da presença
+        const tol = resolverToleranciaVencedor({
+            ultimoRegistro,
+            gatewayVencedorId: gatewayAplicar._id,
+            locVencedor,
+            dataLeitura,
+            toleranciaSeg
+        });
+
+        if (tol.soPermanencia) {
+            const aplicado = await atualizarPermanencia({
+                gateway: gatewayAplicar,
+                item,
+                tag,
+                loc: locVencedor,
+                leitura: (avaliacao.candidato && avaliacao.candidato.amostra) || leituraDoc,
+                dataLeitura,
+                ultimoRegistro
+            });
+            guarda.status = 'aplicado';
+            guarda.motivo = aplicado.retorno;
+            guarda.id_registro = aplicado.registro && aplicado.registro._id;
+            await guarda.save();
+            return {
+                success: true,
+                ignored: false,
+                applied: true,
+                permanence: true,
+                message: aplicado.retorno,
+                status: aplicado.status,
+                gap_segundos: tol.gap,
+                tolerancia_segundos: toleranciaSeg,
+                id_registro: aplicado.registro && aplicado.registro._id,
+                guarda: {
+                    _id: guarda._id,
+                    leituras: guarda.leituras.length,
+                    confirmacoes: guarda.confirmacoes,
+                    melhor_rssi: guarda.melhor_rssi,
+                    id_gateway_vencedor: guarda.id_gateway_vencedor
+                },
+                regra: { _id: regra._id, descricao: regra.descricao },
+                tag, tokem
+            };
+        }
 
         const tMin = tempoMinimoLocalOk(item, regra, locVencedor, dataLeitura);
         if (!tMin.ok) {
@@ -746,12 +854,6 @@ module.exports = (app, dbConnection) => {
             };
         }
 
-        let gatewayAplicar = gateway;
-        if (guarda.id_gateway_vencedor && String(guarda.id_gateway_vencedor) !== String(gateway._id)) {
-            const gwWin = await Gateway.findOne({ _id: guarda.id_gateway_vencedor, ativo: 1 });
-            if (gwWin) gatewayAplicar = gwWin;
-        }
-
         const leituraVencedora = (avaliacao.candidato && avaliacao.candidato.amostra) || leituraDoc;
         const aplicado = await aplicarLocalizacao({
             gateway: gatewayAplicar,
@@ -761,8 +863,8 @@ module.exports = (app, dbConnection) => {
             leitura: leituraVencedora,
             dataLeitura,
             ultimoRegistro,
-            forcarNovoCiclo,
-            gapSegundos: gapPermanencia
+            forcarNovoCiclo: !!tol.forcarNovoCiclo,
+            gapSegundos: tol.gap
         });
 
         guarda.status = 'aplicado';
@@ -777,14 +879,15 @@ module.exports = (app, dbConnection) => {
             ciclo: !!aplicado.ciclo,
             message: aplicado.retorno,
             status: aplicado.status,
-            gap_segundos: gapPermanencia,
+            gap_segundos: tol.gap,
             id_registro: aplicado.registro && aplicado.registro._id,
             guarda: {
                 _id: guarda._id,
                 leituras: guarda.leituras.length,
                 confirmacoes: guarda.confirmacoes,
                 melhor_rssi: guarda.melhor_rssi,
-                id_gateway_vencedor: guarda.id_gateway_vencedor
+                id_gateway_vencedor: guarda.id_gateway_vencedor,
+                leituras_vencedor: avaliacao.candidato ? avaliacao.candidato.count : 0
             },
             regra: { _id: regra._id, descricao: regra.descricao },
             tag, tokem
