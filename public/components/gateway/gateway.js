@@ -30,6 +30,8 @@ app.component('gateway', {
 
     $ctrl._regLeituras = [];
     $ctrl.socket = null;
+    $ctrl._listTrackingRegras = [];
+    $ctrl._regraTrackingSelecionada = null;
 
     function normalizaIdNivel(v) {
       if (v == null || v === '') return '';
@@ -58,6 +60,35 @@ app.component('gateway', {
 
     };
 
+    $ctrl.onCarregaTrackingRegras = async function () {
+      var idConta = $ctrl._regConta && $ctrl._regConta._id;
+      if (!idConta) {
+        $ctrl._listTrackingRegras = [];
+        return;
+      }
+      try {
+        var res = await uteisService.getBase(
+          '/_bd?c=trackingregra&id_conta=' + encodeURIComponent(idConta) + '&ativo=1&_sort=descricao'
+        );
+        $ctrl._listTrackingRegras = Array.isArray(res) ? res : [];
+      } catch (e) {
+        $ctrl._listTrackingRegras = [];
+        console.warn('[gateway] carregar tracking regras:', e);
+      }
+      $ctrl.onAtualizaRegraTrackingSelecionada();
+    };
+
+    $ctrl.onAtualizaRegraTrackingSelecionada = function () {
+      var id = String(($ctrl._editGateway && $ctrl._editGateway.id_tracking_regra) || '').trim();
+      if (!id) {
+        $ctrl._regraTrackingSelecionada = null;
+        return;
+      }
+      $ctrl._regraTrackingSelecionada = ($ctrl._listTrackingRegras || []).find(function (r) {
+        return r && String(r._id) === id;
+      }) || null;
+    };
+
     $ctrl.onEditar = async function (reg) {
 
       const tabTrigger = document.querySelector('#gateways-a-tab');
@@ -65,6 +96,7 @@ app.component('gateway', {
       tab.show();
 
       await $ctrl.onCarregaColaboradores();
+      await $ctrl.onCarregaTrackingRegras();
 
 
       if (reg == undefined) {
@@ -121,11 +153,14 @@ app.component('gateway', {
           watch_valor: '30',
           leitura_base: [],
 
+          id_tracking_regra: '',
+
           foto: '',
           _foto: '../assets/images/icon_cadastro.fw.png'
 
         };
 
+        $ctrl.onAtualizaRegraTrackingSelecionada();
 
         $ctrl._modoFixo = true;
 
@@ -136,6 +171,8 @@ app.component('gateway', {
         $ctrl._editGateway.gera_associao = "" + $ctrl._editGateway.gera_associao;
         $ctrl._editGateway.posicao_esperada_auto = "" + $ctrl._editGateway.posicao_esperada_auto;
         $ctrl._editGateway.id_categoria = $ctrl._editGateway.id_categoria;
+        $ctrl._editGateway.id_tracking_regra = normalizaIdNivel($ctrl._editGateway.id_tracking_regra);
+        $ctrl.onAtualizaRegraTrackingSelecionada();
 
         // Garante IDs string para o select casar com value="{{ item._id }}"
         $ctrl._editGateway.id_nivel_loc1 = normalizaIdNivel($ctrl._editGateway.id_nivel_loc1);

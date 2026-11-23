@@ -9,6 +9,7 @@ node_modules/
 # Logs
 *.log
 npm-debug.log*
+logs/rfid_raw/
 
 # Arquivos temporários
 .DS_Store

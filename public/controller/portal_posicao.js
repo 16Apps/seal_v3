@@ -189,7 +189,7 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
     var _ultimoAlertaMs = 0;
     var ALERTA_DEBOUNCE_MS = 250;
     /** Janela do sinaleiro: inibe novos alertas (áudio+sirene) após um disparo. */
-    var SIRENE_ALERTA_MS = 10000;
+    var SIRENE_ALERTA_MS = 5000;
     var _alertaInibidoAte = 0;
 
     // Ordem completa → aguarda 10s → verde + success; excedente no meio → cancela e vermelho + warning
@@ -232,18 +232,31 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
         return true;
     }
 
+    function resolverDeviceSinaleiro(deviceOverride) {
+        if (deviceOverride != null && String(deviceOverride).trim()) {
+            return String(deviceOverride).trim().replace(/-[EeSs]$/, '');
+        }
+        return ($scope.deviceSinaleiroAtual && $scope.deviceSinaleiroAtual()) || '';
+    }
+
     /**
      * Alerta: beep-warning + sinaleiro vermelho.
-     * Após disparar, inibe novos alertas pela janela do sinaleiro (SIRENE_ALERTA_MS).
+     * Só inibe a janela se houver device válido (evita card vermelho sem GPO).
      * @param {string} [deviceOverride] — nome base do leitor (ex. log aguardando)
      */
     function tocarAlertaAviso(deviceOverride) {
         var agora = Date.now();
         if (agora < _alertaInibidoAte) return;
 
+        var name = resolverDeviceSinaleiro(deviceOverride);
+        if (!name) {
+            console.warn('[portal_posicao] alerta sem device sinaleiro — GPO não enviado');
+            return;
+        }
+
         _alertaInibidoAte = agora + SIRENE_ALERTA_MS;
         tocarAudioPortal(_audioAlerta);
-        tocarSinaleiroPortal(4, SIRENE_ALERTA_MS, deviceOverride);
+        tocarSinaleiroPortal(4, SIRENE_ALERTA_MS, name);
     }
 
     function tocarSucessoPedido() {
@@ -271,7 +284,7 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
     }
 
     /** Alinha com BUFFER_TAGS_MS do backend (~15s). */
-    var BUFFER_TAGS_UI_MS = 15000;
+    var BUFFER_TAGS_UI_MS = 10000;
     /** deviceBase lower → { tagUpper: timestampMs } */
     var _bufferTagsPorDevice = {};
     /** deviceBase lower → timestampMs da última porta de sensor vista */
@@ -352,13 +365,25 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
         tocarAlertaAviso(deviceBase || null);
     }
 
+    /**
+     * Sem ordem: tag registrada com sentido (socket) → áudio + sinaleiro.
+     * Independente do portal_log (que às vezes não dispara o GPO nesse cenário).
+     */
+    function alertaSemOrdemPorRegistro(tokemOuDevice) {
+        if (pedidoCarregadoAgora()) return;
+        var deviceBase = baseDeviceSinaleiroTokem(tokemOuDevice || '');
+        if (!deviceBase) {
+            deviceBase = resolverDeviceSinaleiro(null);
+        }
+        if (deviceBase) destacarGatewayPorDeviceBase(deviceBase);
+        tocarAlertaAviso(deviceBase || null);
+    }
+
     document.addEventListener('click', liberarAudioAlerta, { once: true });
     document.addEventListener('touchstart', liberarAudioAlerta, { once: true });
 
     function tocarSinaleiroPortal(cor, tempo, deviceOverride) {
-        var name = deviceOverride
-            ? String(deviceOverride).trim().replace(/-[EeSs]$/, '')
-            : ($scope.deviceSinaleiroAtual && $scope.deviceSinaleiroAtual());
+        var name = resolverDeviceSinaleiro(deviceOverride);
         if (!name) return;
         $http.post(uteisService.apiUrl_() + '/x_naturgy/sinaleiro', {
             deviceName: name,
@@ -431,7 +456,7 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
     }
 
     /** Sirene vermelha 30s nos gateways aceitos deste portal (ao fechar a aba). */
-    var SIRENE_FECHAMENTO_MS = 30000;
+    var SIRENE_FECHAMENTO_MS = 20000;
     var _sireneFechamentoEnviada = false;
 
     function baseDeviceSinaleiroTokem(tokem) {
@@ -1012,9 +1037,10 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
         if (!key) return false;
         if ($scope._mapTokemAceito[key]) return true;
 
-        // Compatível com pares E/S (ex.: BCTN1-E ↔ BCTN1)
+        // Compatível com pares E/S (ex.: BCTN1-E ↔ BCTN1-S ↔ BCTN1)
         var base = key.replace(/-[ES]$/, '');
         if (base && base !== key && $scope._mapTokemAceito[base]) return true;
+        if (base && ($scope._mapTokemAceito[base + '-E'] || $scope._mapTokemAceito[base + '-S'])) return true;
         if ($scope._mapTokemAceito[key + '-E'] || $scope._mapTokemAceito[key + '-S']) return true;
         return false;
     }
@@ -2555,6 +2581,89 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
         $scope.onLimparLeituras();
     }
 
+    var _modalLimparLeituras = null;
+    $scope._senhaLimparLeituras = '';
+    $scope._msgSenhaLimpar = '';
+    $scope._validandoSenhaLimpar = false;
+
+    $scope.onAbrirModalLimparLeituras = function () {
+        if (!$scope._leituras || !$scope._leituras.length) return;
+        $scope._senhaLimparLeituras = '';
+        $scope._msgSenhaLimpar = '';
+        $scope._validandoSenhaLimpar = false;
+        var el = document.getElementById('modalLimparLeiturasPosicao');
+        if (!el || typeof bootstrap === 'undefined') return;
+        _modalLimparLeituras = bootstrap.Modal.getOrCreateInstance(el);
+        _modalLimparLeituras.show();
+        $timeout(function () {
+            var inp = el.querySelector('input[type="password"]');
+            if (inp) inp.focus();
+        }, 300);
+    };
+
+    $scope.onSenhaLimparKeydown = function ($event) {
+        if (!$event) return;
+        if ($event.key === 'Enter' || $event.keyCode === 13) {
+            $event.preventDefault();
+            $scope.onConfirmarLimparLeituras();
+        }
+    };
+
+    /**
+     * Valida senha contra colaborador ativo com perfil admin na conta.
+     * Limpa leituras só se houver match.
+     */
+    $scope.onConfirmarLimparLeituras = function () {
+        if ($scope._validandoSenhaLimpar) return;
+        var senha = String($scope._senhaLimparLeituras || '').trim();
+        if (!senha) {
+            $scope._msgSenhaLimpar = 'Informe a senha.';
+            return;
+        }
+        var idConta = ($scope._regConta && $scope._regConta._id) || '';
+        if (!idConta) {
+            $scope._msgSenhaLimpar = 'Conta não carregada.';
+            return;
+        }
+
+        $scope._validandoSenhaLimpar = true;
+        $scope._msgSenhaLimpar = '';
+
+        var url = '/_bd?c=colaborador'
+            + '&id_conta=' + encodeURIComponent(idConta)
+            + '&perfil=admin'
+            + '&ativo=1'
+            + '&senha=' + encodeURIComponent(senha);
+
+        uteisService.getBase(url)
+            .then(function (res) {
+                var lista = Array.isArray(res) ? res : (res ? [res] : []);
+                var ok = lista.some(function (c) {
+                    return c && String(c.senha || '') === senha
+                        && String(c.perfil || '').toLowerCase() === 'admin'
+                        && Number(c.ativo) !== 0;
+                });
+                if (!ok) {
+                    $scope._msgSenhaLimpar = 'Senha inválida ou sem perfil admin.';
+                    uteisService.onToast($scope._msgSenhaLimpar, 'error', 2500, 'top-end');
+                    return;
+                }
+                $scope.onLimparLeituras();
+                if (_modalLimparLeituras) _modalLimparLeituras.hide();
+                $scope._senhaLimparLeituras = '';
+                uteisService.onToast('Leituras RFID limpas.', 'success', 2000, 'top-end');
+            })
+            .catch(function (err) {
+                console.error('[portal_posicao] validar senha limpar:', err);
+                $scope._msgSenhaLimpar = 'Falha ao validar senha.';
+                uteisService.onToast($scope._msgSenhaLimpar, 'error', 2500, 'top-end');
+            })
+            .finally(function () {
+                $scope._validandoSenhaLimpar = false;
+                $scope.$applyAsync();
+            });
+    };
+
     function labelInf1DaCategoria(idCat) {
         if (!idCat || !_mapCategorias) return 'Inf. Extra';
         var cat = _mapCategorias[String(idCat)];
@@ -2819,19 +2928,25 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
                 status: leitura.status_sensor || leitura.sentido,
                 rssi: leitura.rssi
             });
-            if (acaoSemOrdem === 'removida' || acaoSemOrdem === 'ignorada') {
+            if (acaoSemOrdem === 'ignorada') {
+                return;
+            }
+            if (acaoSemOrdem === 'removida') {
+                // Retorno no sentido contrário: limpa pendência e também aciona sirene
+                alertaSemOrdemPorRegistro(leitura.tokem || '');
+                agendarSalvarLeiturasLocal();
                 return;
             }
             if (acaoSemOrdem === 'atualizada') {
                 var atualizada = $scope._mapLeituras[chave];
-                avaliarAlertaLeitura({
-                    pedidoCarregado: false,
-                    foraDaOrdem: false,
-                    cadastrado: atualizada && atualizada.cadastrado
-                });
+                alertaSemOrdemPorRegistro(
+                    leitura.tokem || (atualizada && atualizada.tokem) || ''
+                );
                 agendarSalvarLeiturasLocal();
                 return;
             }
+            // nova: sentido já definido + tag no registro → sinaleiro (não só o card vermelho)
+            alertaSemOrdemPorRegistro(leitura.tokem || '');
         }
 
         var existente = $scope._mapLeituras[chave];
@@ -3016,6 +3131,9 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
             if (tokem && gTokem && tokem === gTokem) return true;
             if (tokem && gDesc && tokem === gDesc) return true;
             var base = gTokem.replace(/-[ES]$/, '');
+            var tokemBase = tokem.replace(/-[ES]$/, '');
+            // Par E/S: P02-S pertence ao posto que aceita P02-E (mesma base)
+            if (tokemBase && base && tokemBase === base) return true;
             if (device && base && (device === base || deviceBase === base || device === gTokem)) return true;
             if (device && gDesc && (device === gDesc || deviceBase === gDesc)) return true;
             return false;
@@ -3106,7 +3224,6 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
                 }
                 alertaSemOrdemTagESensor(deviceBase);
             } else if (status === 'entrada' || status === 'saida') {
-                limparEstadoBufferDevice(deviceBase);
                 // -E ↔ -S: remove se sentido contrário; senão marca/atualiza pendência
                 if (data.tag && String(data.tag).toUpperCase() !== 'SENSOR') {
                     var acaoLog = processarLeituraSemOrdemSentido({
@@ -3131,7 +3248,21 @@ app.controller('portalPosicaoCtrl', function ($scope, $timeout, $http, uteisServ
                             }
                         }
                     }
+                    // Sensor 1+2 já fecharam e a tag veio depois → alerta
+                    // Inclui 'removida': retorno no sentido contrário também aciona sirene
+                    if (
+                        acaoLog === 'nova'
+                        || acaoLog === 'atualizada'
+                        || acaoLog === 'removida'
+                    ) {
+                        marcarSensorVistoDevice(deviceBase);
+                        marcarTagBufferDevice(deviceBase, data.tag);
+                        alertaSemOrdemPorRegistro(
+                            deviceBase || data.tokem || data.device || ''
+                        );
+                    }
                 }
+                limparEstadoBufferDevice(deviceBase);
             } else if (status === 'sequencia_expirada' || status === 'sentido_expirado') {
                 // Sequência acabou: esquece o sensor; tags seguem com TTL de 15s
                 limparSensorVistoDevice(deviceBase);

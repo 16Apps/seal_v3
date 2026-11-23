@@ -435,6 +435,104 @@
                                             <div class="col-sm-12 col-12">
                                                 <div class="bg-warning bg-opacity-10 text-warning p-2 rounded-2">
                                                     <p class="m-0">
+                                                        Regra de Tracking
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row gx-3 mb-3 align-items-stretch">
+                                            <div class="col-lg-4 col-md-5 mb-3 mb-lg-0">
+                                                <label class="form-label">Regra</label>
+                                                <select ng-model="$ctrl._editGateway.id_tracking_regra"
+                                                    ng-change="$ctrl.onAtualizaRegraTrackingSelecionada()"
+                                                    class="form-select">
+                                                    <option value="">Nenhuma</option>
+                                                    <option ng-repeat="r in $ctrl._listTrackingRegras track by r._id"
+                                                            value="{{ r._id }}">
+                                                        {{ r.descricao }}
+                                                    </option>
+                                                </select>
+                                                <div class="form-text">
+                                                    Opcional. Vincule uma regra ativa cadastrada em Administração.
+                                                </div>
+                                            </div>
+                                            <div class="col-lg-8 col-md-7" ng-if="$ctrl._regraTrackingSelecionada">
+                                                <div class="h-100 rounded-3 shadow-sm"
+                                                     style="padding:0.7rem; background: linear-gradient(135deg, rgba(13,110,253,0.14) 0%, rgba(32,201,151,0.12) 100%); border:1px solid rgba(148,163,184,0.25);">
+                                                    <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+                                                        <div>
+                                                            <div class="text-uppercase fw-semibold mb-0"
+                                                                 style="font-size:0.6rem; letter-spacing:.05em; color:#94a3b8;">
+                                                                 <i class="bi bi-sliders me-1" style="color:#60a5fa;"></i>Parâmetros da regra</div>
+                                                            <!-- <div class="mb-0 fw-semibold" style="font-size:0.85rem; color:#e2e8f0;">
+                                                                <i class="bi bi-sliders me-1" style="color:#60a5fa;"></i>
+                                                                {{ $ctrl._regraTrackingSelecionada.descricao }}
+                                                            </div> -->
+                                                        </div>
+                                                        <span class="badge rounded-pill"
+                                                              style="font-size:0.6rem; padding:0.25em 0.55em;"
+                                                              ng-class="$ctrl._regraTrackingSelecionada.ativo == 1 ? 'text-bg-success' : 'text-bg-secondary'">
+                                                            {{ $ctrl._regraTrackingSelecionada.ativo == 1 ? 'Ativa' : 'Inativa' }}
+                                                        </span>
+                                                    </div>
+                                                    <div class="row g-1">
+                                                        <div class="col-sm-6 col-xl-4">
+                                                            <div class="h-100 rounded-2"
+                                                                 style="padding:0.45rem 0.55rem; background:rgba(15,23,42,0.72); border:1px solid rgba(148,163,184,0.2);">
+                                                                <div style="font-size:0.62rem; color:#cbd5e1; line-height:1.2;">Janela de análise</div>
+                                                                <div class="fw-bold mb-0" style="font-size:0.95rem; color:#f8fafc;">{{ $ctrl._regraTrackingSelecionada.janela_analise }} segundos</div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-sm-6 col-xl-4">
+                                                            <div class="h-100 rounded-2"
+                                                                 style="padding:0.45rem 0.55rem; background:rgba(15,23,42,0.72); border:1px solid rgba(148,163,184,0.2);">
+                                                                <div style="font-size:0.62rem; color:#cbd5e1; line-height:1.2;">Leituras mínimas</div>
+                                                                <div class="fw-bold mb-0" style="font-size:0.95rem; color:#f8fafc;">{{ $ctrl._regraTrackingSelecionada.leituras_minima }} </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-sm-6 col-xl-4">
+                                                            <div class="h-100 rounded-2"
+                                                                 style="padding:0.45rem 0.55rem; background:rgba(15,23,42,0.72); border:1px solid rgba(148,163,184,0.2);">
+                                                                <div style="font-size:0.62rem; color:#cbd5e1; line-height:1.2;">RSSI mínimo</div>
+                                                                <div class="fw-bold mb-0" style="font-size:0.95rem; color:#f8fafc;">{{ $ctrl._regraTrackingSelecionada.minima_rssi }} → -{{ $ctrl._regraTrackingSelecionada.minima_rssi }} dBm</div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-sm-6 col-xl-4">
+                                                            <div class="h-100 rounded-2"
+                                                                 style="padding:0.45rem 0.55rem; background:rgba(15,23,42,0.72); border:1px solid rgba(148,163,184,0.2);">
+                                                                <div style="font-size:0.62rem; color:#cbd5e1; line-height:1.2;">Confirmações</div>
+                                                                <div class="fw-bold mb-0" style="font-size:0.95rem; color:#f8fafc;">{{ $ctrl._regraTrackingSelecionada.confirmacoes_consecutivas }}</div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-sm-6 col-xl-4">
+                                                            <div class="h-100 rounded-2"
+                                                                 style="padding:0.45rem 0.55rem; background:rgba(15,23,42,0.72); border:1px solid rgba(148,163,184,0.2);">
+                                                                <div style="font-size:0.62rem; color:#cbd5e1; line-height:1.2;">Tolerância / permanência</div>
+                                                                <div class="fw-bold mb-0" style="font-size:0.95rem; color:#f8fafc;">{{ $ctrl._regraTrackingSelecionada.tolerancia_sem_leitura }} segundos</div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-sm-6 col-xl-4">
+                                                            <div class="h-100 rounded-2"
+                                                                 style="padding:0.45rem 0.55rem; background:rgba(15,23,42,0.72); border:1px solid rgba(148,163,184,0.2);">
+                                                                <div style="font-size:0.62rem; color:#cbd5e1; line-height:1.2;">Tempo mín. local</div>
+                                                                <div class="fw-bold mb-0" style="font-size:0.95rem; color:#f8fafc;">{{ $ctrl._regraTrackingSelecionada.tempo_minimo_local }} segundos</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-lg-8 col-md-7" ng-if="!$ctrl._regraTrackingSelecionada && $ctrl._editGateway.id_tracking_regra">
+                                                <div class="alert alert-warning mb-0 py-2">
+                                                    A regra vinculada não está na lista de regras ativas.
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row gx-3 mb-3">
+                                            <div class="col-sm-12 col-12">
+                                                <div class="bg-warning bg-opacity-10 text-warning p-2 rounded-2">
+                                                    <p class="m-0">
                                                         Regras do Portal
                                                     </p>
                                                 </div>

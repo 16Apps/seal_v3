@@ -296,9 +296,9 @@
 
 
             <li
-              ng-show="_regConta.plano_monitoramento.posicao_esperada > 0 || _regConta.plano_monitoramento.painel_alertas > 0 || _regConta.plano_monitoramento.interacao > 0"
+              ng-show="_regConta.plano_monitoramento.posicao_esperada > 0 || _regConta.plano_monitoramento.painel_alertas > 0 || _regConta.plano_monitoramento.interacao > 0 || _regColaborador.perfil == 'admin' || (_regColaborador.acesso_modulos && (_regColaborador.acesso_modulos.indexOf('trackingfluxo') >= 0 || _regColaborador.acesso_modulos.indexOf('tracking') >= 0))"
               class="treeview"
-              ng-class="{'active current-page': isActive('alerta') || isActive('processo?inventario') ||  isActive('processo?conferencia') || isActive('interacao') || isActive('associacao') }">
+              ng-class="{'active current-page': isActive('alerta') || isActive('processo?inventario') ||  isActive('processo?conferencia') || isActive('interacao') || isActive('associacao') || isActive('trackingfluxo') }">
               <a href="#!">
                 <i class="bi bi-eye"></i>
                 <span class="menu-text">Processos</span>
@@ -308,6 +308,9 @@
                 <li ng-show="_regConta.plano_monitoramento.posicao_esperada > 0"><a href="/processo?inventario">Inventários</a></li>
                 <li ng-show="_regConta.plano_monitoramento.painel_alertas > 0"><a href="/alerta">Painel de Alertas</a></li>
                 <li ng-show="_regConta.plano_monitoramento.interacao > 0"><a href="/interacao">Interação nos Locais</a></li>
+                <li ng-show="_regColaborador.perfil == 'admin' || (_regColaborador.acesso_modulos && (_regColaborador.acesso_modulos.indexOf('trackingfluxo') >= 0 || _regColaborador.acesso_modulos.indexOf('tracking') >= 0))">
+                  <a href="/trackingfluxo">Fluxos de Tracking</a>
+                </li>
                 <!-- <li><a href="/associacao">Associação</a></li> -->
               </ul>
             </li>
@@ -373,7 +376,7 @@
             </li>
 
             <li
-              ng-class="{'active current-page': isActive('localizacao') || isActive('gateway') || isActive('equipamento')}"
+              ng-class="{'active current-page': isActive('localizacao') || isActive('gateway') || isActive('trackingregra') || isActive('equipamento')}"
               class="treeview">
               <a href="#!">
                 <i class="bi bi-code-square"></i>
@@ -385,6 +388,9 @@
                 </li>
                 <li>
                   <a href="/gateway">{{ _regConta.params_nomenclatura_itens.coletores || 'Dispositivo' }}s</a>
+                </li>
+                <li ng-show="_regColaborador.perfil == 'admin' || (_regColaborador.acesso_modulos && (_regColaborador.acesso_modulos.indexOf('trackingregra') >= 0))">
+                  <a href="/trackingregra">Regras de Tracking</a>
                 </li>
                 <!-- <li>
                   <a href="/ia">Assisten IA (Beta)</a>
@@ -567,6 +573,8 @@
   <script src="/controller/importar.js"></script>
   <script src="/controller/localizacao.js"></script>
   <script src="/controller/gateway.js"></script>
+  <script src="/controller/trackingregra.js"></script>
+  <script src="/controller/trackingfluxo.js"></script>
   <script src="/controller/equipamento.js"></script>
 
   <script src="/components/localizacao/localizacao.js"></script>
@@ -574,6 +582,8 @@
   <script src="/components/categoriaitem/categoriaitem.js"></script>
 
   <script src="/components/gateway/gateway.js"></script>
+  <script src="/components/trackingregra/trackingregra.js"></script>
+  <script src="/components/trackingfluxo/trackingfluxo.js"></script>
   <script src="/components/posicao/posicao.js"></script>
   <script src="/components/alerta/alerta.js"></script>
   <script src="/components/interacao/interacao.js"></script>

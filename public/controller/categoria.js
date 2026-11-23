@@ -289,27 +289,44 @@ app.controller('categoriaCtrl', function ($scope, $http, params, uteisService) {
     };
 
 
+    var _categoriaBindTimer = null;
+
     $scope.onCategoria = async function (_acao, _edit) {
 
-        setTimeout(() => {
-            $scope.$apply(() => {       // força o Angular a perceber a mudança
-                $scope.funcaoLoc = _acao;
-                $scope.editLoc = _edit;
-            });
-        }, 10);
+        // Cancela bind atrasado anterior (evita fechar sobrescrever o próximo abrir)
+        if (_categoriaBindTimer) {
+            clearTimeout(_categoriaBindTimer);
+            _categoriaBindTimer = null;
+        }
 
         if (modalInstance != undefined) {
             modalInstance.hide();
-            modalInstance = undefined
+            modalInstance = undefined;
 
-            $scope.onCarregaRegistros()
+            $scope.onCarregaRegistros();
             $scope.funcaoLoc = '';
             $scope.editLoc = undefined;
 
-            $scope.$apply();
+            _categoriaBindTimer = setTimeout(function () {
+                _categoriaBindTimer = null;
+                $scope.$applyAsync(function () {
+                    $scope.funcaoLoc = '';
+                    $scope.editLoc = undefined;
+                });
+            }, 10);
+
+            $scope.$applyAsync();
         } else {
             modalInstance = new bootstrap.Modal(document.getElementById('modalCategoria'));
             modalInstance.show();
+
+            _categoriaBindTimer = setTimeout(function () {
+                _categoriaBindTimer = null;
+                $scope.$applyAsync(function () {
+                    $scope.funcaoLoc = _acao;
+                    $scope.editLoc = _edit;
+                });
+            }, 10);
         }
 
     };

@@ -263,8 +263,8 @@
                                                 </div>
                                                 <select ng-model="$ctrl._editCategoria.id_nivel_loc1"
                                                     ng-change="$ctrl.onMudaNivel('02')"
-                                                    class="form-select flex-grow-1" id="basicSelect"
-                                                    aria-label="Basic select example">
+                                                    class="form-select flex-grow-1"
+                                                    aria-label="Nível 1">
                                                     <option value="">Todos</option>
                                                     <option ng-repeat="item in $ctrl._listNivel1 track by item._id"
                                                         value="{{ item._id }}">
@@ -278,10 +278,10 @@
                                                     N.2
                                                 </div>
                                                 <select ng-model="$ctrl._editCategoria.id_nivel_loc2"
-                                                    ng-disabled="$ctrl._editCategoria.id_nivel_loc1==''"
+                                                    ng-disabled="!$ctrl._editCategoria.id_nivel_loc1"
                                                     ng-change="$ctrl.onMudaNivel('03')"
-                                                    class="form-select flex-grow-1" id="basicSelect"
-                                                    aria-label="Basic select example">
+                                                    class="form-select flex-grow-1"
+                                                    aria-label="Nível 2">
                                                     <option value="">Todos</option>
                                                     <option ng-repeat="item in $ctrl._listNivel2 track by item._id"
                                                         value="{{ item._id }}">
@@ -297,8 +297,8 @@
                                                 <select ng-model="$ctrl._editCategoria.id_nivel_loc3"
                                                     ng-disabled="!$ctrl._editCategoria.id_nivel_loc2"
                                                     ng-change="$ctrl.onMudaNivel('04')"
-                                                    class="form-select flex-grow-1" id="basicSelect"
-                                                    aria-label="Basic select example">
+                                                    class="form-select flex-grow-1"
+                                                    aria-label="Nível 3">
                                                     <option value="">Todos</option>
                                                     <option ng-repeat="item in $ctrl._listNivel3 track by item._id"
                                                         value="{{ item._id }}">
@@ -313,8 +313,8 @@
                                                 </div>
                                                 <select ng-model="$ctrl._editCategoria.id_nivel_loc4"
                                                     ng-disabled="!$ctrl._editCategoria.id_nivel_loc3"
-                                                    class="form-select flex-grow-1" id="basicSelect"
-                                                    aria-label="Basic select example">
+                                                    class="form-select flex-grow-1"
+                                                    aria-label="Nível 4">
                                                     <option value="">Todos</option>
                                                     <option ng-repeat="item in $ctrl._listNivel4 track by item._id"
                                                         value="{{ item._id }}">

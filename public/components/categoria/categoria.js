@@ -17,6 +17,7 @@ app.component('categoria', {
     $ctrl._listNivel3 = [];
     $ctrl._listNivel4 = [];
     $ctrl._seqNiveis = 0;
+    $ctrl._editGen = 0;
 
     $ctrl._regAddAssociacao = {
       id_ref: 'categoria',
@@ -35,39 +36,76 @@ app.component('categoria', {
       return String(v);
     }
 
+    function limparTodasListasNiveis() {
+      $ctrl._listNivel1 = [];
+      $ctrl._listNivel2 = [];
+      $ctrl._listNivel3 = [];
+      $ctrl._listNivel4 = [];
+    }
+
+    function limparListasFilhasAPartir(nivel) {
+      if (nivel === '01' || nivel === '02') {
+        $ctrl._listNivel2 = [];
+        $ctrl._listNivel3 = [];
+        $ctrl._listNivel4 = [];
+      } else if (nivel === '03') {
+        $ctrl._listNivel3 = [];
+        $ctrl._listNivel4 = [];
+      } else if (nivel === '04') {
+        $ctrl._listNivel4 = [];
+      }
+    }
+
+    function digestNiveis() {
+      $timeout(angular.noop, 0);
+    }
+
     $ctrl.$onInit = function () {
       $ctrl._regConta = uteisService.getCookie('_conta');
       $ctrl._regConta = uteisService.normalizarConta($ctrl._regConta);
     };
 
     $ctrl.$onChanges = function (changes) {
+      if (!(changes.funcao || changes.edit)) return;
 
-
-      if ($ctrl.funcao == 'add') {
-        $ctrl.onEditar(undefined)
-      } else if ($ctrl.funcao == 'edit') {
-        $ctrl.onEditar($ctrl.edit)
+      // Fechar / limpar bindings do pai → invalida carga em andamento
+      if ($ctrl.funcao !== 'add' && $ctrl.funcao !== 'edit') {
+        $ctrl._editGen += 1;
+        $ctrl._seqNiveis += 1;
+        return;
       }
 
+      if ($ctrl.funcao == 'add') {
+        $ctrl.onEditar(undefined);
+      } else if ($ctrl.funcao == 'edit' && $ctrl.edit) {
+        $ctrl.onEditar($ctrl.edit);
+      }
     };
 
     $ctrl.onEditar = async function (reg) {
+      const gen = ++$ctrl._editGen;
+
+      if (!$ctrl._regConta || !$ctrl._regConta._id) {
+        $ctrl._regConta = uteisService.normalizarConta(uteisService.getCookie('_conta'));
+      }
 
       await $ctrl.onCarregaCategorias();
+      if (gen !== $ctrl._editGen) return;
       await $ctrl.onCarregaItens();
+      if (gen !== $ctrl._editGen) return;
       await $ctrl.onCarregaCategoriasItem();
+      if (gen !== $ctrl._editGen) return;
 
       const tabTrigger = document.querySelector('#categorias-a-tab');
-      const tab = new bootstrap.Tab(tabTrigger);
-      tab.show();
+      if (tabTrigger) {
+        const tab = new bootstrap.Tab(tabTrigger);
+        tab.show();
+      }
 
+      // Só agora inicia a sequência dos níveis (evita abort por ng-change/race cedo)
       $ctrl._seqNiveis += 1;
       const seq = $ctrl._seqNiveis;
-
-      $ctrl._listNivel1 = [];
-      $ctrl._listNivel2 = [];
-      $ctrl._listNivel3 = [];
-      $ctrl._listNivel4 = [];
+      limparTodasListasNiveis();
 
       if (reg == undefined) {
 
@@ -106,7 +144,8 @@ app.component('categoria', {
           id_nivel_loc4: '',
         };
 
-        await $ctrl.onCarregaNiveis('01', true, seq);
+        await $ctrl.onCarregaNiveis('01', false, seq);
+        if (gen !== $ctrl._editGen || seq !== $ctrl._seqNiveis) return;
 
       } else {
 
@@ -123,16 +162,20 @@ app.component('categoria', {
           $ctrl._editCategoria._foto = uteisService.apiUrl_() + '/image/' + $ctrl._editCategoria.foto
         };
 
-        await $ctrl.onCarregaNiveis('01', true, seq);
+        await $ctrl.onCarregaNiveis('01', false, seq);
+        if (gen !== $ctrl._editGen || seq !== $ctrl._seqNiveis) return;
 
         if ($ctrl._editCategoria.id_nivel_loc1) {
-          await $ctrl.onCarregaNiveis('02', true, seq);
+          await $ctrl.onCarregaNiveis('02', false, seq);
+          if (gen !== $ctrl._editGen || seq !== $ctrl._seqNiveis) return;
 
           if ($ctrl._editCategoria.id_nivel_loc2) {
-            await $ctrl.onCarregaNiveis('03', true, seq);
+            await $ctrl.onCarregaNiveis('03', false, seq);
+            if (gen !== $ctrl._editGen || seq !== $ctrl._seqNiveis) return;
 
             if ($ctrl._editCategoria.id_nivel_loc3) {
-              await $ctrl.onCarregaNiveis('04', true, seq);
+              await $ctrl.onCarregaNiveis('04', false, seq);
+              if (gen !== $ctrl._editGen || seq !== $ctrl._seqNiveis) return;
             }
           }
         }
@@ -141,58 +184,63 @@ app.component('categoria', {
 
       };
 
+      digestNiveis();
     };
 
     $ctrl.onMudaNivel = async function (nivel) {
+      if (!$ctrl._editCategoria) return;
+
+      $ctrl._seqNiveis += 1;
+      const seq = $ctrl._seqNiveis;
+
       if (nivel === '02') {
         $ctrl._editCategoria.id_nivel_loc2 = '';
         $ctrl._editCategoria.id_nivel_loc3 = '';
         $ctrl._editCategoria.id_nivel_loc4 = '';
+        limparListasFilhasAPartir('02');
       } else if (nivel === '03') {
         $ctrl._editCategoria.id_nivel_loc3 = '';
         $ctrl._editCategoria.id_nivel_loc4 = '';
+        limparListasFilhasAPartir('03');
       } else if (nivel === '04') {
         $ctrl._editCategoria.id_nivel_loc4 = '';
+        limparListasFilhasAPartir('04');
       }
-      $ctrl._seqNiveis += 1;
-      await $ctrl.onCarregaNiveis(nivel, true, $ctrl._seqNiveis);
+
+      await $ctrl.onCarregaNiveis(nivel, true, seq);
+      digestNiveis();
     };
 
     $ctrl.onCarregaNiveis = async function (nivel, limparFilhos, seq) {
       const seqAtual = seq != null ? seq : $ctrl._seqNiveis;
+      if (!$ctrl._regConta || !$ctrl._regConta._id || !$ctrl._editCategoria) return;
 
       let id_nivel = null;
       if (nivel == '02') {
-        id_nivel = $ctrl._editCategoria.id_nivel_loc1;
+        id_nivel = normalizaIdNivel($ctrl._editCategoria.id_nivel_loc1);
       } else if (nivel == '03') {
-        id_nivel = $ctrl._editCategoria.id_nivel_loc2;
+        id_nivel = normalizaIdNivel($ctrl._editCategoria.id_nivel_loc2);
       } else if (nivel == '04') {
-        id_nivel = $ctrl._editCategoria.id_nivel_loc3;
+        id_nivel = normalizaIdNivel($ctrl._editCategoria.id_nivel_loc3);
       }
 
       if (nivel !== '01' && !id_nivel) {
-        if (nivel == '02') {
-          $ctrl._listNivel2 = [];
-          $ctrl._listNivel3 = [];
-          $ctrl._listNivel4 = [];
-        } else if (nivel == '03') {
-          $ctrl._listNivel3 = [];
-          $ctrl._listNivel4 = [];
-        } else if (nivel == '04') {
-          $ctrl._listNivel4 = [];
-        }
+        limparListasFilhasAPartir(nivel);
         return;
       }
 
-      let _url = '/_bd?c=localizacao&id_conta=' + $ctrl._regConta._id + '&id_nivel=' + id_nivel;
-      _url += '&sort=descricao';
+      var idQuery = (nivel === '01') ? 'null' : encodeURIComponent(id_nivel);
+      var _url = '/_bd?c=localizacao&id_conta=' + encodeURIComponent($ctrl._regConta._id)
+        + '&id_nivel=' + idQuery
+        + '&sort=descricao';
 
       try {
         const res = await uteisService.getBase(_url);
         if (seqAtual !== $ctrl._seqNiveis) return;
 
-        const lista = Array.isArray(res) ? res : [];
+        const lista = Array.isArray(res) ? res.slice() : [];
 
+        // Atribuição direta (como no gateway) — $timeout adiava e perdia o digest após salvar
         if (nivel == '01') {
           $ctrl._listNivel1 = lista;
           if (limparFilhos !== false) {
@@ -215,7 +263,9 @@ app.component('categoria', {
           $ctrl._listNivel4 = lista;
         }
       } catch (error) {
-        uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
+        if (seqAtual === $ctrl._seqNiveis) {
+          uteisService.onToast('Algo deu errado ao carregar os níveis.', 'error', 2000, 'top-end');
+        }
       }
     };
 
@@ -458,7 +508,8 @@ app.component('categoria', {
           uteisService.patchBase('/associacao', $ctrl._editAssocicao)
 
           uteisService.onToast('Registrado!', 'success', 3000, 'top-end');
-          $ctrl.onFechar();
+          // Usa fechar() para invalidar cargas em andamento e limpar listas antes do próximo edit
+          $ctrl.fechar();
         })
 
     };
@@ -478,11 +529,9 @@ app.component('categoria', {
 
 
     $ctrl.fechar = function () {
+      $ctrl._editGen += 1;
       $ctrl._seqNiveis += 1;
-      $ctrl._listNivel1 = [];
-      $ctrl._listNivel2 = [];
-      $ctrl._listNivel3 = [];
-      $ctrl._listNivel4 = [];
+      limparTodasListasNiveis();
       $ctrl.onFechar();
     };
 

@@ -1,0 +1,200 @@
+<div class="modal-content">
+    <div class="modal-header">
+        <h5 class="modal-title h4" id="modalTrackingFluxoLabel">
+            Fluxo de Tracking
+        </h5>
+        <button type="button" class="btn-close" ng-click="$ctrl.fechar()" aria-label="Close"></button>
+    </div>
+    <div class="modal-body">
+
+        <ol class="breadcrumb d-none d-lg-flex mb-4">
+            <li class="breadcrumb-item">
+                <i class="bi bi-diagram-3 lh-1"></i>
+                <a class="text-decoration-none">Fluxos de Tracking</a>
+            </li>
+            <li class="breadcrumb-item" aria-current="page">
+                <a class="text-decoration-none text-info">
+                    {{ $ctrl._editFluxo.descricao || 'Novo' }}
+                </a>
+            </li>
+        </ol>
+
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="row gx-3">
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Descrição</label>
+                        <input ng-model="$ctrl._editFluxo.descricao" type="text"
+                            ng-class="{'is-invalid': !$ctrl._editFluxo.descricao || $ctrl._editFluxo.descricao.trim() === ''}"
+                            class="form-control" placeholder="Ex.: Fluxo de expedição">
+                    </div>
+                    <div class="col-md-2 mb-3">
+                        <label class="form-label">Categoria</label>
+                        <select ng-model="$ctrl._editFluxo.id_categoria" class="form-select">
+                            <option value="">Nenhuma</option>
+                            <option ng-repeat="c in $ctrl._listCategorias track by c._id" value="{{ c._id }}">
+                                {{ c.descricao }}
+                            </option>
+                        </select>
+                    </div>
+                    <div class="col-md-1 mb-3">
+                        <label class="form-label">Ativo</label>
+                        <select ng-model="$ctrl._editFluxo.ativo" class="form-select">
+                            <option value="1">Sim</option>
+                            <option value="0">Não</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <div>
+                <h6 class="mb-0">Etapas do fluxo</h6>
+                <small class="text-secondary">Monte a sequência, ajuste localização e tempos de cada etapa.</small>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" ng-click="$ctrl.onAddEtapa()">
+                <i class="bi bi-plus-lg me-1"></i> Adicionar etapa
+            </button>
+        </div>
+
+        <div class="tf-etapas">
+            <div class="tf-etapa mb-2" ng-repeat="etapa in $ctrl._editFluxo.etapas track by etapa._id">
+
+                <div class="tf-etapa-head rounded-3 px-3 py-2 d-flex align-items-center gap-2"
+                    style="cursor:pointer; background:rgba(15,23,42,0.55); border:1px solid rgba(148,163,184,0.22);"
+                    ng-click="$ctrl.onToggleEtapa(etapa)">
+                    <span class="badge rounded-pill text-bg-primary" style="min-width:2rem;">{{ etapa.etapa_numero
+                        }}</span>
+                    <div class="flex-grow-1 min-w-0">
+                        <div class="fw-semibold text-truncate">
+                            {{ etapa.etapa_descricao || ('Etapa ' + etapa.etapa_numero) }}
+                        </div>
+                        <div class="small text-secondary text-truncate">
+                            {{ $ctrl.resumoLocalEtapa(etapa) }}
+                            · mín {{ etapa.tempo_permanencia_minimo || 0 }}
+                            / máx {{ etapa.tempo_permanencia_maximo || 0 }}
+                            · desloc. {{ etapa.tempo_descolamento_proxima_etapa || 0 }}
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-1" ng-click="$event.stopPropagation()">
+                        <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1"
+                            ng-click="$ctrl.onMoverEtapa($index, -1, $event)" ng-disabled="$index === 0" title="Subir">
+                            <i class="bi bi-arrow-up"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1"
+                            ng-click="$ctrl.onMoverEtapa($index, 1, $event)"
+                            ng-disabled="$index === $ctrl._editFluxo.etapas.length - 1" title="Descer">
+                            <i class="bi bi-arrow-down"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-danger btn-sm py-0 px-1"
+                            ng-click="$ctrl.onRemoverEtapa(etapa, $event)" title="Remover">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                        <i class="bi ms-1"
+                            ng-class="$ctrl._etapaAberta === etapa._id ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                    </div>
+                </div>
+
+                <div class="tf-etapa-body rounded-bottom-3 px-3 py-3" ng-show="$ctrl._etapaAberta === etapa._id"
+                    style="border:1px solid rgba(148,163,184,0.18); border-top:0; background:rgba(30,41,59,0.35);">
+
+                    <div class="row gx-3">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Descrição da etapa</label>
+                            <input type="text" class="form-control" ng-model="etapa.etapa_descricao"
+                                placeholder="Ex.: Recebimento / Conferência / Expedição">
+                        </div>
+                    </div>
+
+                    <div class="small text-secondary mb-2">Localização da etapa</div>
+                    <div class="row gx-3 mb-3">
+                        <div class="col-6">
+                            <div class="row">
+                                <div class="col mb-2">
+                                    <label class="form-label small mb-1">Nível 1</label>
+                                    <select class="form-select form-select-sm" ng-model="etapa.id_nivel_loc1"
+                                        ng-change="$ctrl.onMudaNivelEtapa(etapa, 1)">
+                                        <option value="">—</option>
+                                        <option ng-repeat="n in $ctrl._listNivel1 track by n._id" value="{{ n._id }}">
+                                            {{ n.descricao }}
+                                        </option>
+                                    </select>
+                                </div>
+                                <div class="col mb-2">
+                                    <label class="form-label small mb-1">Nível 2</label>
+                                    <select class="form-select form-select-sm" ng-model="etapa.id_nivel_loc2"
+                                        ng-change="$ctrl.onMudaNivelEtapa(etapa, 2)" ng-disabled="!etapa.id_nivel_loc1">
+                                        <option value="">—</option>
+                                        <option ng-repeat="n in etapa._listNivel2 track by n._id" value="{{ n._id }}">
+                                            {{ n.descricao }}
+                                        </option>
+                                    </select>
+                                </div>
+                                <div class="col mb-2">
+                                    <label class="form-label small mb-1">Nível 3</label>
+                                    <select class="form-select form-select-sm" ng-model="etapa.id_nivel_loc3"
+                                        ng-change="$ctrl.onMudaNivelEtapa(etapa, 3)" ng-disabled="!etapa.id_nivel_loc2">
+                                        <option value="">—</option>
+                                        <option ng-repeat="n in etapa._listNivel3 track by n._id" value="{{ n._id }}">
+                                            {{ n.descricao }}
+                                        </option>
+                                    </select>
+                                </div>
+                                <div class="col mb-2">
+                                    <label class="form-label small mb-1">Nível 4</label>
+                                    <select class="form-select form-select-sm" ng-model="etapa.id_nivel_loc4"
+                                        ng-disabled="!etapa.id_nivel_loc3">
+                                        <option value="">—</option>
+                                        <option ng-repeat="n in etapa._listNivel4 track by n._id" value="{{ n._id }}">
+                                            {{ n.descricao }}
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="small text-secondary mb-2">Regra de Tempo</div>
+                    <div class="row gx-3">
+                        <div class="col-6">
+                            <div class="row">
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label">Permanência mínima</label>
+                                    <input type="number" class="form-control" min="0" step="1"
+                                        ng-model="etapa.tempo_permanencia_minimo">
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label">Permanência máxima</label>
+                                    <input type="number" class="form-control" min="0" step="1"
+                                        ng-model="etapa.tempo_permanencia_maximo">
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label">Desloc. próxima etapa</label>
+                                    <input type="number" class="form-control" min="0" step="1"
+                                        ng-model="etapa.tempo_descolamento_proxima_etapa">
+                                </div>
+                            </div>
+                        </div>
+                    </div>  
+                </div>
+            </div>
+
+            <div class="text-center text-secondary py-4" ng-if="!$ctrl._editFluxo.etapas.length">
+                Nenhuma etapa ainda. Clique em <strong>Adicionar etapa</strong>.
+            </div>
+        </div>
+
+    </div>
+    <div class="modal-footer">
+        <button ng-click="$ctrl.onExcluir()" class="btn btn-outline-danger me-auto" type="button"
+            ng-if="$ctrl.funcao == 'edit'">
+            Excluir
+        </button>
+        <button ng-click="$ctrl.fechar()" class="btn btn-light" type="button">Fechar</button>
+        <button ng-click="$ctrl.onSalvar()" class="btn btn-primary" type="button" ng-disabled="$ctrl._salvando">
+            <span ng-if="$ctrl._salvando" class="spinner-border spinner-border-sm me-1"></span>
+            Salvar
+        </button>
+    </div>
+</div>

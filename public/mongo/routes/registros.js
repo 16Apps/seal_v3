@@ -259,7 +259,9 @@ module.exports = (app, dbConnection) => {
             inf_compl2,
             inf_compl3,
             inf_compl4,
-            inf_compl5
+            inf_compl5,
+            sentido,
+            status_sensor
         } = req.body;
 
 
@@ -357,6 +359,7 @@ module.exports = (app, dbConnection) => {
 
         // Todo: Envia dados para log via socket
         const io = req.app.get('io');
+        const sentidoSocket = sentido || status_sensor || null;
         const dadosRegistro = {
             tokem,
             id_colaborador,
@@ -381,7 +384,9 @@ module.exports = (app, dbConnection) => {
             inf_compl2,
             inf_compl3,
             inf_compl4,
-            inf_compl5
+            inf_compl5,
+            // Portal Naturgy: sentido real (entrada/saida) mesmo com tokem só -E ou só -S
+            ...(sentidoSocket ? { sentido: sentidoSocket, status_sensor: sentidoSocket } : {})
         };
         io.emit(gateway._id, dadosRegistro);
         io.emit(gateway.id_conta, dadosRegistro);

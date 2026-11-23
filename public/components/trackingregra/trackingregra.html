@@ -1,0 +1,205 @@
+<div class="modal-content">
+    <div class="modal-header">
+        <h5 class="modal-title h4" id="modalTrackingRegraLabel">
+            Regra de Tracking
+        </h5>
+        <button type="button" class="btn-close" ng-click="$ctrl.fechar()" aria-label="Close"></button>
+    </div>
+    <div class="modal-body">
+
+        <ol class="breadcrumb d-none d-lg-flex mb-4">
+            <li class="breadcrumb-item">
+                <i class="bi bi-sliders lh-1"></i>
+                <a class="text-decoration-none">Regra de Tracking</a>
+            </li>
+            <li class="breadcrumb-item" aria-current="page">
+                <a class="text-decoration-none text-info">
+                    {{ $ctrl._editRegra.descricao || 'Novo' }}
+                </a>
+            </li>
+        </ol>
+
+        <div class="row gx-3">
+            <div class="col-sm-12">
+                <div class="card mb-3">
+                    <div class="card-body">
+
+                        <ul class="nav nav-pills mb-3 gap-1" id="trackingregra-tab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link rounded-pill active" id="trackingregra-a-tab"
+                                    data-bs-toggle="pill" data-bs-target="#trackingregra-a" type="button" role="tab"
+                                    aria-controls="trackingregra-a" aria-selected="true">Cadastro</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link rounded-pill" id="trackingregra-b-tab"
+                                    data-bs-toggle="pill" data-bs-target="#trackingregra-b" type="button" role="tab"
+                                    aria-controls="trackingregra-b" aria-selected="false"
+                                    ng-click="$ctrl.onAbrirDispositivos()">Dispositivos</button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content" id="trackingregra-tabContent">
+
+                            <!-- Cadastro -->
+                            <div class="tab-pane fade show active" id="trackingregra-a" role="tabpanel"
+                                aria-labelledby="trackingregra-a-tab" tabindex="0">
+
+                                <div class="row gx-3">
+                                    <div class="col-xxl-7 col-lg-8 col-sm-12">
+                                        <div class="border rounded-2 p-3 mb-3">
+
+                                            <div class="row gx-3 mb-3">
+                                                <div class="col-sm-8">
+                                                    <label class="form-label">Descrição</label>
+                                                    <input ng-model="$ctrl._editRegra.descricao" type="text"
+                                                        ng-class="{'is-invalid': !$ctrl._editRegra.descricao || $ctrl._editRegra.descricao.trim() === ''}"
+                                                        class="form-control" placeholder="Ex.: Linhas">
+                                                </div>
+                                                <div class="col-sm-4">
+                                                    <label class="form-label">Ativo</label>
+                                                    <select ng-model="$ctrl._editRegra.ativo" class="form-select">
+                                                        <option value="1">Sim</option>
+                                                        <option value="0">Não</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div class="row gx-3">
+                                                <div class="col-md-4 mb-3">
+                                                    <label class="form-label">Janela de análise (s)</label>
+                                                    <input ng-model="$ctrl._editRegra.janela_analise" type="number"
+                                                        class="form-control" min="0" step="1"
+                                                        title="0 = ignora. Tempo de guarda das leituras antes de decidir.">
+                                                    <small class="text-secondary">0 = ignora. Guarda leituras antes de decidir.</small>
+                                                </div>
+                                                <div class="col-md-4 mb-3">
+                                                    <label class="form-label">Leituras mínimas</label>
+                                                    <input ng-model="$ctrl._editRegra.leituras_minima" type="number"
+                                                        class="form-control" min="0" step="1"
+                                                        title="0 = ignora.">
+                                                    <small class="text-secondary">0 = ignora.</small>
+                                                </div>
+                                                <div class="col-md-4 mb-3">
+                                                    <label class="form-label">RSSI mínimo</label>
+                                                    <input ng-model="$ctrl._editRegra.minima_rssi" type="number"
+                                                        class="form-control" min="0" step="1"
+                                                        title="0 = ignora. Informe 30 para exigir RSSI >= -30 dBm.">
+                                                    <small class="text-secondary">0 = ignora. Ex.: 30 → aceita só RSSI ≥ -30 dBm.</small>
+                                                </div>
+                                                <div class="col-md-4 mb-3">
+                                                    <label class="form-label">Confirmações consecutivas</label>
+                                                    <input ng-model="$ctrl._editRegra.confirmacoes_consecutivas"
+                                                        type="number" class="form-control" min="0" step="1"
+                                                        title="0 = ignora.">
+                                                    <small class="text-secondary">0 = ignora.</small>
+                                                </div>
+                                                <div class="col-md-4 mb-3">
+                                                    <label class="form-label">Tolerância / permanência (s)</label>
+                                                    <input ng-model="$ctrl._editRegra.tolerancia_sem_leitura"
+                                                        type="number" class="form-control" min="0" step="1"
+                                                        title="0 = ignora. Dentro do tempo: atualiza data_permanecia; outro gateway é ignorado.">
+                                                    <small class="text-secondary">0 = ignora. Mesmo local atualiza permanência; outro gateway espera.</small>
+                                                </div>
+                                                <div class="col-md-4 mb-3">
+                                                    <label class="form-label">Tempo mínimo no local (s)</label>
+                                                    <input ng-model="$ctrl._editRegra.tempo_minimo_local" type="number"
+                                                        class="form-control" min="0" step="1"
+                                                        title="0 = ignora. Filtra passagens rápidas antes de trocar de local.">
+                                                    <small class="text-secondary">0 = ignora. Filtra passagem rápida.</small>
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <!-- Dispositivos -->
+                            <div class="tab-pane fade" id="trackingregra-b" role="tabpanel"
+                                aria-labelledby="trackingregra-b-tab" tabindex="0">
+
+                                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                                    <div>
+                                        <h6 class="mb-0">Dispositivos vinculados</h6>
+                                        <small class="text-secondary">
+                                            Gateways que usam esta regra de tracking.
+                                        </small>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="search-container" style="min-width:220px;">
+                                            <input type="text" class="form-control form-control-sm"
+                                                ng-model="$ctrl._pesquisaDispositivo"
+                                                placeholder="Pesquisar descrição ou tokem">
+                                        </div>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                            ng-click="$ctrl.onCarregaDispositivos()"
+                                            ng-disabled="$ctrl._carregandoDispositivos">
+                                            <i class="bi bi-arrow-clockwise"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="text-secondary small mb-3" ng-if="$ctrl._carregandoDispositivos">
+                                    <span class="spinner-border spinner-border-sm me-1"></span>
+                                    Carregando dispositivos…
+                                </div>
+
+                                <div class="table-responsive" ng-if="!$ctrl._carregandoDispositivos">
+                                    <table class="table align-middle table-hover m-0">
+                                        <thead>
+                                            <tr>
+                                                <th style="width:48px;"></th>
+                                                <th>Descrição</th>
+                                                <th>Tokem</th>
+                                                <th>Modo</th>
+                                                <th>Ativo</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr ng-repeat="g in $ctrl._listDispositivos | filter:$ctrl.filtraDispositivo">
+                                                <td>
+                                                    <img class="rounded-circle img-3x" ng-src="{{ g._foto }}" alt="">
+                                                </td>
+                                                <td>{{ g.descricao || '—' }}</td>
+                                                <td>
+                                                    <code>{{ g.tokem || '—' }}</code>
+                                                </td>
+                                                <td>{{ g._modoLabel }}</td>
+                                                <td>
+                                                    <span class="badge"
+                                                          ng-class="g.ativo == 1 ? 'bg-success' : 'bg-secondary'">
+                                                        {{ g.ativo == 1 ? 'Sim' : 'Não' }}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                            <tr ng-if="!($ctrl._listDispositivos | filter:$ctrl.filtraDispositivo).length">
+                                                <td colspan="5" class="text-center text-secondary py-4">
+                                                    Nenhum dispositivo usando esta regra.
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <div class="modal-footer">
+        <button ng-click="$ctrl.onExcluir()" class="btn btn-outline-danger me-auto" type="button"
+            ng-if="$ctrl.funcao == 'edit'">
+            Excluir
+        </button>
+        <button ng-click="$ctrl.fechar()" class="btn btn-light" type="button">Fechar</button>
+        <button ng-click="$ctrl.onSalvar()" class="btn btn-primary" type="button" ng-disabled="$ctrl._salvando">
+            <span ng-if="$ctrl._salvando" class="spinner-border spinner-border-sm me-1"></span>
+            Salvar
+        </button>
+    </div>
+</div>

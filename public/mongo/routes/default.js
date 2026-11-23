@@ -13,6 +13,7 @@ const movimentacao_mov_item = require("../models/movimentacao_mov_item");
 const movimentacao_item = require("../models/movimentacao_item");
 const processos = require("../models/processos");
 const registro_colaborador = require("../models/registro_colaborador");
+const trackingregra = require("../models/trackingregra");
 
 const sr_solucoes = require("../models/sr_solucoes");
 const sr_categorias = require("../models/sr_categorias");

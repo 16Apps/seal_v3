@@ -57,6 +57,8 @@ const GatewaySchema = new mongoose.Schema({
 
     api_rest: { type: String },
 
+    id_tracking_regra: { type: String, ref: 'TrackingRegra' },
+
     registro_leitura: { type: Date },
     foto: { type: String },
 

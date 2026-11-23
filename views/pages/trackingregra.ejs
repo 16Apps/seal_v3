@@ -1,0 +1,137 @@
+<%- contentFor('body') %>
+  <div ng-controller="trackingRegraCtrl" class="app-container" ng-cloak>
+
+    <div class="app-hero-header d-flex align-items-center">
+      <ol class="breadcrumb d-none d-lg-flex">
+        <li class="breadcrumb-item">
+          <i class="bi bi-house lh-1"></i>
+          <a class="text-decoration-none">Administração</a>
+        </li>
+        <li class="breadcrumb-item" aria-current="page">Regras de Tracking</li>
+        <li class="breadcrumb-item text-info" aria-current="page">Total: {{ _listRegras.length }}</li>
+      </ol>
+
+      <div class="ms-auto d-flex flex-row gap-1">
+        <div class="search-container d-lg-flex d-none">
+          <input ng-model="_pesquisa" ng-change="onPesquisa()" type="text" class="form-control" id="searchData"
+            placeholder="Pesquisar">
+          <i class="bi bi-search"></i>
+        </div>
+        <button ng-click="onTrackingRegra('add', undefined)" type="button"
+          class="btn btn-warning btn-sm ms-3 text-dark">Novo</button>
+      </div>
+    </div>
+
+    <div class="app-body">
+
+      <div class="modal fade" id="modalTrackingRegra" tabindex="-1" aria-labelledby="modalTrackingRegraLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-fullscreen">
+          <trackingregra funcao="funcaoLoc" edit="editLoc" on-fechar="onTrackingRegra()"></trackingregra>
+        </div>
+      </div>
+
+      <div class="row gx-3">
+        <div class="col-xxl-12">
+          <div class="card mb-3">
+            <div class="card-body">
+              <div class="table-responsive">
+                <div class="table-outer">
+                  <table class="table align-middle table-hover m-0">
+                    <thead>
+                      <tr>
+                        <th class="sortable" ng-click="sortBy('descricao')">
+                          Descrição
+                          <i class="bi" ng-class="{
+                            'bi-caret-up-fill': sortField=='descricao' && !sortReverse,
+                            'bi-caret-down-fill': sortField=='descricao' && sortReverse
+                          }"></i>
+                        </th>
+                        <th class="sortable" ng-click="sortBy('janela_analise')">
+                          Janela análise
+                          <i class="bi" ng-class="{
+                            'bi-caret-up-fill': sortField=='janela_analise' && !sortReverse,
+                            'bi-caret-down-fill': sortField=='janela_analise' && sortReverse
+                          }"></i>
+                        </th>
+                        <th class="sortable" ng-click="sortBy('leituras_minima')">
+                          Leituras mín.
+                          <i class="bi" ng-class="{
+                            'bi-caret-up-fill': sortField=='leituras_minima' && !sortReverse,
+                            'bi-caret-down-fill': sortField=='leituras_minima' && sortReverse
+                          }"></i>
+                        </th>
+                        <th class="sortable" ng-click="sortBy('minima_rssi')">
+                          RSSI mín.
+                          <i class="bi" ng-class="{
+                            'bi-caret-up-fill': sortField=='minima_rssi' && !sortReverse,
+                            'bi-caret-down-fill': sortField=='minima_rssi' && sortReverse
+                          }"></i>
+                        </th>
+                        <th class="sortable" ng-click="sortBy('confirmacoes_consecutivas')">
+                          Confirmações
+                          <i class="bi" ng-class="{
+                            'bi-caret-up-fill': sortField=='confirmacoes_consecutivas' && !sortReverse,
+                            'bi-caret-down-fill': sortField=='confirmacoes_consecutivas' && sortReverse
+                          }"></i>
+                        </th>
+                        <th class="sortable" ng-click="sortBy('tolerancia_sem_leitura')">
+                          Tolerância / permanência
+                          <i class="bi" ng-class="{
+                            'bi-caret-up-fill': sortField=='tolerancia_sem_leitura' && !sortReverse,
+                            'bi-caret-down-fill': sortField=='tolerancia_sem_leitura' && sortReverse
+                          }"></i>
+                        </th>
+                        <th class="sortable" ng-click="sortBy('tempo_minimo_local')">
+                          Tempo mín. local
+                          <i class="bi" ng-class="{
+                            'bi-caret-up-fill': sortField=='tempo_minimo_local' && !sortReverse,
+                            'bi-caret-down-fill': sortField=='tempo_minimo_local' && sortReverse
+                          }"></i>
+                        </th>
+                        <th class="sortable" ng-click="sortBy('ativo')">
+                          Ativo
+                          <i class="bi" ng-class="{
+                            'bi-caret-up-fill': sortField=='ativo' && !sortReverse,
+                            'bi-caret-down-fill': sortField=='ativo' && sortReverse
+                          }"></i>
+                        </th>
+                        <th>Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr ng-repeat="item in _listRegras | orderBy:sortField:sortReverse">
+                        <td>{{ item.descricao }}</td>
+                        <td>{{ item.janela_analise }}</td>
+                        <td>{{ item.leituras_minima }}</td>
+                        <td>{{ item.minima_rssi }}</td>
+                        <td>{{ item.confirmacoes_consecutivas }}</td>
+                        <td>{{ item.tolerancia_sem_leitura }}</td>
+                        <td>{{ item.tempo_minimo_local }}</td>
+                        <td>
+                          <span class="badge" ng-class="item.ativo == 1 ? 'bg-success' : 'bg-secondary'">
+                            {{ item.ativo == 1 ? 'Sim' : 'Não' }}
+                          </span>
+                        </td>
+                        <td>
+                          <a class="btn btn-info btn-sm" ng-click="onTrackingRegra('edit', item)">
+                            <i class="bi bi-pencil"></i>
+                          </a>
+                        </td>
+                      </tr>
+                      <tr ng-if="!_listRegras.length">
+                        <td colspan="9" class="text-secondary text-center py-4">
+                          Nenhuma regra cadastrada.
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>

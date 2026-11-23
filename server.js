@@ -281,6 +281,12 @@ app.get('/localizacao', (req, res) => {
 app.get('/gateway', (req, res) => {
   res.render('pages/gateway', { layout: 'layout' });
 });
+app.get('/trackingregra', (req, res) => {
+  res.render('pages/trackingregra', { layout: 'layout' });
+});
+app.get('/trackingfluxo', (req, res) => {
+  res.render('pages/trackingfluxo', { layout: 'layout' });
+});
 app.get('/equipamento', (req, res) => {
   res.render('pages/equipamento', { layout: 'layout' });
 });
@@ -300,6 +306,7 @@ app.get('/site', (req, res) => {
 // rotas
 require('./public/mongo/routes/default')(app, dbMongo);
 require('./public/mongo/routes/registros')(app, dbMongo);
+require('./public/mongo/routes/tracking')(app, dbMongo);
 require('./public/mongo/routes/images')(app, dbMongo);
 require('./public/mongo/routes/messages')(app, dbMongo);
 require('./public/mongo/routes/sepioo')(app, dbMongo);

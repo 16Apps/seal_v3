@@ -1,8 +1,58 @@
 const axios = require('axios');
 const qs = require('qs');
 const moment = require('moment');
+const fs = require('fs');
+const path = require('path');
 
 const Gateway = require('../models/gateway');
+
+/** Logs brutos RFID: logs/rfid_raw/{leitor}_{YYYY-MM-DD}.log */
+const RFID_RAW_LOG_DIR = path.join(__dirname, '..', '..', '..', 'logs', 'rfid_raw');
+let _rfidRawLogDirOk = false;
+
+function garantirDirLogRfidRaw() {
+  if (_rfidRawLogDirOk) return;
+  try {
+    fs.mkdirSync(RFID_RAW_LOG_DIR, { recursive: true });
+    _rfidRawLogDirOk = true;
+  } catch (e) {
+    console.warn('[x_naturgy] mkdir log rfid_raw:', e.message);
+  }
+}
+
+/**
+ * Grava linha NDJSON por leitor + data: {Devicename}_{YYYY-MM-DD}.log
+ * @param {string} rota
+ * @param {object|null} body
+ * @param {object} [extra] — ex.: portal_gw_online, enviado, resposta, ignored
+ */
+function logRawLeitorRota(rota, body, extra) {
+  try {
+    garantirDirLogRfidRaw();
+    const b = body && typeof body === 'object' ? body : {};
+    const ex = extra && typeof extra === 'object' ? extra : {};
+    const deviceRaw = String(
+      ex.device
+      || b.Devicename || b.DeviceName || b.devicename || b.deviceName || b.device || b.id
+      || 'unknown'
+    ).trim() || 'unknown';
+    const deviceFile = deviceRaw.replace(/[^\w.\-]+/g, '_');
+    const data = moment().utcOffset(-3).format('YYYY-MM-DD');
+    const arquivo = path.join(RFID_RAW_LOG_DIR, `${deviceFile}_${data}.log`);
+    const linhaObj = Object.assign({
+      ts: moment().utcOffset(-3).format('YYYY-MM-DD HH:mm:ss.SSS'),
+      rota,
+      device: deviceRaw
+    }, ex);
+    if (body != null) linhaObj.body = b;
+    const linha = JSON.stringify(linhaObj) + '\n';
+    fs.appendFile(arquivo, linha, function (err) {
+      if (err) console.warn('[x_naturgy] log raw leitor:', err.message);
+    });
+  } catch (e) {
+    console.warn('[x_naturgy] log raw leitor:', e.message);
+  }
+}
 
 const ip_server = 'https://sealv3-production.up.railway.app';
 // const ip_server = 'http://10.10.20.101:3000';
@@ -11,6 +61,7 @@ const ip_server = 'https://sealv3-production.up.railway.app';
 
 const ip_middleware = 'http://10.10.20.99:5107'; 
 
+var SIRENE_ALERTA_MS = 5000;
 
 const INFOR_HOMOLOGACAO = {
   baseUrl: ip_server,
@@ -42,11 +93,15 @@ const sentidoPorDevice = new Map(); // chave -> { tipo, id, event, ..., validoAt
 // Tags RFID recebidas sem sentido ainda, por Devicename
 const tagsPendentesPorDevice = new Map(); // chave -> [{ tag, payload, receivedAt }]
 const flushEmAndamento = new Map(); // chave -> Promise (evita flush concorrente no mesmo leitor)
+// Último sensor (qualquer porta) por device — janela ±5s com tag para sirene (portal GW offline)
+const ultimoSensorPorDevice = new Map(); // chave -> timestampMs
 
-const INTERVALO_MAXIMO = 10 * 1000;   // espera da 2ª porta
+const INTERVALO_MAXIMO = 5 * 1000;   // espera da 2ª porta
 const SENTIDO_VALIDO_MS = 10 * 1000;  // mantém sentido e descarta sensores nesse período
-// Poda entre passagens: cobre espera da 2ª porta (10s) + folga
-const BUFFER_TAGS_MS = INTERVALO_MAXIMO + 5 * 1000; // 15s
+// Só tags lidas nos últimos 5s entram no flush / poda (antes de definir o sentido)
+const BUFFER_TAGS_MS = 5 * 1000;
+/** Janela simétrica tag↔sensor para sirene com gateway fora do portal web */
+const SIRENE_JANELA_TAG_SENSOR_MS = BUFFER_TAGS_MS;
 const REGISTRO_URL = ip_server + '/_bd/registro';
 
 
@@ -484,8 +539,74 @@ module.exports = (app) => {
     }
   }
 
+  /** Log bruto + flag se o gateway está ativo em algum portal web. */
+  function logRawComPresence(rota, body, extra) {
+    const ex = extra && typeof extra === 'object' ? Object.assign({}, extra) : {};
+    const b = body && typeof body === 'object' ? body : {};
+    const device = String(
+      ex.device
+      || b.Devicename || b.DeviceName || b.devicename || b.deviceName || b.device || b.id
+      || ''
+    ).trim();
+    if (device) ex.device = device;
+    ex.portal_gw_online = portalGatewayOnline(device || ex.device || '');
+    logRawLeitorRota(rota, body, ex);
+  }
+
   // Sinaleiro ativo por gateway (nome base): bloqueia nova chamada até expirar o timeout GPO anterior
   const sinaleiroAtivoPorGateway = new Map(); // name -> { ate: timestamp }
+
+  /** Tempo único (ex.: fechamento de portal) — sem 2º disparo. */
+  const SIRENE_TEMPO_SIMPLES_MS = 20000;
+
+  async function enviarGpoSinaleiro(name, corNum, tempoNum, opts) {
+    opts = opts || {};
+    const disparo = opts.disparo || 1;
+    const gwOnline = portalGatewayOnline(name);
+    const payload = {
+      command: 'WriteGPO',
+      device: { name: name },
+      data: { value: corNum, timeout: tempoNum }
+    };
+
+    logRawComPresence('sinaleiro_envio', null, {
+      device: name,
+      portal_gw_online: gwOnline,
+      cor: corNum,
+      tempo: tempoNum,
+      disparo,
+      enviado: payload
+    });
+
+    const response = await axios.post(ip_middleware, payload, {
+      timeout: 5000,
+      headers: { 'Content-Type': 'application/json' },
+      validateStatus: () => true
+    });
+
+    const ok = response.status >= 200 && response.status < 300;
+    const resultado = {
+      ok,
+      status: response.status,
+      enviado: payload,
+      resposta: response.data,
+      disparo
+    };
+
+    logRawComPresence('sinaleiro_retorno', null, {
+      device: name,
+      portal_gw_online: portalGatewayOnline(name),
+      cor: corNum,
+      tempo: tempoNum,
+      disparo,
+      ok,
+      status: response.status,
+      enviado: payload,
+      resposta: response.data
+    });
+
+    return resultado;
+  }
 
   async function acionarSinaleiro(deviceName, cor, tempo) {
     // GPO usa o nome base do leitor (P02), não o tokem com sentido (P02-E / P02-S)
@@ -496,41 +617,65 @@ module.exports = (app) => {
     if (![1, 2, 4].includes(corNum)) throw new Error('cor inválida (use 1=verde, 2=amarelo, 4=vermelho).');
     if (!Number.isFinite(tempoNum) || tempoNum < 0) throw new Error('Informe tempo (timeout) válido.');
 
+    const gwOnline = portalGatewayOnline(name);
     const agora = Date.now();
     const ativo = sinaleiroAtivoPorGateway.get(name);
     if (ativo && agora < ativo.ate) {
-      return {
+      const ignored = {
         ok: true,
         ignored: true,
         reason: 'sinaleiro ainda ativo neste gateway',
         gateway: name,
         restanteMs: ativo.ate - agora
       };
+      logRawComPresence('sinaleiro_ignorado', null, {
+        device: name,
+        portal_gw_online: gwOnline,
+        cor: corNum,
+        tempo: tempoNum,
+        ignored: true,
+        reason: ignored.reason,
+        restanteMs: ignored.restanteMs
+      });
+      return ignored;
     }
 
-    const payload = {
-      command: 'WriteGPO',
-      device: { name: name },
-      data: { value: corNum, timeout: tempoNum }
-    };
 
-    const response = await axios.post(ip_middleware, payload, {
-      timeout: 5000,
-      headers: { 'Content-Type': 'application/json' },
-      validateStatus: () => true
+    const resultado = await enviarGpoSinaleiro(name, corNum, tempoNum, { disparo: 1 });
+    if (!resultado.ok) return resultado;
+
+    // 20000ms (ex. fechamento): um único disparo
+    if (tempoNum === SIRENE_TEMPO_SIMPLES_MS) {
+      sinaleiroAtivoPorGateway.set(name, { ate: Date.now() + tempoNum });
+      return resultado;
+    }
+
+    // Demais tempos (ex. alerta 5000):
+    // 1º liga tempo → pausa 20% do tempo → 2º liga tempo de novo
+    // (ex.: 5000 ligado + 1000 parado + 5000 ligado)
+    const intervaloMs = Math.max(0, Math.round(tempoNum * 0.2));
+    const atrasoSegundoMs = tempoNum + intervaloMs;
+    sinaleiroAtivoPorGateway.set(name, {
+      ate: Date.now() + atrasoSegundoMs + tempoNum
     });
 
-    const ok = response.status >= 200 && response.status < 300;
-    if (ok) {
-      sinaleiroAtivoPorGateway.set(name, { ate: Date.now() + tempoNum });
-    }
+    setTimeout(function () {
+      enviarGpoSinaleiro(name, corNum, tempoNum, { disparo: 2 })
+        .then(function (r2) {
+          if (r2 && r2.ok) {
+            sinaleiroAtivoPorGateway.set(name, { ate: Date.now() + tempoNum });
+          }
+        })
+        .catch(function (e) {
+          console.warn('[x_naturgy] 2º disparo sinaleiro:', e && e.message);
+        });
+    }, atrasoSegundoMs);
 
-    return {
-      ok,
-      status: response.status,
-      enviado: payload,
-      resposta: response.data
-    };
+    return Object.assign({}, resultado, {
+      duplo: true,
+      intervaloMs,
+      atrasoSegundoMs
+    });
   }
 
   /**
@@ -540,10 +685,17 @@ module.exports = (app) => {
   async function sinaleiroSeGatewaySemPortal(deviceName) {
     const name = String(deviceName || '').trim();
     if (!name) return;
-    if (portalGatewayOnline(name)) return;
+    if (portalGatewayOnline(name)) {
+      logRawComPresence('sinaleiro_bloqueado_portal_online', null, {
+        device: name.replace(/-[EeSs]$/, '') || name,
+        portal_gw_online: true,
+        reason: 'gateway ativo em portal web — sirene de leitura não enviada'
+      });
+      return;
+    }
 
     try {
-      const r = await acionarSinaleiro(name, 4, 10000);
+      const r = await acionarSinaleiro(name, 4, SIRENE_ALERTA_MS);
       if (r.ignored) return;
       console.log('[x_naturgy] sinaleiro gateway sem portal:', {
         device: name.replace(/-[EeSs]$/, ''),
@@ -551,8 +703,32 @@ module.exports = (app) => {
         status: r.status
       });
     } catch (e) {
+      logRawComPresence('sinaleiro_erro', null, {
+        device: name.replace(/-[EeSs]$/, '') || name,
+        portal_gw_online: portalGatewayOnline(name),
+        error: e.message
+      });
       console.warn('[x_naturgy] sinaleiro gateway sem portal:', e.message);
     }
+  }
+
+  function marcarUltimoSensorDevice(deviceName) {
+    const key = normalizarChaveDevice(deviceName);
+    if (!key) return;
+    ultimoSensorPorDevice.set(key, Date.now());
+  }
+
+  /** True se houve sensor neste leitor nos últimos SIRENE_JANELA_TAG_SENSOR_MS (5s). */
+  function sensorRecenteNoDevice(deviceName) {
+    const key = normalizarChaveDevice(deviceName);
+    if (!key) return false;
+    const ts = ultimoSensorPorDevice.get(key);
+    if (!ts) return false;
+    if (Date.now() - ts > SIRENE_JANELA_TAG_SENSOR_MS) {
+      ultimoSensorPorDevice.delete(key);
+      return false;
+    }
+    return true;
   }
 
   /**
@@ -1130,16 +1306,57 @@ module.exports = (app) => {
     sensoresEmAnalise.delete(key);
   }
 
+  /** Remove sufixo de sentido (-E/-S) do nome do leitor. */
+  function baseDeviceSemSentido(deviceName) {
+    return String(deviceName || '').trim().replace(/-[EeSs]$/, '');
+  }
+
   function tokemPorSentido(deviceName, tipoMovimento) {
-    // tokem cadastrado costuma ser P03-E (device original + sufixo); mantém casing do cadastro via device “cru”
+    // tokem cadastrado costuma ser P03-E / P03-S; nunca duplica sufixo (P03-E-E)
     const sendido = tipoMovimento === 'saida' ? 'S' : 'E';
-    const base = String(deviceName || '').trim();
-    // Preferência: usa a forma guardada no movimento, senão a chave
+    const base = baseDeviceSemSentido(deviceName);
+    if (!base) return '';
     return base + '-' + sendido;
   }
 
-  function montarRegistroPortal(tokemPortal, payload) {
-    return {
+  /**
+   * Resolve gateway do portal: tenta o tokem do sentido e, se não houver,
+   * o par E↔S (ex.: só existe P03-E e a passagem foi saída → P03-S).
+   */
+  async function buscarGatewayPorTokemPortal(tokemPortal) {
+    const preferred = String(tokemPortal || '').trim();
+    if (!preferred) return null;
+
+    let gw = await Gateway.findOne({ tokem: preferred, ativo: 1 });
+    if (gw) return gw;
+
+    const base = baseDeviceSemSentido(preferred);
+    if (!base) return null;
+
+    const candidatos = [];
+    if (/-[Ee]$/.test(preferred)) candidatos.push(base + '-S');
+    else if (/-[Ss]$/.test(preferred)) candidatos.push(base + '-E');
+    else candidatos.push(base + '-E', base + '-S');
+    if (preferred !== base) candidatos.push(base);
+
+    const vistos = new Set([preferred]);
+    for (const t of candidatos) {
+      if (!t || vistos.has(t)) continue;
+      vistos.add(t);
+      gw = await Gateway.findOne({ tokem: t, ativo: 1 });
+      if (gw) {
+        console.log('[x_naturgy] gateway via par E/S:', {
+          pedido: preferred,
+          encontrado: gw.tokem
+        });
+        return gw;
+      }
+    }
+    return null;
+  }
+
+  function montarRegistroPortal(tokemPortal, payload, sentido) {
+    const reg = {
       tokem: tokemPortal,
       tag: payload.Tagid || payload.TagId || payload.tagid || payload.tag,
       data_leitura: '',
@@ -1158,6 +1375,12 @@ module.exports = (app) => {
       id_nivel_loc3_final: '',
       id_nivel_loc4_final: ''
     };
+    // Preserva sentido real (entrada/saida) mesmo se o tokem cadastrado for só -E ou só -S
+    if (sentido) {
+      reg.sentido = sentido;
+      reg.status_sensor = sentido;
+    }
+    return reg;
   }
 
   async function enviarRegistroPortal(registro) {
@@ -1173,10 +1396,10 @@ module.exports = (app) => {
 
   /**
    * Consome a fila deste leitor.
-   * @param {boolean} aoFecharSentido - se true, envia TUDO da fila (não descarta por idade).
-   *   A idade só limpa lixo entre passagens no enfileirar / limparFilaDevice.
+   * Sempre aplica BUFFER_TAGS_MS (5s): ao fechar sentido só vão tags lidas nessa janela.
+   * @param {boolean} [_aoFecharSentido] — mantido por compatibilidade; idade sempre filtrada.
    */
-  function consumirTagsPendentes(deviceName, aoFecharSentido) {
+  function consumirTagsPendentes(deviceName, _aoFecharSentido) {
     const key = normalizarChaveDevice(deviceName);
     const agora = Date.now();
     const lista = [];
@@ -1186,7 +1409,7 @@ module.exports = (app) => {
       if (normalizarChaveDevice(k) !== key) continue;
       for (const item of (arr || [])) {
         const idade = agora - item.receivedAt;
-        if (aoFecharSentido || idade <= BUFFER_TAGS_MS) {
+        if (idade <= BUFFER_TAGS_MS) {
           lista.push({ ...item, idadeMs: idade });
         } else {
           descartadas.push({ tag: item.tag, idadeMs: idade });
@@ -1198,6 +1421,7 @@ module.exports = (app) => {
     if (descartadas.length) {
       console.warn('[x_naturgy] tags descartadas por idade no consumo:', {
         device: key,
+        limiteMs: BUFFER_TAGS_MS,
         descartadas
       });
     }
@@ -1333,8 +1557,8 @@ module.exports = (app) => {
         idadeMs: Date.now() - t.receivedAt
       }));
 
-      // Ao fechar sentido: NÃO filtra por idade — aproveita tudo que estava na fila deste leitor
-      const lista = consumirTagsPendentes(key, true);
+      // Ao fechar sentido: só tags ≤ BUFFER_TAGS_MS (5s)
+      const lista = consumirTagsPendentes(key, false);
 
       if (!lista.length || !movimento || !movimento.tipo) {
         console.log('[x_naturgy] flush: nada a enviar', {
@@ -1353,31 +1577,34 @@ module.exports = (app) => {
         || deviceName
         || ''
       ).trim();
-      const tokemPortal = tokemPorSentido(baseTokem, movimento.tipo);
+      const tokemPreferido = tokemPorSentido(baseTokem, movimento.tipo);
 
-      const gateway = await Gateway.findOne({ tokem: tokemPortal, ativo: 1 });
+      const gateway = await buscarGatewayPorTokemPortal(tokemPreferido);
       if (!gateway) {
         const atual = tagsPendentesPorDevice.get(key) || [];
         tagsPendentesPorDevice.set(key, atual.concat(lista));
         console.warn(
-          `[x_naturgy] flush tags: gateway ${tokemPortal} não encontrado (device ${key}). Tags reenfileiradas.`
+          `[x_naturgy] flush tags: gateway ${tokemPreferido} não encontrado (device ${key}). Tags reenfileiradas.`
         );
-        return { enviados: 0, falhas: lista.length, tokemPortal, pendentes: lista.length };
+        return { enviados: 0, falhas: lista.length, tokemPortal: tokemPreferido, pendentes: lista.length };
       }
 
+      const tokemRegistro = gateway.tokem;
       let enviados = 0;
       let falhas = 0;
+      let ignorados = 0;
       const requeue = [];
 
       for (const item of lista) {
         try {
-          const registro = montarRegistroPortal(tokemPortal, item.payload);
+          const registro = montarRegistroPortal(tokemRegistro, item.payload, movimento.tipo);
           await enviarRegistroPortal(registro);
           enviados += 1;
         } catch (err) {
           falhas += 1;
           // ignored (debounce 5s) = já foi registrado recentemente; não reenfileira
-          if (!err.ignored) requeue.push(item);
+          if (err.ignored) ignorados += 1;
+          else requeue.push(item);
           console.error(
             `[x_naturgy] flush tag ${item.tag} em ${key}:`,
             err.response?.data || err.message
@@ -1385,7 +1612,8 @@ module.exports = (app) => {
         }
       }
 
-      if (enviados > 0) {
+      // Portal fechado: sirene mesmo se o registro foi só debounce/ignored
+      if (enviados > 0 || ignorados > 0) {
         await sinaleiroSePortalFechado(gateway);
       }
 
@@ -1397,14 +1625,21 @@ module.exports = (app) => {
       console.log('[x_naturgy] flush tags pendentes:', {
         device: key,
         sentido: movimento.tipo,
-        tokemPortal,
+        tokemPreferido,
+        tokemRegistro,
         enviados,
         falhas,
         requeue: requeue.length,
         idadesMs: lista.map((t) => t.idadeMs)
       });
 
-      return { enviados, falhas, tokemPortal, pendentes: lista.length };
+      return {
+        enviados,
+        falhas,
+        tokemPortal: tokemPreferido,
+        tokemRegistro,
+        pendentes: lista.length
+      };
     })();
 
     flushEmAndamento.set(key, job);
@@ -1420,6 +1655,8 @@ module.exports = (app) => {
    * Por device: 1ª porta → espera até 10s a 2ª → marca sentido por 20s (descarta sensores nesse período).
    */
   app.post('/x_naturgy/registro/sensor', async (req, res) => {
+    // Payload bruto por leitor+data (antes de qualquer tratativa)
+    logRawComPresence('sensor', req.body);
     try {
       const {
         id,
@@ -1487,13 +1724,14 @@ module.exports = (app) => {
           timeout,
           deviceRaw
         });
+        marcarUltimoSensorDevice(chaveSensor);
 
         console.log('[x_naturgy] sensor aguardando 2ª porta:', {
           device: chaveSensor,
           primeiraPorta: porta
         });
 
-        // Portal fechado + 1º sensor + tag(s) vivas no buffer → sirene
+        // Portal GW offline + sensor + tag(s) ≤5s no buffer → sirene
         const filaPre = podarTagsPendentesDevice(chaveSensor);
         emitirLogPortal({
           tag: 'SENSOR',
@@ -1552,6 +1790,7 @@ module.exports = (app) => {
           timeout,
           deviceRaw
         });
+        marcarUltimoSensorDevice(chaveSensor);
 
         // Reinício da 1ª porta: preserva fila (tags pré-sensor / aguardando)
 
@@ -1602,6 +1841,7 @@ module.exports = (app) => {
         });
       }
 
+
       const rawParaTokem = deviceRaw || estadoAnterior.deviceRaw || chaveSensor;
       const validoAte = agora + SENTIDO_VALIDO_MS;
       const timeoutLimpeza = setTimeout(() => {
@@ -1634,6 +1874,7 @@ module.exports = (app) => {
         ...movimento,
         timeoutLimpeza
       });
+      marcarUltimoSensorDevice(chaveSensor);
 
       console.log('Movimento identificado (por device):', {
         device: chaveSensor,
@@ -1674,6 +1915,8 @@ module.exports = (app) => {
 
 
   app.post('/x_naturgy/registro/portal', async (req, res) => {
+    // Payload bruto por leitor+data (antes de qualquer tratativa)
+    logRawComPresence('portal', req.body);
 
     const payload = req.body;
     const deviceRaw = rawDeviceFromBody(payload);
@@ -1704,9 +1947,10 @@ module.exports = (app) => {
     console.log('sentido device ' + deviceName + ':', movimento && movimento.tipo);
 
     // Sem sentido ainda: bufferiza a tag (pré-sensor ou após 1º sensor).
-    // TTL: BUFFER_TAGS_MS (~15s). Ao fechar entrada/saída, flushTagsPendentes envia a fila.
+    // TTL: BUFFER_TAGS_MS (5s). Ao fechar entrada/saída, flushTagsPendentes envia a fila.
     if (!movimento || !movimento.tipo) {
       const emAguardo = sensoresEmAnalise.has(deviceName);
+      const sensorRecente = sensorRecenteNoDevice(deviceName);
       const fase = emAguardo ? 'aguardando' : 'pre_sensor';
       const fila = enfileirarTagPendente(deviceName, payload);
 
@@ -1718,8 +1962,8 @@ module.exports = (app) => {
         status_sensor: fase
       });
 
-      // Portal fechado + 1º sensor já ativo + tag → sirene neste leitor
-      if (emAguardo) {
+      // Portal GW offline + tag com sensor nos últimos 5s (janela simétrica) → sirene
+      if (emAguardo || sensorRecente) {
         await sinaleiroSeGatewaySemPortal(deviceName);
       }
 
@@ -1734,7 +1978,9 @@ module.exports = (app) => {
         bufferMs: BUFFER_TAGS_MS,
         message: emAguardo
           ? 'Tag bufferizada após o 1º sensor; será enviada ao concluir o sentido.'
-          : 'Tag bufferizada (pré-sensor); será enviada ao identificar o sentido do portal.'
+          : (sensorRecente
+            ? 'Tag bufferizada com sensor recente (≤5s); sirene se portal GW offline.'
+            : 'Tag bufferizada (pré-sensor); será enviada ao identificar o sentido do portal.')
       });
     }
 
@@ -1745,7 +1991,7 @@ module.exports = (app) => {
       movimento.devicenameRaw || deviceRaw
     );
 
-    const tokemPortal = tokemPorSentido(
+    const tokemPreferido = tokemPorSentido(
       movimento.devicenameRaw || deviceRaw,
       movimento.tipo
     );
@@ -1755,40 +2001,39 @@ module.exports = (app) => {
       rssi,
       antena,
       device: deviceRaw || deviceName,
-      tokem: tokemPortal,
+      tokem: tokemPreferido,
       status_sensor: movimento.tipo // entrada | saida
     });
 
-    const gateway = await Gateway.findOne({ tokem: tokemPortal, ativo: 1 });
+    const gateway = await buscarGatewayPorTokemPortal(tokemPreferido);
     if (!gateway) {
       return res.status(404).json({
         ok: false,
         error: 'Gateway não encontrado.',
-        tokem: tokemPortal
+        tokem: tokemPreferido
       });
     }
 
-    const registro = montarRegistroPortal(tokemPortal, payload);
+    const registro = montarRegistroPortal(gateway.tokem, payload, movimento.tipo);
 
+    let registroIgnored = false;
     try {
       await enviarRegistroPortal(registro);
     } catch (err) {
       if (err.ignored) {
-        return res.status(200).json({
-          ok: true,
-          ignored: true,
-          message: err.message,
-          flush,
-          sentido: movimento.tipo
-        });
+        registroIgnored = true;
+      } else {
+        throw err;
       }
-      throw err;
     }
 
+    // Portal fechado: sirene com sentido + tag (mesmo se registro foi ignored/debounce)
     await sinaleiroSePortalFechado(gateway);
 
     return res.status(200).json({
       ok: true,
+      ignored: registroIgnored,
+      message: registroIgnored ? 'Registro ignorado (debounce); sinaleiro avaliado.' : undefined,
       gateway: gateway,
       registro: registro,
       sentido: movimento.tipo,
