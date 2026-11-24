@@ -1,365 +1,859 @@
 <%- contentFor('body') %>
-  <div ng-controller="trackingAferidorCtrl" class="app-container" ng-cloak>
+<style>
+  .taf-page { margin-bottom: 2rem; }
 
-    <div class="app-hero-header d-flex align-items-center">
-      <ol class="breadcrumb d-none d-lg-flex">
-        <li class="breadcrumb-item">
-          <i class="bi bi-house lh-1"></i>
-          <a class="text-decoration-none">Administração</a>
-        </li>
-        <li class="breadcrumb-item" aria-current="page">Aferidor de Gateways</li>
-        <li class="breadcrumb-item text-info" aria-current="page">
-          Selecionados: {{ _gatewaysSelecionados.length }}
-        </li>
-      </ol>
+  .taf-breadcrumb {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    margin-bottom: 0.35rem;
+  }
+  .taf-breadcrumb a { color: #94a3b8; text-decoration: none; }
+  .taf-breadcrumb a:hover { color: #e2e8f0; }
 
-      <div class="ms-auto d-flex flex-row gap-2 align-items-center">
-        <div class="d-flex align-items-center gap-1">
-          <label class="form-label mb-0 small text-secondary">Período</label>
-          <select class="form-select form-select-sm" style="width:auto;"
-            ng-model="_periodoMinutos" ng-change="onPeriodoChange()"
-            ng-options="m as (m + ' min') for m in [1,2,5,10,15,30,60]">
-          </select>
+  .taf-title {
+    font-size: 1.55rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin: 0;
+  }
+  .taf-subtitle {
+    color: #94a3b8;
+    font-size: 0.9rem;
+    margin: 0.35rem 0 0;
+    max-width: 42rem;
+  }
+  .taf-datetime {
+    font-size: 0.82rem;
+    color: #cbd5e1;
+  }
+  .taf-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    color: #86efac;
+  }
+  .taf-live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #4ade80;
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.55);
+    animation: taf-pulse 1.8s infinite;
+  }
+  @keyframes taf-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.55); }
+    70% { box-shadow: 0 0 0 8px rgba(74, 222, 128, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+  }
+
+  .taf-panel {
+    background: rgba(30, 41, 59, 0.72);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 0.75rem;
+    color: #e2e8f0;
+  }
+  .taf-panel .card-body { padding: 1.1rem 1.25rem; }
+
+  .taf-btn-ghost {
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    background: rgba(15, 23, 42, 0.45);
+    color: #cbd5e1;
+    border-radius: 0.5rem;
+    padding: 0.45rem 0.85rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  .taf-btn-ghost:hover {
+    background: rgba(51, 65, 85, 0.55);
+    color: #f8fafc;
+  }
+  .taf-btn-ghost:disabled { opacity: 0.45; }
+
+  .taf-input, .taf-select {
+    background: #0f172a !important;
+    color: #e2e8f0 !important;
+    border-color: rgba(148, 163, 184, 0.25) !important;
+  }
+  .taf-input:focus, .taf-select:focus {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 0.15rem rgba(59, 130, 246, 0.2);
+  }
+
+  .taf-gw-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+    margin-bottom: 0.35rem;
+  }
+  .taf-gw-label {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    margin: 0;
+  }
+  .taf-gw-chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 0;
+    width: 100%;
+  }
+  .taf-gw-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    max-width: 100%;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.35rem 0.65rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    background: rgba(37, 99, 235, 0.18);
+    color: #93c5fd;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .taf-gw-chip:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(248, 113, 113, 0.45);
+    color: #fca5a5;
+  }
+  .taf-gw-chip .taf-gw-chip-x {
+    font-size: 0.85rem;
+    opacity: 0.7;
+  }
+  .taf-gw-chip:hover .taf-gw-chip-x { opacity: 1; }
+  .taf-gw-add {
+    width: 2.15rem;
+    height: 2.15rem;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    border: 1px dashed rgba(148, 163, 184, 0.4);
+    background: rgba(15, 23, 42, 0.45);
+    color: #93c5fd;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+  .taf-gw-add:hover {
+    border-color: #3b82f6;
+    color: #60a5fa;
+    background: rgba(37, 99, 235, 0.15);
+  }
+  .taf-gw-hint {
+    font-size: 0.72rem;
+    color: #64748b;
+    margin-top: 0.35rem;
+  }
+
+  .taf-kpi {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .taf-kpi .icon-box {
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 0.65rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+  }
+  .taf-kpi-blue .icon-box { background: rgba(45, 156, 219, 0.2); color: #38bdf8; }
+  .taf-kpi-green .icon-box { background: rgba(34, 197, 94, 0.18); color: #4ade80; }
+  .taf-kpi-red .icon-box { background: rgba(239, 68, 68, 0.18); color: #f87171; }
+  .taf-kpi-purple .icon-box { background: rgba(155, 81, 224, 0.2); color: #c084fc; }
+  .taf-kpi .kpi-val {
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1.1;
+    color: #f8fafc;
+  }
+  .taf-kpi .kpi-lbl { font-size: 0.78rem; color: #94a3b8; }
+
+  .taf-cards-board {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.85rem;
+    align-items: stretch;
+    min-height: 180px;
+  }
+  .taf-card {
+    flex: 1 1 320px;
+    max-width: 100%;
+    min-width: min(100%, 300px);
+    background: rgba(15, 23, 42, 0.72);
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    border-radius: 0.75rem;
+    color: #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    transition: border-color 0.15s, box-shadow 0.15s, transform 0.12s, opacity 0.12s;
+    cursor: grab;
+  }
+  .taf-card:active { cursor: grabbing; }
+  .taf-card.is-dragging {
+    opacity: 0.45;
+    transform: scale(0.98);
+  }
+  .taf-card.is-drag-over {
+    border-color: #38bdf8;
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.35);
+  }
+  .taf-card.has-disputa {
+    border-color: rgba(251, 191, 36, 0.45);
+  }
+  .taf-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.85rem 1rem 0.55rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  }
+  .taf-card-title {
+    font-weight: 700;
+    font-size: 1rem;
+    margin: 0;
+    color: #f8fafc;
+  }
+  .taf-card-sub {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-top: 0.15rem;
+  }
+  .taf-card-sub a {
+    color: #93c5fd;
+    text-decoration: none;
+  }
+  .taf-card-sub a:hover { color: #bfdbfe; text-decoration: underline; }
+  .taf-drag-handle {
+    color: #64748b;
+    font-size: 1rem;
+    padding: 0.15rem;
+    user-select: none;
+  }
+  .taf-card-body {
+    padding: 0.75rem 1rem 1rem;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-height: 0;
+  }
+
+  .taf-tag-block {
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 0.6rem;
+    padding: 0.65rem 0.75rem;
+    background: rgba(30, 41, 59, 0.45);
+  }
+  .taf-tag-block.is-campeao {
+    border-color: rgba(34, 197, 94, 0.4);
+    background: rgba(34, 197, 94, 0.08);
+  }
+  .taf-tag-block.is-perdedora {
+    border-color: rgba(248, 113, 113, 0.4);
+    background: rgba(239, 68, 68, 0.08);
+  }
+  .taf-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.45rem;
+    border-radius: 0.35rem;
+  }
+  .taf-badge-campeao {
+    background: rgba(34, 197, 94, 0.22);
+    color: #86efac;
+    border: 1px solid rgba(74, 222, 128, 0.35);
+  }
+  .taf-badge-perdedora {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+    border: 1px solid rgba(248, 113, 113, 0.35);
+  }
+  .taf-badge-disputa {
+    background: rgba(251, 191, 36, 0.18);
+    color: #fde68a;
+    border: 1px solid rgba(251, 191, 36, 0.35);
+  }
+  .taf-badge-neutro {
+    background: rgba(148, 163, 184, 0.15);
+    color: #cbd5e1;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+  }
+
+  .taf-hist {
+    max-height: 240px;
+    overflow: auto;
+    border-top: 1px dashed rgba(148, 163, 184, 0.18);
+    padding-top: 0.55rem;
+  }
+  .taf-hist-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.45rem;
+  }
+  .taf-hist-item {
+    display: grid;
+    grid-template-columns: 58px 1fr;
+    gap: 0.45rem;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+    font-size: 0.78rem;
+  }
+  .taf-hist-item:last-child { border-bottom: 0; }
+  .taf-hist-time {
+    color: #64748b;
+    font-variant-numeric: tabular-nums;
+  }
+  .taf-hist-main { min-width: 0; }
+  .taf-hist-motivo {
+    color: #94a3b8;
+    margin-top: 0.15rem;
+    line-height: 1.35;
+  }
+
+  .taf-section-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin: 0;
+  }
+  .taf-section-sub {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    margin: 0.15rem 0 0;
+  }
+
+  .taf-table {
+    --bs-table-bg: transparent;
+    --bs-table-color: #e2e8f0;
+    --bs-table-border-color: rgba(148, 163, 184, 0.14);
+    --bs-table-hover-bg: rgba(51, 65, 85, 0.35);
+    font-size: 0.8rem;
+  }
+  .taf-table thead th {
+    color: #94a3b8;
+    font-weight: 600;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    border-bottom-color: rgba(148, 163, 184, 0.2) !important;
+  }
+  .taf-empty {
+    color: #64748b;
+    text-align: center;
+    padding: 2rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .taf-nav-pills .nav-link {
+    color: #94a3b8;
+    border: 1px solid transparent;
+    font-size: 0.82rem;
+  }
+  .taf-nav-pills .nav-link.active {
+    background: rgba(37, 99, 235, 0.25);
+    color: #bfdbfe;
+    border-color: rgba(59, 130, 246, 0.35);
+  }
+
+  .taf-modal .modal-content {
+    background: #1e293b;
+    color: #e2e8f0;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+  }
+  .taf-modal .modal-header,
+  .taf-modal .modal-footer {
+    border-color: rgba(148, 163, 184, 0.18);
+  }
+  .taf-gw-option {
+    background: rgba(15, 23, 42, 0.55);
+    color: #e2e8f0;
+    border-color: rgba(148, 163, 184, 0.15);
+    cursor: pointer;
+  }
+  .taf-gw-option:hover {
+    background: rgba(37, 99, 235, 0.18);
+    color: #e2e8f0;
+  }
+</style>
+
+<div ng-controller="trackingAferidorCtrl" class="app-container" ng-cloak>
+
+  <div class="app-hero-header d-flex align-items-start justify-content-between flex-wrap gap-3">
+    <div>
+      <div class="taf-breadcrumb">
+        <i class="bi bi-house me-1"></i>
+        <a>Administração</a>
+        <span class="mx-1">›</span>
+        <span>Aferidor de Gateways</span>
+      </div>
+      <h1 class="taf-title">Aferidor de Gateways</h1>
+      <p class="taf-subtitle">
+        Compare coletores lado a lado, acompanhe quem ganha ou perde cada disputa e o motivo da decisão em tempo real.
+      </p>
+    </div>
+    <div class="text-end">
+      <div class="taf-datetime">{{ _dataHoraTopo }}</div>
+      <div class="taf-live mt-1">
+        <span class="taf-live-dot"></span>
+        Em tempo real
+      </div>
+    </div>
+  </div>
+
+  <div class="app-body taf-page">
+
+    <!-- Barra: gateways + período -->
+    <div class="card taf-panel mb-3">
+      <div class="card-body">
+        <div class="d-flex flex-wrap align-items-end justify-content-between gap-3">
+          <div style="flex: 1 1 320px; min-width: 0;">
+            <div class="taf-gw-head">
+              <div class="taf-gw-label">Gateways em aferição</div>
+              <div class="small text-secondary" ng-if="_gatewaysSelecionados.length">
+                Arraste os cards para comparar lado a lado
+              </div>
+            </div>
+            <div class="taf-gw-chips">
+              <button type="button"
+                      class="taf-gw-add"
+                      title="Vincular gateway"
+                      ng-click="onAbrirModalGateways()">
+                <i class="bi bi-plus-lg"></i>
+              </button>
+              <button type="button"
+                      class="taf-gw-chip"
+                      ng-repeat="g in _gatewaysSelecionados track by g._id"
+                      title="Remover {{ g.descricao || g.tokem }}"
+                      ng-click="onRemoverGateway(g)">
+                <span class="text-truncate">{{ g.descricao || g.tokem }}</span>
+                <i class="bi bi-x taf-gw-chip-x"></i>
+              </button>
+              <span class="taf-gw-hint" ng-if="!_gatewaysSelecionados.length">
+                Nenhum vinculado — clique em + para selecionar
+              </span>
+            </div>
+          </div>
+
+          <div class="d-flex flex-wrap align-items-end gap-2">
+            <div>
+              <label class="form-label small text-secondary mb-1">Período</label>
+              <select class="form-select form-select-sm taf-select"
+                      style="width:auto; min-width: 110px;"
+                      ng-model="_periodoMinutos"
+                      ng-change="onPeriodoChange()"
+                      ng-options="m as (m + ' min') for m in [1,2,5,10,15,30,60]">
+              </select>
+            </div>
+            <button type="button" class="taf-btn-ghost" ng-click="onLimparLeituras()">
+              <i class="bi bi-trash3 me-1"></i>Limpar
+            </button>
+          </div>
         </div>
-        <button type="button" class="btn btn-outline-secondary btn-sm" ng-click="onLimparLeituras()">
-          Limpar leituras
-        </button>
       </div>
     </div>
 
-    <div class="app-body">
+    <!-- KPIs -->
+    <div class="row g-3 mb-3">
+      <div class="col-6 col-lg-3">
+        <div class="card taf-panel h-100">
+          <div class="card-body taf-kpi taf-kpi-blue">
+            <div class="icon-box"><i class="bi bi-broadcast-pin"></i></div>
+            <div>
+              <div class="kpi-val">{{ _kpi.gateways }}</div>
+              <div class="kpi-lbl">Gateways</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="card taf-panel h-100">
+          <div class="card-body taf-kpi taf-kpi-green">
+            <div class="icon-box"><i class="bi bi-trophy"></i></div>
+            <div>
+              <div class="kpi-val">{{ _kpi.campeao }}</div>
+              <div class="kpi-lbl">Tags campeãs</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="card taf-panel h-100">
+          <div class="card-body taf-kpi taf-kpi-red">
+            <div class="icon-box"><i class="bi bi-flag"></i></div>
+            <div>
+              <div class="kpi-val">{{ _kpi.perdedora }}</div>
+              <div class="kpi-lbl">Tags perdedoras</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="card taf-panel h-100">
+          <div class="card-body taf-kpi taf-kpi-purple">
+            <div class="icon-box"><i class="bi bi-activity"></i></div>
+            <div>
+              <div class="kpi-val">{{ _kpi.leituras }}</div>
+              <div class="kpi-lbl">Leituras no período</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
-      <div class="row gx-3">
+    <div class="row g-3">
+      <!-- Cards arrastáveis -->
+      <div class="col-xl-7 col-lg-6">
+        <div class="taf-cards-board" ng-if="_cardsGateway.length">
+          <div class="taf-card"
+               ng-repeat="card in _cardsGateway track by card.gateway._id"
+               ng-class="{
+                 'is-dragging': card._dragging,
+                 'is-drag-over': card._dragOver,
+                 'has-disputa': card.qtd_disputa > 0
+               }"
+               taf-draggable
+               taf-drag-start="onCardDragStart($event, card)"
+               taf-drag-end="onCardDragEnd(card)"
+               taf-drag-over="onCardDragOver($event, card)"
+               taf-drop="onCardDrop($event, card)">
 
-        <!-- Esquerda: seleção + cards -->
-        <div class="col-xl-7 col-lg-6 mb-3">
-
-          <div class="card mb-3">
-            <div class="card-body">
-              <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
-                <div>
-                  <h6 class="mb-0">Gateways</h6>
-                  <small class="text-secondary">Selecione os coletores para aferir disputa e desempenho.</small>
+            <div class="taf-card-head">
+              <div class="min-w-0">
+                <h3 class="taf-card-title text-truncate">{{ card.gateway.descricao }}</h3>
+                <div class="taf-card-sub">
+                  Regra:
+                  <a href="javascript:void(0)"
+                     ng-if="card.regra"
+                     ng-click="onVerRegra(card.regra, $event)">
+                    {{ card.regra.descricao }} <i class="bi bi-info-circle"></i>
+                  </a>
+                  <span ng-if="!card.regra">sem regra ativa</span>
+                  <span class="ms-2" ng-if="card.qtd_disputa">
+                    <span class="taf-badge taf-badge-disputa">{{ card.qtd_disputa }} disputa</span>
+                  </span>
                 </div>
-                <button type="button" class="btn btn-outline-secondary btn-sm"
-                  ng-click="onLimparSelecao()" ng-disabled="!_gatewaysSelecionados.length">
-                  Limpar seleção
+              </div>
+              <div class="taf-drag-handle" title="Arrastar para reposicionar">
+                <i class="bi bi-grip-vertical"></i>
+              </div>
+            </div>
+
+            <div class="taf-card-body">
+              <div ng-if="!card.tags.length" class="taf-empty py-3">
+                Aguardando tags em disputa…
+              </div>
+
+              <!-- Tags atuais campeão / perdedora -->
+              <div class="taf-tag-block"
+                   ng-repeat="t in card.tags track by t.tag"
+                   ng-class="{
+                     'is-campeao': t.status === 'campeao',
+                     'is-perdedora': t.status === 'perdedora'
+                   }">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
+                  <div class="min-w-0">
+                    <strong class="text-truncate d-inline-block" style="max-width: 180px;">
+                      {{ t.item_descricao }}
+                    </strong>
+                    <span class="text-secondary small ms-1">{{ t.tag }}</span>
+                  </div>
+                  <div class="d-flex flex-wrap gap-1">
+                    <span class="taf-badge"
+                          ng-class="{
+                            'taf-badge-campeao': t.status === 'campeao',
+                            'taf-badge-perdedora': t.status === 'perdedora',
+                            'taf-badge-neutro': t.status === 'neutro'
+                          }">
+                      <i class="bi"
+                         ng-class="{
+                           'bi-trophy': t.status === 'campeao',
+                           'bi-flag': t.status === 'perdedora'
+                         }"></i>
+                      {{ t.status === 'campeao' ? 'Campeão' : (t.status === 'perdedora' ? 'Perdedora' : '—') }}
+                    </span>
+                    <span class="taf-badge taf-badge-disputa" ng-if="t.pending">Pendente</span>
+                  </div>
+                </div>
+                <div class="small" style="line-height:1.4;" ng-if="t.narrativa">
+                  {{ t.narrativa }}
+                </div>
+                <div class="small text-secondary mt-1" ng-if="t.afericao.janela">
+                  Janela {{ fmtHora(t.afericao.janela.inicio) }} → {{ fmtHora(t.afericao.janela.fim) }}
+                  <span ng-if="t.afericao.regra">
+                    · {{ t.afericao.regra.descricao }} ({{ t.afericao.regra.janela_analise || 0 }}s)
+                  </span>
+                </div>
+              </div>
+
+              <!-- Histórico ganho/perda -->
+              <div class="taf-hist">
+                <div class="taf-hist-title">
+                  Histórico de disputa
+                  <span class="ms-1">({{ card.historico.length }})</span>
+                </div>
+                <div ng-if="!card.historico.length" class="small text-secondary">
+                  Ainda sem eventos de ganho ou perda neste período.
+                </div>
+                <div class="taf-hist-item" ng-repeat="h in card.historico track by h._id">
+                  <div class="taf-hist-time">{{ fmtHora(h.quando) }}</div>
+                  <div class="taf-hist-main">
+                    <div class="d-flex flex-wrap align-items-center gap-1">
+                      <span class="taf-badge"
+                            ng-class="{
+                              'taf-badge-campeao': h.resultado === 'ganhou' || h.resultado === 'manteve',
+                              'taf-badge-perdedora': h.resultado === 'perdeu',
+                              'taf-badge-disputa': h.resultado === 'disputando'
+                            }">
+                        {{ labelResultado(h.resultado) }}
+                      </span>
+                      <strong class="small">{{ h.item_descricao || h.tag }}</strong>
+                    </div>
+                    <div class="taf-hist-motivo">{{ h.motivo || h.narrativa || '—' }}</div>
+                    <div class="text-secondary" style="font-size:0.7rem;" ng-if="h.regra">
+                      Regra: {{ h.regra }}
+                      <span ng-if="h.confirmacoes && !h.confirmacoes.ignorado">
+                        · conf. {{ h.confirmacoes.obtidas }}/{{ h.confirmacoes.necessarias }}
+                      </span>
+                      <span ng-if="h.diferenca_rssi && h.diferenca_rssi.aplicavel">
+                        · Δ {{ h.diferenca_rssi.vantagem != null ? h.diferenca_rssi.vantagem : '—' }} /
+                        {{ h.diferenca_rssi.exigida }} dB
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card taf-panel" ng-if="!_cardsGateway.length">
+          <div class="card-body taf-empty">
+            Vincule gateways pelo botão <strong>+</strong> para montar o painel de aferição.
+          </div>
+        </div>
+      </div>
+
+      <!-- Painel direito: leituras / resumo -->
+      <div class="col-xl-5 col-lg-6">
+        <div class="card taf-panel h-100">
+          <div class="card-body">
+            <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-2">
+              <div>
+                <h2 class="taf-section-title">Leituras RFID</h2>
+                <p class="taf-section-sub">Tags recebidas pelo tracking dos gateways vinculados</p>
+              </div>
+              <span class="badge text-bg-primary">{{ leiturasFiltradas().length }}</span>
+            </div>
+
+            <ul class="nav nav-pills taf-nav-pills mb-3 gap-1" role="tablist">
+              <li class="nav-item">
+                <button type="button" class="nav-link rounded-pill"
+                        ng-class="{active: _abaDireita === 'leituras'}"
+                        ng-click="_abaDireita = 'leituras'">
+                  Todas as leituras
                 </button>
-              </div>
+              </li>
+              <li class="nav-item">
+                <button type="button" class="nav-link rounded-pill"
+                        ng-class="{active: _abaDireita === 'resumo'}"
+                        ng-click="_abaDireita = 'resumo'">
+                  Resumo por tag e gateway
+                </button>
+              </li>
+            </ul>
 
-              <div class="search-container mb-2" style="max-width:320px;">
-                <input type="text" class="form-control form-control-sm"
-                  ng-model="_pesquisaGateway" ng-change="onFiltraGateways()"
-                  placeholder="Pesquisar gateway ou regra">
-                <i class="bi bi-search"></i>
+            <div class="row g-2 mb-3">
+              <div class="col-md-5">
+                <label class="form-label small text-secondary mb-1">Gateway</label>
+                <select class="form-select form-select-sm taf-select"
+                        ng-model="_filtroGateway" ng-change="onPeriodoChange()">
+                  <option value="">Todos</option>
+                  <option ng-repeat="g in _gatewaysSelecionados track by g._id" value="{{ g._id }}">
+                    {{ g.descricao }}
+                  </option>
+                </select>
               </div>
+              <div class="col-md-7">
+                <label class="form-label small text-secondary mb-1">Tag</label>
+                <input type="text" class="form-control form-control-sm taf-input"
+                       ng-model="_filtroTag" placeholder="Filtrar tag">
+              </div>
+            </div>
 
-              <div class="table-responsive" style="max-height:220px; overflow:auto;">
-                <table class="table table-sm align-middle table-hover m-0">
+            <div ng-show="_abaDireita === 'leituras'">
+              <div class="table-responsive" style="max-height:62vh; overflow:auto;">
+                <table class="table taf-table table-hover align-middle mb-0">
                   <thead>
                     <tr>
-                      <th style="width:36px;"></th>
+                      <th>Hora</th>
+                      <th>Tag</th>
                       <th>Gateway</th>
-                      <th>Regra</th>
-                      <th>Tokem</th>
+                      <th>RSSI</th>
+                      <th>Decisão</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr ng-repeat="g in _listGateways track by g._id"
-                      ng-click="onToggleGateway(g)" style="cursor:pointer;"
-                      ng-class="{'table-warning': isGatewaySelecionado(g)}">
+                    <tr ng-repeat="l in leiturasFiltradas() track by l._id_local">
+                      <td>{{ fmtHora(l.data_leitura) }}</td>
+                      <td>{{ l.tag }}</td>
+                      <td>{{ l.gateway_descricao }}</td>
+                      <td>{{ l.rssi != null ? l.rssi : '—' }}</td>
                       <td>
-                        <input type="checkbox" class="form-check-input"
-                          ng-checked="isGatewaySelecionado(g)"
-                          ng-click="$event.stopPropagation(); onToggleGateway(g)">
+                        <span ng-if="l.afericao && l.afericao.decisao">
+                          {{ l.afericao.decisao.pending ? 'Pendente' : (l.afericao.decisao.applied ? 'Aplicado' : (l.afericao.decisao.ignored ? 'Ignorado' : '—')) }}
+                        </span>
+                        <span ng-if="!l.afericao" class="text-secondary">—</span>
                       </td>
-                      <td>{{ g.descricao || '—' }}</td>
-                      <td>
-                        <span ng-if="g._regra">{{ g._regra.descricao }}</span>
-                        <span ng-if="!g._regra" class="text-secondary">Sem regra ativa</span>
-                      </td>
-                      <td class="small text-secondary">{{ g.tokem }}</td>
                     </tr>
-                    <tr ng-if="!_listGateways.length">
-                      <td colspan="4" class="text-center text-secondary py-3">Nenhum gateway ativo.</td>
+                    <tr ng-if="!leiturasFiltradas().length">
+                      <td colspan="5" class="taf-empty">Aguardando leituras…</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div ng-show="_abaDireita === 'resumo'">
+              <div class="table-responsive" style="max-height:62vh; overflow:auto;">
+                <table class="table taf-table table-hover align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>Tag</th>
+                      <th>Gateway</th>
+                      <th>Qtd</th>
+                      <th>Melhor</th>
+                      <th>Pior</th>
+                      <th>Última</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr ng-repeat="r in resumoPorTagGateway() track by (r.tag + '-' + r.id_gateway)">
+                      <td>{{ r.tag }}</td>
+                      <td>{{ r.gateway_descricao }}</td>
+                      <td>{{ r.qtd }}</td>
+                      <td>{{ r.melhor_rssi != null ? r.melhor_rssi : '—' }}</td>
+                      <td>{{ r.pior_rssi != null ? r.pior_rssi : '—' }}</td>
+                      <td>{{ fmtHora(r.ultima) }}</td>
+                    </tr>
+                    <tr ng-if="!resumoPorTagGateway().length">
+                      <td colspan="6" class="taf-empty">Sem dados para o filtro atual.</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
             </div>
           </div>
-
-          <div ng-if="!_cardsGateway.length" class="card">
-            <div class="card-body text-secondary text-center py-5">
-              Selecione um ou mais gateways para acompanhar a disputa em tempo real.
-            </div>
-          </div>
-
-          <div class="row gx-3" ng-if="_cardsGateway.length">
-            <div class="col-12 mb-3" ng-repeat="card in _cardsGateway track by card.gateway._id">
-              <div class="card h-100 border"
-                ng-class="{'border-warning': card.qtd_disputa > 0}">
-                <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
-                  <div>
-                    <strong>{{ card.gateway.descricao }}</strong>
-                    <span class="badge bg-secondary ms-1" ng-if="card.qtd_disputa">
-                      {{ card.qtd_disputa }} em disputa
-                    </span>
-                    <div class="small text-secondary">
-                      Regra:
-                      <a href="javascript:void(0)" class="text-decoration-none"
-                        ng-if="card.regra" ng-click="onVerRegra(card.regra)">
-                        {{ card.regra.descricao }}
-                        <i class="bi bi-info-circle"></i>
-                      </a>
-                      <span ng-if="!card.regra">sem regra ativa vinculada</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="card-body">
-                  <div ng-if="!card.tags.length" class="text-secondary small">
-                    Aguardando leituras do socket de tracking…
-                  </div>
-
-                  <div class="border rounded-2 p-3 mb-2"
-                    ng-repeat="t in card.tags track by t.tag"
-                    ng-class="{
-                      'border-warning': t.em_disputa || t.pending,
-                      'border-success': t.applied && !t.pending
-                    }">
-                    <div class="d-flex flex-wrap justify-content-between gap-2 mb-1">
-                      <div>
-                        <strong>{{ t.item_descricao }}</strong>
-                        <span class="text-secondary small ms-1">{{ t.tag }}</span>
-                      </div>
-                      <div class="small">
-                        <span class="badge"
-                          ng-class="t.pending ? 'bg-warning text-dark' : (t.applied ? 'bg-success' : 'bg-secondary')">
-                          {{ t.pending ? 'Pendente' : (t.applied ? 'Aplicado' : 'Acompanhando') }}
-                        </span>
-                        <span class="badge bg-light text-dark border ms-1"
-                          ng-if="t.precedencia === 'desafiante'">
-                          Regra do desafiante
-                        </span>
-                      </div>
-                    </div>
-
-                    <p class="mb-2 small" ng-if="t.narrativa">{{ t.narrativa }}</p>
-
-                    <div class="table-responsive" ng-if="t.linhas.length">
-                      <table class="table table-sm mb-0 align-middle">
-                        <thead>
-                          <tr>
-                            <th style="width:38%;">Campo da regra</th>
-                            <th>Aferição</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr ng-repeat="ln in t.linhas track by ln.label">
-                            <td class="small text-secondary">{{ ln.label }}</td>
-                            <td class="small"
-                              ng-class="{'text-danger': ln.ok === false, 'text-success': ln.ok === true}">
-                              {{ ln.valor }}
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-
-                    <div class="small text-secondary mt-2" ng-if="t.afericao.janela">
-                      Janela usada:
-                      {{ fmtDataHora(t.afericao.janela.inicio) }}
-                      →
-                      {{ fmtDataHora(t.afericao.janela.fim) }}
-                      <span ng-if="t.afericao.regra">
-                        · regra {{ t.afericao.regra.descricao }}
-                        ({{ t.afericao.regra.janela_analise || 0 }}s)
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Direita: abas leituras / resumo -->
-        <div class="col-xl-5 col-lg-6 mb-3">
-          <div class="card">
-            <div class="card-body">
-
-              <ul class="nav nav-pills mb-3 gap-1" role="tablist">
-                <li class="nav-item" role="presentation">
-                  <button type="button" class="nav-link rounded-pill"
-                    ng-class="{active: _abaDireita === 'leituras'}"
-                    ng-click="_abaDireita = 'leituras'">
-                    Todas as leituras
-                    <span class="badge text-bg-light text-dark ms-1">{{ leiturasFiltradas().length }}</span>
-                  </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                  <button type="button" class="nav-link rounded-pill"
-                    ng-class="{active: _abaDireita === 'resumo'}"
-                    ng-click="_abaDireita = 'resumo'">
-                    Resumo por tag e gateway
-                  </button>
-                </li>
-              </ul>
-
-              <div class="row gx-2 mb-3">
-                <div class="col-md-5 mb-2">
-                  <label class="form-label small mb-1">Gateway</label>
-                  <select class="form-select form-select-sm" ng-model="_filtroGateway" ng-change="onPeriodoChange()">
-                    <option value="">Todos</option>
-                    <option ng-repeat="g in _gatewaysSelecionados track by g._id" value="{{ g._id }}">
-                      {{ g.descricao }}
-                    </option>
-                  </select>
-                </div>
-                <div class="col-md-7 mb-2">
-                  <label class="form-label small mb-1">Tag</label>
-                  <input type="text" class="form-control form-control-sm"
-                    ng-model="_filtroTag" placeholder="Filtrar tag">
-                </div>
-              </div>
-
-              <div ng-show="_abaDireita === 'leituras'">
-                <div class="table-responsive" style="max-height:70vh; overflow:auto;">
-                  <table class="table table-sm align-middle table-hover m-0">
-                    <thead>
-                      <tr>
-                        <th>Hora</th>
-                        <th>Tag</th>
-                        <th>Gateway</th>
-                        <th>RSSI</th>
-                        <th>Decisão</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr ng-repeat="l in leiturasFiltradas() track by l._id_local">
-                        <td class="small">{{ fmtHora(l.data_leitura) }}</td>
-                        <td class="small">{{ l.tag }}</td>
-                        <td class="small">{{ l.gateway_descricao }}</td>
-                        <td class="small">{{ l.rssi != null ? l.rssi : '—' }}</td>
-                        <td class="small">
-                          <span ng-if="l.afericao && l.afericao.decisao">
-                            {{ l.afericao.decisao.pending ? 'Pendente' : (l.afericao.decisao.applied ? 'Aplicado' : (l.afericao.decisao.ignored ? 'Ignorado' : '—')) }}
-                          </span>
-                          <span ng-if="!l.afericao" class="text-secondary">—</span>
-                        </td>
-                      </tr>
-                      <tr ng-if="!leiturasFiltradas().length">
-                        <td colspan="5" class="text-center text-secondary py-4">
-                          Nenhuma leitura no período filtrado.
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div ng-show="_abaDireita === 'resumo'">
-                <div class="table-responsive" style="max-height:70vh; overflow:auto;">
-                  <table class="table table-sm align-middle table-hover m-0">
-                    <thead>
-                      <tr>
-                        <th>Tag</th>
-                        <th>Gateway</th>
-                        <th>Qtd</th>
-                        <th>Melhor</th>
-                        <th>Pior</th>
-                        <th>Última</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr ng-repeat="r in resumoPorTagGateway() track by (r.tag + '-' + r.id_gateway)">
-                        <td class="small">{{ r.tag }}</td>
-                        <td class="small">{{ r.gateway_descricao }}</td>
-                        <td class="small">{{ r.qtd }}</td>
-                        <td class="small">{{ r.melhor_rssi != null ? r.melhor_rssi : '—' }}</td>
-                        <td class="small">{{ r.pior_rssi != null ? r.pior_rssi : '—' }}</td>
-                        <td class="small">{{ fmtHora(r.ultima) }}</td>
-                      </tr>
-                      <tr ng-if="!resumoPorTagGateway().length">
-                        <td colspan="6" class="text-center text-secondary py-4">
-                          Sem dados para o filtro atual.
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- Modal parâmetros da regra -->
-      <div class="modal fade" id="modalAferidorRegra" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
-          <div class="modal-content" ng-if="_regraModal">
-            <div class="modal-header">
-              <h5 class="modal-title">Parâmetros · {{ _regraModal.descricao }}</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-              <p class="small text-secondary mb-3">
-                Valor <strong>0</strong> em qualquer campo significa que a restrição é ignorada.
-              </p>
-              <div class="row gx-3">
-                <div class="col-md-6 mb-2">
-                  <div class="border rounded-2 p-2">
-                    <div class="small text-secondary">janela_analise</div>
-                    <div>{{ _regraModal.janela_analise || 0 }} s</div>
-                  </div>
-                </div>
-                <div class="col-md-6 mb-2">
-                  <div class="border rounded-2 p-2">
-                    <div class="small text-secondary">leituras_minima</div>
-                    <div>{{ _regraModal.leituras_minima || 0 }}</div>
-                  </div>
-                </div>
-                <div class="col-md-6 mb-2">
-                  <div class="border rounded-2 p-2">
-                    <div class="small text-secondary">minima_rssi</div>
-                    <div>{{ _regraModal.minima_rssi || 0 }}
-                      <span class="text-secondary small" ng-if="_regraModal.minima_rssi > 0">
-                        (limiar −{{ _regraModal.minima_rssi }} dBm)
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div class="col-md-6 mb-2">
-                  <div class="border rounded-2 p-2">
-                    <div class="small text-secondary">diferenca_rssi</div>
-                    <div>{{ _regraModal.diferenca_rssi || 0 }} dB</div>
-                  </div>
-                </div>
-                <div class="col-md-6 mb-2">
-                  <div class="border rounded-2 p-2">
-                    <div class="small text-secondary">confirmacoes_consecutivas</div>
-                    <div>{{ _regraModal.confirmacoes_consecutivas || 0 }}</div>
-                  </div>
-                </div>
-                <div class="col-md-6 mb-2">
-                  <div class="border rounded-2 p-2">
-                    <div class="small text-secondary">tolerancia_sem_leitura</div>
-                    <div>{{ _regraModal.tolerancia_sem_leitura || 0 }} s</div>
-                  </div>
-                </div>
-                <div class="col-md-6 mb-2">
-                  <div class="border rounded-2 p-2">
-                    <div class="small text-secondary">tempo_minimo_local</div>
-                    <div>{{ _regraModal.tempo_minimo_local || 0 }} s</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
-
     </div>
+
+    <!-- Modal vincular gateways -->
+    <div class="modal fade taf-modal" id="modalAferidorGateways" tabindex="-1"
+         aria-labelledby="modalAferidorGatewaysLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalAferidorGatewaysLabel">
+              <i class="bi bi-broadcast-pin me-2"></i>Vincular gateway
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+          </div>
+          <div class="modal-body">
+            <p class="text-secondary small mb-3">
+              Selecione os coletores cujas leituras o aferidor deve acompanhar. A escolha fica salva neste navegador.
+            </p>
+
+            <input type="text"
+                   class="form-control form-control-sm taf-input mb-3"
+                   ng-model="_pesquisaModalGw"
+                   ng-change="onFiltraModalGateways()"
+                   placeholder="Pesquisar descrição, tokem ou regra">
+
+            <div ng-show="_carregandoGateways" class="text-secondary small">
+              <span class="spinner-border spinner-border-sm me-1"></span>Carregando gateways…
+            </div>
+
+            <div ng-show="!_carregandoGateways && !_listGatewaysDisponiveis.length" class="text-secondary small">
+              <span ng-if="!_listGatewaysTodos.length">Nenhum gateway cadastrado na conta.</span>
+              <span ng-if="_listGatewaysTodos.length && !_pesquisaModalGw">Todos os gateways já estão vinculados.</span>
+              <span ng-if="_listGatewaysTodos.length && _pesquisaModalGw">Nenhum resultado para a pesquisa.</span>
+            </div>
+
+            <div class="list-group" ng-show="!_carregandoGateways && _listGatewaysDisponiveis.length">
+              <button type="button"
+                      class="list-group-item list-group-item-action d-flex align-items-center gap-3 taf-gw-option"
+                      ng-repeat="g in _listGatewaysDisponiveis track by g._id"
+                      ng-click="onAdicionarGateway(g)">
+                <i class="bi bi-plus-circle text-primary flex-shrink-0"></i>
+                <div class="flex-grow-1 min-w-0 text-start">
+                  <div class="fw-semibold">{{ g.descricao || 'Sem descrição' }}</div>
+                  <small class="text-secondary">
+                    {{ g.tokem || 'Sem token' }}
+                    <span ng-show="g.modo"> · {{ g.modo == 'fixo' ? 'Fixo' : (g.modo == 'fluxo' ? 'Fluxo' : 'Móvel') }}</span>
+                    <span ng-if="g._regra"> · {{ g._regra.descricao }}</span>
+                    <span ng-if="!g._regra"> · sem regra</span>
+                  </small>
+                </div>
+              </button>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal parâmetros da regra -->
+    <div class="modal fade taf-modal" id="modalAferidorRegra" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content" ng-if="_regraModal">
+          <div class="modal-header">
+            <h5 class="modal-title">Parâmetros · {{ _regraModal.descricao }}</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p class="small text-secondary mb-3">
+              Valor <strong>0</strong> em qualquer campo significa que a restrição é ignorada.
+            </p>
+            <div class="row g-2">
+              <div class="col-md-6" ng-repeat="p in [
+                {k:'janela_analise', u:'s'},
+                {k:'leituras_minima', u:''},
+                {k:'minima_rssi', u:''},
+                {k:'diferenca_rssi', u:'dB'},
+                {k:'confirmacoes_consecutivas', u:''},
+                {k:'tolerancia_sem_leitura', u:'s'},
+                {k:'tempo_minimo_local', u:'s'}
+              ] track by p.k">
+                <div class="border rounded-2 p-2" style="border-color:rgba(148,163,184,0.2)!important;">
+                  <div class="small text-secondary">{{ p.k }}</div>
+                  <div>{{ _regraModal[p.k] || 0 }} <span class="text-secondary small">{{ p.u }}</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
+</div>
