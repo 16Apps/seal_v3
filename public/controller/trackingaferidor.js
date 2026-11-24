@@ -51,10 +51,12 @@ app.controller('trackingAferidorCtrl', function ($scope, uteisService, $timeout,
 
     // Janela de checagem (segundos) — a cada N s avalia métricas e aloca campeão
     $scope._janelaChecagemSeg = 10;
+    // Gordura do campeão (%): desafiante precisa superar a média RSSI do campeão em pelo menos esse %
+    $scope._gorduraCampeaoPct = 0;
     $scope._janelaAtualInicio = null;
     $scope._janelaAtualFimPrevisto = null;
     $scope._segundosRestantes = null;
-    $scope._campeaoPorTag = {}; // tag -> { id_gateway, nome, quando, janela_inicio, janela_fim, pontos, empate }
+    $scope._campeaoPorTag = {}; // tag -> { id_gateway, nome, quando, ..., ganhouPorGordura }
     $scope._historicoChecagens = [];
 
     // leituras da disputa atual: { tag, id_gateway, gateway_descricao, rssi, data_leitura, _id_local }
@@ -79,6 +81,7 @@ app.controller('trackingAferidorCtrl', function ($scope, uteisService, $timeout,
     var STORAGE_KEY = 'seal_aferidor_gateways';
     var REF_KEY = 'seal_aferidor_referencia';
     var JANELA_KEY = 'seal_aferidor_janela';
+    var GORDURA_KEY = 'seal_aferidor_gordura';
 
     function podeAcessar(colaborador) {
         if (!colaborador) return false;
@@ -168,16 +171,35 @@ app.controller('trackingAferidorCtrl', function ($scope, uteisService, $timeout,
         return JANELA_KEY + ':' + id;
     }
 
+    function gorduraKey() {
+        var id = ($scope._regConta && $scope._regConta._id) || 'x';
+        return GORDURA_KEY + ':' + id;
+    }
+
     function carregarJanelaPreferencia() {
         try {
             var n = Number(localStorage.getItem(janelaKey()));
             if (Number.isFinite(n) && n >= 1) $scope._janelaChecagemSeg = Math.floor(n);
+        } catch (e) { /* ignore */ }
+        try {
+            var g = Number(localStorage.getItem(gorduraKey()));
+            if (Number.isFinite(g) && g >= 0) $scope._gorduraCampeaoPct = g;
         } catch (e) { /* ignore */ }
     }
 
     function salvarJanelaPreferencia() {
         try {
             localStorage.setItem(janelaKey(), String(Math.max(1, Math.floor(Number($scope._janelaChecagemSeg) || 10))));
+        } catch (e) { /* ignore */ }
+    }
+
+    function salvarGorduraPreferencia() {
+        try {
+            var g = Number($scope._gorduraCampeaoPct);
+            if (!Number.isFinite(g) || g < 0) g = 0;
+            if (g > 100) g = 100;
+            $scope._gorduraCampeaoPct = g;
+            localStorage.setItem(gorduraKey(), String(g));
         } catch (e) { /* ignore */ }
     }
 
@@ -188,7 +210,6 @@ app.controller('trackingAferidorCtrl', function ($scope, uteisService, $timeout,
         $scope._janelaChecagemSeg = n;
         salvarJanelaPreferencia();
         if ($scope._disputaStatus === 'running' || $scope._disputaStatus === 'paused') {
-            // Reancora o fim previsto da janela aberta a partir do início atual
             if ($scope._janelaAtualInicio) {
                 $scope._janelaAtualFimPrevisto = new Date(
                     new Date($scope._janelaAtualInicio).getTime() + n * 1000
@@ -197,6 +218,117 @@ app.controller('trackingAferidorCtrl', function ($scope, uteisService, $timeout,
             atualizarContagemJanela();
         }
     };
+
+    $scope.onGorduraChange = function () {
+        salvarGorduraPreferencia();
+    };
+
+    function gorduraPct() {
+        var g = Number($scope._gorduraCampeaoPct);
+        if (!Number.isFinite(g) || g < 0) return 0;
+        return g;
+    }
+
+    /**
+     * Vantagem percentual do desafiante sobre o campeão.
+     * Para RSSI (média/melhor): algébrico — -28 > -30; % = (d-c)/|c|*100.
+     * Para quantidade: % = (d-c)/c*100 (c > 0).
+     */
+    function vantagemPercentual(valorCampeao, valorDesafiante, opts) {
+        opts = opts || {};
+        var c = Number(valorCampeao);
+        var d = Number(valorDesafiante);
+        if (!Number.isFinite(c) || !Number.isFinite(d)) return null;
+        var base = opts.usarAbs ? Math.abs(c) : c;
+        if (!(base > 0)) return null;
+        return ((d - c) / base) * 100;
+    }
+
+    /**
+     * Aplica gordura nos 3 tópicos (qtd, média RSSI, melhor RSSI).
+     * Se o vencedor da janela ≠ campeão atual, o desafiante só assume se tiver
+     * vantagem >= gordura% em TODOS os três. Caso contrário o campeão permanece.
+     * gordura 0 = regra ignorada.
+     */
+    function aplicarGorduraCampeao(tag, venc, metricasJanela) {
+        var gordura = gorduraPct();
+        var atual = $scope._campeaoPorTag[tag];
+        var resultado = {
+            id_gateway: venc && venc.id_gateway ? venc.id_gateway : null,
+            empate: !!(venc && venc.empate),
+            placar: (venc && venc.placar) || {},
+            ganhouPorGordura: false,
+            vantagemPct: null,
+            gorduraExigida: gordura,
+            rssiCampeao: null,
+            rssiDesafiante: null,
+            vantagens: null,
+            motivoGordura: null
+        };
+
+        if (!venc || !venc.id_gateway || gordura <= 0 || !atual || !atual.id_gateway) {
+            return resultado;
+        }
+
+        var idCamp = strId(atual.id_gateway);
+        var idCand = strId(venc.id_gateway);
+        if (!idCamp || !idCand || idCamp === idCand) {
+            return resultado;
+        }
+
+        var mCamp = metricasJanela[tag] && metricasJanela[tag][idCamp];
+        var mCand = metricasJanela[tag] && metricasJanela[tag][idCand];
+        // Sem métricas do campeão na janela → não aplica gordura; deixa a troca ocorrer
+        if (!mCamp || !mCand) {
+            return resultado;
+        }
+
+        var pctQtd = vantagemPercentual(mCamp.qtd || 0, mCand.qtd || 0, { usarAbs: false });
+        var pctMedia = vantagemPercentual(mCamp.media, mCand.media, { usarAbs: true });
+        var pctMelhor = vantagemPercentual(mCamp.melhor, mCand.melhor, { usarAbs: true });
+
+        resultado.vantagens = {
+            qtd: pctQtd,
+            media: pctMedia,
+            melhor: pctMelhor
+        };
+        resultado.vantagemPct = pctMedia;
+        resultado.rssiCampeao = mCamp.media;
+        resultado.rssiDesafiante = mCand.media;
+
+        function atende(pct) {
+            return pct != null && pct >= gordura;
+        }
+
+        var okQtd = atende(pctQtd);
+        var okMedia = atende(pctMedia);
+        var okMelhor = atende(pctMelhor);
+
+        // Precisa superar a gordura nos três; se algum falhar (ou for null), campeão permanece
+        if (!(okQtd && okMedia && okMelhor)) {
+            var nomeCamp = mCamp.gateway_descricao || idCamp;
+            var fmt = function (pct) {
+                return pct != null ? pct.toFixed(1) + '%' : '—';
+            };
+            var falhas = [];
+            if (!okQtd) falhas.push('qtd ' + fmt(pctQtd));
+            if (!okMedia) falhas.push('média ' + fmt(pctMedia));
+            if (!okMelhor) falhas.push('melhor ' + fmt(pctMelhor));
+
+            resultado.id_gateway = idCamp;
+            resultado.empate = false;
+            resultado.ganhouPorGordura = true;
+            resultado.motivoGordura =
+                'Campeão mantido por gordura (' + gordura + '% nos 3 tópicos). ' +
+                'Vantagens: qtd ' + fmt(pctQtd) +
+                ', média ' + fmt(pctMedia) +
+                ', melhor ' + fmt(pctMelhor) +
+                '. Abaixo do mínimo: ' + falhas.join(', ') + '.';
+            resultado.nomeForcado = nomeCamp;
+        }
+
+        return resultado;
+    }
 
     function janelaSeg() {
         var n = Math.floor(Number($scope._janelaChecagemSeg));
@@ -259,25 +391,34 @@ app.controller('trackingAferidorCtrl', function ($scope, uteisService, $timeout,
 
         Object.keys(vencedores).forEach(function (tag) {
             var venc = vencedores[tag];
+            var gord = aplicarGorduraCampeao(tag, venc, metricasJanela);
+            var idFinal = gord.id_gateway;
             var nome = '—';
-            if (venc.id_gateway) {
-                var m = metricasJanela[tag] && metricasJanela[tag][venc.id_gateway];
-                nome = (m && m.gateway_descricao) || venc.id_gateway;
-            } else if (venc.empate) {
+            if (gord.ganhouPorGordura && gord.nomeForcado) {
+                nome = gord.nomeForcado;
+            } else if (idFinal) {
+                var m = metricasJanela[tag] && metricasJanela[tag][idFinal];
+                nome = (m && m.gateway_descricao) || idFinal;
+            } else if (gord.empate) {
                 nome = 'Empate';
             }
+
             $scope._campeaoPorTag[tag] = {
-                id_gateway: venc.id_gateway || null,
+                id_gateway: idFinal || null,
                 nome: nome,
                 quando: quando,
                 janela_inicio: ini,
                 janela_fim: fim,
-                pontos: venc.placar || {},
-                empate: !!venc.empate
+                pontos: gord.placar || {},
+                empate: !!gord.empate,
+                ganhouPorGordura: !!gord.ganhouPorGordura,
+                vantagemPct: gord.vantagemPct,
+                gorduraExigida: gord.gorduraExigida,
+                rssiCampeao: gord.rssiCampeao,
+                rssiDesafiante: gord.rssiDesafiante,
+                motivoGordura: gord.motivoGordura || null
             };
         });
-
-        // Também registra tags que só existem no total mas sem leitura na janela? não — só quem teve métrica na janela
 
         $scope._historicoChecagens.unshift({
             _id: Date.now() + '-' + Math.random().toString(36).slice(2, 6),
@@ -528,6 +669,7 @@ app.controller('trackingAferidorCtrl', function ($scope, uteisService, $timeout,
             return;
         }
         salvarJanelaPreferencia();
+        salvarGorduraPreferencia();
         $scope._leiturasDisputa = [];
         $scope._tagsDisputa = [];
         $scope._tagAtivaPorGateway = {};
@@ -539,10 +681,9 @@ app.controller('trackingAferidorCtrl', function ($scope, uteisService, $timeout,
         abrirNovaJanela($scope._disputaInicio);
         iniciarTimerJanela();
         $scope.onRecalcularCards();
-        uteisService.onToast(
-            'Disputa iniciada. Checagem a cada ' + janelaSeg() + 's.',
-            'success', 2000, 'top-end'
-        );
+        var msg = 'Disputa iniciada. Checagem a cada ' + janelaSeg() + 's.';
+        if (gorduraPct() > 0) msg += ' Gordura ' + gorduraPct() + '%.';
+        uteisService.onToast(msg, 'success', 2200, 'top-end');
     };
 
     $scope.onPausarDisputa = function () {
@@ -863,7 +1004,17 @@ app.controller('trackingAferidorCtrl', function ($scope, uteisService, $timeout,
                 campeaoJanela: campeaoOficial
                     ? { inicio: campeaoOficial.janela_inicio, fim: campeaoOficial.janela_fim }
                     : null,
-                leiturasTag: (mTotal.leituras || []).slice().reverse(),
+                leiturasTag: (mTotal.leituras || []).slice().sort(function (a, b) {
+                    var ta = new Date(a.data_leitura).getTime();
+                    var tb = new Date(b.data_leitura).getTime();
+                    if (!Number.isFinite(ta)) ta = 0;
+                    if (!Number.isFinite(tb)) tb = 0;
+                    return tb - ta; // decrescente
+                }),
+                ganhouPorGordura: !!(campeaoOficial && campeaoOficial.ganhouPorGordura && ehVencedor),
+                motivoGordura: (campeaoOficial && campeaoOficial.motivoGordura) || null,
+                vantagemPct: campeaoOficial ? campeaoOficial.vantagemPct : null,
+                gorduraExigida: campeaoOficial ? campeaoOficial.gorduraExigida : gorduraPct(),
                 referencia: refGw,
                 referenciaVencedor: refTag ? refTag.vencedor_nome : null,
                 _dragging: false,

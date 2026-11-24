@@ -497,6 +497,15 @@
                      ng-disabled="_disputaStatus === 'running'"
                      title="A cada N segundos as métricas da janela são checadas e o campeão é alocado">
             </div>
+            <div>
+              <label class="form-label small text-secondary mb-1 d-block">Gordura (%)</label>
+              <input type="number" min="0" max="100" step="0.1"
+                     class="form-control form-control-sm taf-janela-input"
+                     ng-model="_gorduraCampeaoPct"
+                     ng-change="onGorduraChange()"
+                     ng-disabled="_disputaStatus === 'running'"
+                     title="0 = ignora. Desafiante precisa de pelo menos esse % de vantagem em qtd, média RSSI e melhor RSSI para tirar o campeão.">
+            </div>
             <div class="small text-secondary pb-1" ng-if="_disputaStatus === 'running' || _disputaStatus === 'paused'">
               Próxima checagem:
               <strong class="text-info">
@@ -540,8 +549,12 @@
               <div class="min-w-0">
                 <h3 class="taf-card-title text-truncate">{{ card.gateway.descricao }}</h3>
                 <div class="small text-secondary mt-1">
-                  <span class="taf-badge taf-badge-campeao" ng-if="card.ehVencedor && card.tagAtiva">
-                    <i class="bi bi-trophy"></i> Ganhador
+                  <span class="taf-badge taf-badge-campeao" ng-if="card.ehVencedor && card.tagAtiva && !card.ganhouPorGordura">
+                    <i class="bi bi-trophy"></i> Campeão
+                  </span>
+                  <span class="taf-badge taf-badge-campeao" ng-if="card.ehVencedor && card.tagAtiva && card.ganhouPorGordura"
+                        title="{{ card.motivoGordura }}">
+                    <i class="bi bi-shield-check"></i> Campeão por gordura
                   </span>
                   <span class="taf-badge taf-badge-empate" ng-if="card.empate && card.tagAtiva && !card.ehVencedor">
                     Empate
@@ -612,6 +625,12 @@
                   Campeão (última checagem):
                   <strong class="text-light">{{ card.vencedorNome }}</strong>
                   <span ng-if="card.campeaoQuando"> · {{ fmtHora(card.campeaoQuando) }}</span>
+                  <span class="taf-badge taf-badge-campeao ms-1" ng-if="card.ganhouPorGordura || (card.motivoGordura && card.ehVencedor)">
+                    gordura
+                  </span>
+                </div>
+                <div class="small text-warning mb-2" ng-if="card.motivoGordura">
+                  <i class="bi bi-shield-check me-1"></i>{{ card.motivoGordura }}
                 </div>
 
                 <div class="taf-ref-mini" ng-if="card.referencia || card.referenciaVencedor">
