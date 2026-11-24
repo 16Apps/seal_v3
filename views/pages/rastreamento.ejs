@@ -1,0 +1,482 @@
+<%- contentFor('body') %>
+
+<style>
+  .pom-page { margin-bottom: 2rem; }
+
+  .pom-breadcrumb {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    margin-bottom: 0.35rem;
+  }
+  .pom-breadcrumb a { color: #94a3b8; text-decoration: none; }
+  .pom-breadcrumb a:hover { color: #e2e8f0; }
+
+  .pom-title {
+    font-size: 1.55rem;
+    font-weight: 700;
+    color: #f8fafc;
+    margin: 0 0 0.35rem;
+  }
+  .pom-subtitle {
+    font-size: 0.9rem;
+    color: #94a3b8;
+    max-width: 760px;
+    margin: 0;
+  }
+
+  .pom-datetime {
+    font-size: 0.85rem;
+    color: #cbd5e1;
+    text-align: right;
+  }
+  .pom-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    color: #4ade80;
+  }
+  .pom-live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6);
+    animation: pom-pulse 1.8s infinite;
+  }
+  @keyframes pom-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
+    70% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+  }
+
+  .pom-panel {
+    border: 0;
+    border-radius: 0.85rem;
+    background: rgba(30, 41, 59, 0.72);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+  .pom-panel .card-body { padding: 1.1rem 1.25rem; }
+
+  .pom-section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #f1f5f9;
+    margin: 0;
+  }
+  .pom-section-sub {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    margin: 0.15rem 0 0;
+  }
+
+  .pom-input-pedido {
+    font-size: 0.9rem;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    color: #e2e8f0;
+    border-radius: 0.5rem;
+    padding: 0.45rem 0.75rem;
+  }
+  .pom-btn-primary {
+    font-size: 0.85rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 0.5rem;
+    border: 0;
+    background: #2563eb;
+    color: #fff;
+    font-weight: 600;
+  }
+  .pom-btn-ghost {
+    font-size: 0.85rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    background: rgba(15, 23, 42, 0.5);
+    color: #cbd5e1;
+  }
+
+  .pom-empty {
+    font-size: 0.85rem;
+    color: #64748b;
+    text-align: center;
+    padding: 2.5rem 1rem;
+  }
+
+  .rast-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.75rem 1rem;
+  }
+  .rast-toolbar .lbl {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    margin-bottom: 0.25rem;
+  }
+  .rast-meta {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    margin-left: auto;
+  }
+
+  .rast-card {
+    margin-bottom: 1rem;
+    border-radius: 0.85rem;
+    background: rgba(15, 23, 42, 0.55);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    padding: 1rem 1.15rem 0.9rem;
+    width: 100%;
+  }
+  .rast-card.is-desvio {
+    border-color: rgba(248, 113, 113, 0.35);
+    background: rgba(40, 20, 24, 0.45);
+  }
+
+  .rast-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    margin-bottom: 0.85rem;
+  }
+  .rast-head-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #f8fafc;
+    margin: 0;
+  }
+  .rast-badge {
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.15);
+    color: #cbd5e1;
+  }
+  .rast-badge.is-desvio {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+    border: 1px solid rgba(248, 113, 113, 0.35);
+  }
+  .rast-tag-epc {
+    font-size: 0.72rem;
+    color: #64748b;
+    font-family: ui-monospace, monospace;
+  }
+
+  .rast-flow {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 0.35rem;
+  }
+  .rast-flow-inner {
+    display: grid;
+    width: 100%;
+    align-items: start;
+    column-gap: 0;
+  }
+
+  .rast-step {
+    min-width: 0;
+    text-align: center;
+    position: relative;
+    padding: 0 0.35rem;
+  }
+
+  .rast-node {
+    position: relative;
+    z-index: 1;
+    width: 2.15rem;
+    height: 2.15rem;
+    border-radius: 50%;
+    margin: 0 auto 0.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+    border: 2px solid rgba(148, 163, 184, 0.35);
+    color: #94a3b8;
+    background: rgba(51, 65, 85, 0.5);
+  }
+  .rast-node.is-aqui {
+    border-color: #22d3ee;
+    color: #cffafe;
+    background: rgba(6, 182, 212, 0.25);
+    box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.15);
+  }
+  .rast-node.is-ok {
+    border-color: #4ade80;
+    color: #bbf7d0;
+    background: rgba(34, 197, 94, 0.2);
+  }
+  .rast-node.is-alerta {
+    border-color: #fbbf24;
+    color: #fde68a;
+    background: rgba(245, 158, 11, 0.2);
+  }
+  .rast-node.is-pulada {
+    border-color: #f87171;
+    color: #fecaca;
+    background: rgba(239, 68, 68, 0.18);
+  }
+  .rast-node.is-pendente { opacity: 0.85; }
+
+  .rast-step-name {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    line-height: 1.2;
+    padding: 0 0.25rem;
+  }
+  .rast-step-pill {
+    display: inline-block;
+    margin-top: 0.3rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.12rem 0.4rem;
+    border-radius: 0.35rem;
+    background: rgba(148, 163, 184, 0.12);
+    color: #94a3b8;
+  }
+  .rast-step-pill.is-aqui { background: rgba(6, 182, 212, 0.2); color: #67e8f9; }
+  .rast-step-pill.is-pulada { background: rgba(239, 68, 68, 0.18); color: #fca5a5; }
+  .rast-step-pill.is-pendente { background: rgba(100, 116, 139, 0.2); color: #94a3b8; }
+
+  .rast-step-meta {
+    margin-top: 0.45rem;
+    font-size: 0.72rem;
+    color: #94a3b8;
+    line-height: 1.45;
+  }
+  .rast-step-meta strong { color: #cbd5e1; font-weight: 600; }
+  .rast-warn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    color: #fbbf24;
+    font-size: 0.68rem;
+    margin-top: 0.15rem;
+  }
+  .rast-ok-mini { color: #4ade80; font-size: 0.7rem; margin-top: 0.1rem; }
+
+  /* Ligação entre nós — atravessa até a próxima coluna do grid */
+  .rast-bridge {
+    position: absolute;
+    z-index: 0;
+    top: 1.075rem;
+    left: calc(50% + 1.075rem);
+    width: calc(100% - 2.15rem);
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .rast-bridge-line {
+    width: 100%;
+    height: 2px;
+    background: rgba(148, 163, 184, 0.25);
+  }
+  .rast-bridge-line.is-alerta { background: rgba(251, 191, 36, 0.55); }
+  .rast-bridge-line.is-ok { background: rgba(74, 222, 128, 0.4); }
+  .rast-bridge-line.is-pendente {
+    height: 0;
+    border-top: 2px dashed rgba(148, 163, 184, 0.28);
+    background: none;
+  }
+  .rast-bridge .rast-transit {
+    position: relative;
+    z-index: 1;
+  }
+  .rast-transit {
+    font-size: 0.65rem;
+    color: #94a3b8;
+    margin-top: 0.35rem;
+    white-space: nowrap;
+    padding: 0.1rem 0.35rem;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+  }
+  .rast-transit.is-alerta {
+    color: #fbbf24;
+    border-color: rgba(251, 191, 36, 0.4);
+  }
+
+  .rast-foot {
+    margin-top: 0.75rem;
+    padding-top: 0.55rem;
+    border-top: 1px solid rgba(148, 163, 184, 0.1);
+  }
+  .rast-foot-lbl {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    margin-bottom: 0.3rem;
+  }
+  .rast-progress {
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.12);
+    overflow: hidden;
+  }
+  .rast-progress-bar {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #16a34a, #4ade80);
+  }
+  .rast-foot-pct {
+    font-size: 0.72rem;
+    color: #cbd5e1;
+    text-align: right;
+    margin-top: 0.25rem;
+  }
+</style>
+
+<div ng-controller="rastreamentoCtrl" ng-cloak class="app-container">
+
+  <div class="app-hero-header d-flex align-items-start justify-content-between flex-wrap gap-3">
+    <div>
+      <div class="pom-breadcrumb">
+        <i class="bi bi-house me-1"></i>
+        <a>Processos</a>
+        <span class="mx-1">›</span>
+        <span>Rastreamento em fluxo</span>
+      </div>
+      <h1 class="pom-title">Rastreamento em tempo real</h1>
+      <p class="pom-subtitle">
+        Acompanhe cada tag nas etapas do fluxo configurado: chegada, permanência, deslocamento e alertas de tempo.
+      </p>
+    </div>
+    <div class="text-end">
+      <div class="pom-datetime">{{ _dataHoraTopo }}</div>
+      <div class="pom-live mt-1" ng-show="!_pausado">
+        <span class="pom-live-dot"></span>
+        Atualização a cada {{ _intervaloSeg }}s
+      </div>
+      <div class="pom-live mt-1" ng-show="_pausado" style="color:#fbbf24">
+        <i class="bi bi-pause-circle me-1"></i> Pausado
+      </div>
+    </div>
+  </div>
+
+  <div class="app-body pom-page">
+
+    <div class="card pom-panel mb-3">
+      <div class="card-body">
+        <div class="rast-toolbar">
+          <div style="min-width: 200px;">
+            <div class="lbl">Fluxo</div>
+            <select class="form-select pom-input-pedido"
+                    ng-model="_fluxoId"
+                    ng-change="onMudarFluxo()"
+                    ng-options="f._id as f.descricao for f in _fluxos">
+              <option value="">Todos / por categoria</option>
+            </select>
+          </div>
+          <div style="width: 120px;">
+            <div class="lbl">Intervalo (s)</div>
+            <input type="number" class="form-control pom-input-pedido" min="2" max="120" step="1"
+                   ng-model="_intervaloSeg" ng-change="onMudarIntervalo()">
+          </div>
+          <div>
+            <div class="lbl">&nbsp;</div>
+            <button type="button" class="pom-btn-primary" ng-click="onAtualizar()" ng-disabled="_carregando">
+              <span ng-show="!_carregando"><i class="bi bi-arrow-clockwise me-1"></i>Atualizar</span>
+              <span ng-show="_carregando"><span class="spinner-border spinner-border-sm me-1"></span>…</span>
+            </button>
+          </div>
+          <div>
+            <div class="lbl">&nbsp;</div>
+            <button type="button" class="pom-btn-ghost" ng-click="onTogglePausa()">
+              <span ng-show="!_pausado"><i class="bi bi-pause me-1"></i>Pausar</span>
+              <span ng-show="_pausado"><i class="bi bi-play me-1"></i>Retomar</span>
+            </button>
+          </div>
+          <div class="rast-meta">
+            Janela: últimas {{ _janelaHoras }} horas
+            <span ng-show="_ultimaAtualizacao"> · Sinc. {{ _ultimaAtualizacao }}</span>
+            <span ng-show="_linhas.length"> · {{ _linhas.length }} tag(s)</span>
+          </div>
+        </div>
+        <div ng-show="_erro" class="text-danger small mt-2">{{ _erro }}</div>
+      </div>
+    </div>
+
+    <div ng-show="!_fluxos.length && !_carregando" class="card pom-panel">
+      <div class="card-body pom-empty">
+        Nenhum fluxo ativo cadastrado. Configure em <a href="/trackingfluxo" class="text-info">Fluxos de Tracking</a>.
+      </div>
+    </div>
+
+    <div ng-show="_fluxos.length && !_linhas.length && !_carregando" class="card pom-panel">
+      <div class="card-body pom-empty">
+        Nenhuma tag com leituras nas últimas {{ _janelaHoras }} horas que correspondam a etapas do fluxo.
+      </div>
+    </div>
+
+    <div ng-repeat="linha in _linhas track by linha.chave"
+         class="rast-card"
+         ng-class="{'is-desvio': linha.temDesvio}">
+      <div class="rast-head">
+        <h2 class="rast-head-title">{{ linha.titulo }} · Ciclo {{ linha.ciclo | number:'2.0-0' }}</h2>
+        <span class="rast-badge" ng-if="linha.statusGeral" ng-class="{'is-desvio': linha.temDesvio}">{{ linha.statusGeral }}</span>
+        <span class="rast-tag-epc">{{ linha.tag }}</span>
+        <span class="rast-badge ms-auto">{{ linha.fluxoDescricao }}</span>
+      </div>
+
+      <div class="rast-flow">
+        <div class="rast-flow-inner" ng-style="estiloGridEtapas(linha)">
+          <div class="rast-step" ng-repeat="et in linha.etapas track by $index">
+            <div class="rast-node" ng-class="classeEtapaNode(et)">
+              <i class="bi bi-check-lg" ng-if="et.status === 'ok'"></i>
+              <i class="bi bi-x-lg" ng-if="et.status === 'pulada'"></i>
+              <i class="bi bi-exclamation-lg" ng-if="et.status === 'alerta'"></i>
+              <span ng-if="et.status === 'pendente' || et.status === 'aqui'">{{ et.numero }}</span>
+            </div>
+            <div class="rast-step-name">{{ et.numero }} · {{ et.nome }}</div>
+            <span class="rast-step-pill"
+                  ng-class="{'is-aqui': et.badge === 'Aqui agora', 'is-pulada': et.status === 'pulada', 'is-pendente': et.status === 'pendente'}"
+                  ng-if="et.badge || et.status === 'pendente'">
+              {{ et.badge || 'Pendente' }}
+            </span>
+            <div class="rast-step-meta">
+              <div>Chegada <strong>{{ et.chegadaLabel }}</strong></div>
+              <div ng-if="et.status !== 'pendente' && et.status !== 'pulada'">
+                Permanência <strong>{{ et.permanenciaLabel }}</strong>
+                <span ng-if="et.alertaPermanencia" class="rast-warn">
+                  <i class="bi bi-exclamation-triangle-fill"></i> Máx. {{ et.maxPermanencia }} min
+                </span>
+                <span ng-if="!et.alertaPermanencia && et.maxPermanencia > 0 && et.status === 'ok'" class="rast-ok-mini">
+                  <i class="bi bi-check2"></i>
+                </span>
+              </div>
+            </div>
+
+            <div class="rast-bridge" ng-if="!$last">
+              <div class="rast-bridge-line"
+                   ng-class="classeLinhaTransit(et, linha, $index)">
+              </div>
+              <span class="rast-transit"
+                    ng-class="{'is-alerta': et.alertaTransit}"
+                    ng-if="et.transitLabel && et.transitLabel !== '—'">
+                {{ et.transitLabel }}
+              </span>
+              <span class="rast-transit"
+                    ng-if="linha.etapas[$index + 1].status === 'pendente' && !et.transitSeguinte">— min</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="rast-foot">
+        <div class="rast-foot-lbl">Etapas visitadas</div>
+        <div class="rast-progress">
+          <div class="rast-progress-bar" ng-style="{'width': linha.pct + '%'}"></div>
+        </div>
+        <div class="rast-foot-pct">{{ linha.visitadas }}/{{ linha.totalEtapas }} · {{ linha.pct }}%</div>
+      </div>
+    </div>
+
+  </div>
+</div>

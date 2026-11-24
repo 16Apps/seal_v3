@@ -290,6 +290,9 @@ app.get('/trackingaferidor', (req, res) => {
 app.get('/trackingfluxo', (req, res) => {
   res.render('pages/trackingfluxo', { layout: 'layout' });
 });
+app.get('/rastreamento', (req, res) => {
+  res.render('pages/rastreamento', { layout: 'layout' });
+});
 app.get('/equipamento', (req, res) => {
   res.render('pages/equipamento', { layout: 'layout' });
 });

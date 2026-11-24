@@ -298,7 +298,7 @@
             <li
               ng-show="_regConta.plano_monitoramento.posicao_esperada > 0 || _regConta.plano_monitoramento.painel_alertas > 0 || _regConta.plano_monitoramento.interacao > 0 || _regColaborador.perfil == 'admin' || (_regColaborador.acesso_modulos && (_regColaborador.acesso_modulos.indexOf('trackingfluxo') >= 0 || _regColaborador.acesso_modulos.indexOf('tracking') >= 0))"
               class="treeview"
-              ng-class="{'active current-page': isActive('alerta') || isActive('processo?inventario') ||  isActive('processo?conferencia') || isActive('interacao') || isActive('associacao') || isActive('trackingfluxo') }">
+              ng-class="{'active current-page': isActive('alerta') || isActive('processo?inventario') ||  isActive('processo?conferencia') || isActive('interacao') || isActive('associacao') || isActive('trackingfluxo') || isActive('rastreamento') }">
               <a href="#!">
                 <i class="bi bi-eye"></i>
                 <span class="menu-text">Processos</span>
@@ -310,6 +310,9 @@
                 <li ng-show="_regConta.plano_monitoramento.interacao > 0"><a href="/interacao">Interação nos Locais</a></li>
                 <li ng-show="_regColaborador.perfil == 'admin' || (_regColaborador.acesso_modulos && (_regColaborador.acesso_modulos.indexOf('trackingfluxo') >= 0 || _regColaborador.acesso_modulos.indexOf('tracking') >= 0))">
                   <a href="/trackingfluxo">Fluxos de Tracking</a>
+                </li>
+                <li ng-show="_regColaborador.perfil == 'admin' || (_regColaborador.acesso_modulos && (_regColaborador.acesso_modulos.indexOf('trackingfluxo') >= 0 || _regColaborador.acesso_modulos.indexOf('tracking') >= 0))">
+                  <a href="/rastreamento">Rastreamento em fluxo</a>
                 </li>
                 <!-- <li><a href="/associacao">Associação</a></li> -->
               </ul>
@@ -579,6 +582,7 @@
   <script src="/controller/trackingregra.js"></script>
   <script src="/controller/trackingaferidor.js"></script>
   <script src="/controller/trackingfluxo.js"></script>
+  <script src="/controller/rastreamento.js"></script>
   <script src="/controller/equipamento.js"></script>
 
   <script src="/components/localizacao/localizacao.js"></script>

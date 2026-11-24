@@ -10,6 +10,248 @@ const TrackingGuarda = require('../models/trackingguarda');
 module.exports = (app, dbConnection) => {
 
     /**
+     * Disputa em memória (alinhado ao Aferidor): leituras + janela + campeão por tag.
+     * Evita persistir TrackingGuarda a cada leitura e permite fechar janela no relógio.
+     */
+    const disputaMemoria = new Map();
+    const MAX_LEITURAS_MEMORIA = 5000;
+    const SWEEP_JANELA_MS = 1000;
+    const _sweeping = new Set();
+
+    function chaveDisputaMemoria(idConta, tag) {
+        return strId(idConta) + '::' + String(tag || '').trim();
+    }
+
+    function obterEstadoDisputa(idConta, tag) {
+        const k = chaveDisputaMemoria(idConta, tag);
+        if (!disputaMemoria.has(k)) {
+            disputaMemoria.set(k, {
+                id_conta: strId(idConta),
+                tag: String(tag || '').trim(),
+                janela_inicio: null,
+                janela_fim: null,
+                leituras: [],
+                id_gateway_campeao: null,
+                id_tracking_regra: null
+            });
+        }
+        return disputaMemoria.get(k);
+    }
+
+    function abrirJanelaEstado(st, inicio, janelaSeg) {
+        const seg = numParam(janelaSeg);
+        const iniMs = new Date(inicio).getTime();
+        st.janela_inicio = new Date(iniMs);
+        st.janela_fim = new Date(iniMs + seg * 1000);
+    }
+
+    function leiturasNaJanelaFechada(st, ini, fim) {
+        const tIni = new Date(ini).getTime();
+        const tFim = new Date(fim).getTime();
+        return (st.leituras || []).filter(function (l) {
+            if (!l || !l.data_leitura) return false;
+            const t = new Date(l.data_leitura).getTime();
+            return Number.isFinite(t) && t >= tIni && t <= tFim;
+        });
+    }
+
+    function trimLeiturasMemoria(st) {
+        if (!st || !Array.isArray(st.leituras)) return;
+        if (st.leituras.length > MAX_LEITURAS_MEMORIA) {
+            st.leituras = st.leituras.slice(-MAX_LEITURAS_MEMORIA);
+        }
+    }
+
+    function idCampeaoPosAvaliacao(st, avaliacao) {
+        const g = (avaliacao && avaliacao.metricas && avaliacao.metricas.gordura) || {};
+        if (g.id_final) return strId(g.id_final);
+        if (avaliacao && avaliacao.ok && avaliacao.candidato) return strId(avaliacao.candidato.id_gateway);
+        if (avaliacao && avaliacao.id_campeao_mantido) return strId(avaliacao.id_campeao_mantido);
+        return st.id_gateway_campeao || null;
+    }
+
+    /**
+     * Fecha uma janela, resolve campeão e aplica localização (como executarChecagemJanela do Aferidor).
+     */
+    async function fecharJanelaDisputaMemoria(st, params) {
+        params = params || {};
+        if (!st || !st.janela_inicio || !st.janela_fim) {
+            return { fechou: false, motivo: 'Sem janela aberta' };
+        }
+
+        const regra = params.regra;
+        const janelaIni = st.janela_inicio;
+        const janelaFim = st.janela_fim;
+        const dataRef = params.dataRef || janelaFim;
+        const simular = !!params.simular;
+
+        const leiturasJanela = leiturasNaJanelaFechada(st, janelaIni, janelaFim);
+        const idCampeaoAntes = st.id_gateway_campeao ||
+            (params.gatewayCampeao && params.gatewayCampeao._id) ||
+            null;
+
+        const avaliacao = avaliarGuarda({
+            leituras: leiturasJanela,
+            janela_inicio: janelaIni,
+            janela_fim: janelaFim
+        }, regra, {
+            dataRef: dataRef,
+            idGatewayCampeao: idCampeaoAntes
+        });
+
+        const idCampeaoNovo = idCampeaoPosAvaliacao(st, avaliacao);
+        if (idCampeaoNovo) st.id_gateway_campeao = idCampeaoNovo;
+
+        const janelaSeg = numParam(regra && regra.janela_analise);
+        abrirJanelaEstado(st, janelaFim, janelaSeg);
+
+        const resultado = {
+            fechou: true,
+            avaliacao: avaliacao,
+            applied: false,
+            aplicado: null,
+            pending: !avaliacao.ok,
+            janela_fechada: { inicio: janelaIni, fim: janelaFim, leituras: leiturasJanela.length }
+        };
+
+        if (!avaliacao.ok || !avaliacao.candidato) {
+            return resultado;
+        }
+
+        const amostraWin = avaliacao.candidato.amostra;
+        const locVencedor = {
+            id_nivel_loc1: (amostraWin && amostraWin.id_nivel_loc1) || '',
+            id_nivel_loc2: (amostraWin && amostraWin.id_nivel_loc2) || '',
+            id_nivel_loc3: (amostraWin && amostraWin.id_nivel_loc3) || '',
+            id_nivel_loc4: (amostraWin && amostraWin.id_nivel_loc4) || '',
+            id_nivel_loc1_final: (amostraWin && amostraWin.id_nivel_loc1_final) || '',
+            id_nivel_loc2_final: (amostraWin && amostraWin.id_nivel_loc2_final) || '',
+            id_nivel_loc3_final: (amostraWin && amostraWin.id_nivel_loc3_final) || '',
+            id_nivel_loc4_final: (amostraWin && amostraWin.id_nivel_loc4_final) || ''
+        };
+
+        let gatewayAplicar = params.gatewayLeitura;
+        const idWin = avaliacao.candidato.id_gateway;
+        if (idWin && strId(idWin) !== strId(params.gatewayLeitura && params.gatewayLeitura._id)) {
+            const gwWin = await Gateway.findOne({ _id: idWin, ativo: 1 });
+            if (gwWin) gatewayAplicar = gwWin;
+        }
+
+        const dataLeitura = params.dataLeitura || new Date(janelaFim);
+        const tol = resolverToleranciaVencedor({
+            ultimoRegistro: params.ultimoRegistro,
+            gatewayVencedorId: gatewayAplicar._id,
+            locVencedor: locVencedor,
+            dataLeitura: dataLeitura,
+            toleranciaSeg: numParam(regra && regra.tolerancia_sem_leitura)
+        });
+
+        if (tol.soPermanencia) {
+            if (!simular) {
+                resultado.aplicado = await atualizarPermanencia({
+                    gateway: gatewayAplicar,
+                    item: params.item,
+                    tag: params.tag,
+                    loc: locVencedor,
+                    leitura: amostraWin || params.leituraDoc,
+                    dataLeitura: dataLeitura,
+                    ultimoRegistro: params.ultimoRegistro
+                });
+            } else {
+                resultado.aplicado = { retorno: 'Permanência (simulado)', status: 'permanencia', registro: params.ultimoRegistro };
+            }
+            resultado.applied = !simular;
+            resultado.permanence = true;
+            resultado.gatewayAplicar = gatewayAplicar;
+            return resultado;
+        }
+
+        if (!simular) {
+            resultado.aplicado = await aplicarLocalizacao({
+                gateway: gatewayAplicar,
+                item: params.item,
+                tag: params.tag,
+                loc: locVencedor,
+                leitura: amostraWin || params.leituraDoc,
+                dataLeitura: dataLeitura,
+                ultimoRegistro: params.ultimoRegistro,
+                forcarNovoCiclo: !!tol.forcarNovoCiclo,
+                gapSegundos: tol.gap
+            });
+        } else {
+            resultado.aplicado = { retorno: 'Entrada (simulado)', status: 'entrada', registro: null, ciclo: true };
+        }
+        resultado.applied = !simular;
+        resultado.ciclo = !!(resultado.aplicado && resultado.aplicado.ciclo);
+        resultado.gatewayAplicar = gatewayAplicar;
+        resultado.tolerancia = tol;
+        return resultado;
+    }
+
+    async function rotacionarJanelasVencidas(st, params) {
+        const limiteMs = Math.max(Date.now(), new Date(params.dataLeitura).getTime());
+        let ultimo = null;
+        while (st.janela_fim && new Date(st.janela_fim).getTime() <= limiteMs) {
+            ultimo = await fecharJanelaDisputaMemoria(st, params);
+        }
+        return ultimo;
+    }
+
+    async function sweepJanelasMemoria() {
+        disputaMemoria.forEach(function (st, k) {
+            if (!st.janela_fim || _sweeping.has(k)) return;
+            if (Date.now() < new Date(st.janela_fim).getTime()) return;
+
+            _sweeping.add(k);
+            (async function () {
+                try {
+                    if (!st.id_tracking_regra) {
+                        _sweeping.delete(k);
+                        return;
+                    }
+                    const ctx = await carregarContextoDisputa(st.id_conta, st.tag, st.id_tracking_regra);
+                    if (!ctx) {
+                        _sweeping.delete(k);
+                        return;
+                    }
+                    while (st.janela_fim && Date.now() >= new Date(st.janela_fim).getTime()) {
+                        await fecharJanelaDisputaMemoria(st, {
+                            regra: ctx.regra,
+                            item: ctx.item,
+                            tag: st.tag,
+                            ultimoRegistro: ctx.ultimoRegistro,
+                            gatewayCampeao: ctx.gatewayCampeao,
+                            gatewayLeitura: ctx.gatewayCampeao,
+                            dataLeitura: st.janela_fim,
+                            simular: false,
+                            leituraDoc: null
+                        });
+                    }
+                } catch (e) {
+                    console.error('[tracking] sweep janela:', k, e && e.message);
+                } finally {
+                    _sweeping.delete(k);
+                }
+            })();
+        });
+    }
+
+    async function carregarContextoDisputa(idConta, tag, idRegra) {
+        const item = await Item.findOne({ tag: tag, id_conta: idConta });
+        if (!item) return null;
+        const regra = await TrackingRegra.findOne({ _id: idRegra, ativo: 1 });
+        if (!regra) return null;
+        const ultimoRegistro = await Registro.findOne({ tag: tag, id_conta: idConta })
+            .sort({ createdAt: -1 })
+            .limit(1);
+        let gatewayCampeao = null;
+        if (ultimoRegistro && ultimoRegistro.id_gateway) {
+            gatewayCampeao = await Gateway.findOne({ _id: ultimoRegistro.id_gateway, ativo: 1 });
+        }
+        return { item: item, regra: regra, ultimoRegistro: ultimoRegistro, gatewayCampeao: gatewayCampeao };
+    }
+
+    /**
      * Todos os tempos da regra estão em segundos.
      * Parâmetro === 0 → ignorado (não aplica aquela restrição).
      */
@@ -988,8 +1230,15 @@ module.exports = (app, dbConnection) => {
             .limit(1);
 
         let gatewayCampeao = null;
-        if (ultimoRegistro && ultimoRegistro.id_gateway) {
+        const stCampeaoMem = obterEstadoDisputa(gateway.id_conta, tag);
+        if (stCampeaoMem.id_gateway_campeao) {
+            gatewayCampeao = await Gateway.findOne({ _id: stCampeaoMem.id_gateway_campeao, ativo: 1 });
+        }
+        if (!gatewayCampeao && ultimoRegistro && ultimoRegistro.id_gateway) {
             gatewayCampeao = await Gateway.findOne({ _id: ultimoRegistro.id_gateway, ativo: 1 });
+            if (gatewayCampeao && !stCampeaoMem.id_gateway_campeao) {
+                stCampeaoMem.id_gateway_campeao = gatewayCampeao._id;
+            }
         }
 
         const desafiante = !!(gatewayCampeao && strId(gatewayCampeao._id) !== strId(gateway._id));
@@ -1196,76 +1445,50 @@ module.exports = (app, dbConnection) => {
             });
         }
 
-        // --- Disputa na janela (mesmo ciclo para todos os gateways da tag) ---
-        let guarda = null;
-        if (!simular) {
-            guarda = await TrackingGuarda.findOne({
-                id_conta: gateway.id_conta,
-                tag: tag,
-                status: 'aberto'
-            }).sort({ createdAt: -1 });
+        // --- Disputa na janela (memória + fechamento no relógio, como o Aferidor) ---
+        const st = obterEstadoDisputa(gateway.id_conta, tag);
+        st.id_tracking_regra = regraDisputa._id;
+        if (gatewayCampeao && gatewayCampeao._id && !st.id_gateway_campeao) {
+            st.id_gateway_campeao = gatewayCampeao._id;
         }
+
+        const paramsJanela = {
+            regra: regraDisputa,
+            item: item,
+            tag: tag,
+            ultimoRegistro: ultimoRegistro,
+            gatewayCampeao: gatewayCampeao,
+            gatewayLeitura: gateway,
+            dataLeitura: dataLeitura,
+            simular: simular,
+            leituraDoc: leituraDoc
+        };
+
+        await rotacionarJanelasVencidas(st, paramsJanela);
+
+        if (!st.janela_inicio) {
+            abrirJanelaEstado(st, dataLeitura, janelaSeg);
+        }
+
+        st.leituras.push(leituraDoc);
+        trimLeiturasMemoria(st);
 
         const dataMs = dataLeitura.getTime();
-        const criarGuarda = function (ini, leiturasIniciais) {
-            return new TrackingGuarda({
-                _id: shortid.generate(),
-                id_conta: gateway.id_conta,
-                id_tracking_regra: regraDisputa._id,
-                id_item: item._id,
-                tag: tag,
-                status: 'aberto',
-                janela_inicio: ini,
-                janela_fim: new Date(new Date(ini).getTime() + janelaSeg * 1000),
-                leituras: leiturasIniciais || [],
-                confirmacoes: 0
-            });
-        };
-
-        if (!guarda) {
-            if (!simular) {
-                guarda = criarGuarda(dataLeitura, []);
-            } else {
-                guarda = criarGuarda(dataLeitura, []);
-            }
+        let fechamento = null;
+        if (st.janela_fim && dataMs >= new Date(st.janela_fim).getTime()) {
+            fechamento = await fecharJanelaDisputaMemoria(st, paramsJanela);
         }
 
-        const janelaFimGuardaMs = new Date(guarda.janela_fim).getTime();
-
-        // Cópia das leituras para simulação não poluir a guarda persistida
-        const leiturasBase = Array.isArray(guarda.leituras) ? guarda.leituras.slice() : [];
-        leiturasBase.push(leituraDoc);
-        const guardaEval = {
-            leituras: leiturasBase,
-            janela_inicio: guarda.janela_inicio,
-            janela_fim: guarda.janela_fim
-        };
-
-        if (!simular) {
-            guarda.leituras.push(leituraDoc);
-        }
-
-        const avaliacao = avaliarGuarda(guardaEval, regraDisputa, {
+        const idCampeaoMemo = st.id_gateway_campeao || (gatewayCampeao && gatewayCampeao._id);
+        const leiturasNaJanelaAtual = leiturasNaJanelaFechada(st, st.janela_inicio, st.janela_fim);
+        const avaliacao = avaliarGuarda({
+            leituras: leiturasNaJanelaAtual,
+            janela_inicio: st.janela_inicio,
+            janela_fim: st.janela_fim
+        }, regraDisputa, {
             dataRef: dataLeitura,
-            idGatewayCampeao: gatewayCampeao && gatewayCampeao._id
+            idGatewayCampeao: idCampeaoMemo
         });
-
-        if (!simular) {
-            guarda.confirmacoes = avaliacao.placar_pontos || 0;
-            if (avaliacao.candidato && avaliacao.candidato.amostra) {
-                const a = avaliacao.candidato.amostra;
-                guarda.melhor_rssi = avaliacao.candidato.melhor_rssi;
-                guarda.id_gateway_vencedor = a.id_gateway;
-                guarda.id_nivel_loc1 = a.id_nivel_loc1;
-                guarda.id_nivel_loc2 = a.id_nivel_loc2;
-                guarda.id_nivel_loc3 = a.id_nivel_loc3;
-                guarda.id_nivel_loc4 = a.id_nivel_loc4;
-                guarda.id_nivel_loc1_final = a.id_nivel_loc1_final;
-                guarda.id_nivel_loc2_final = a.id_nivel_loc2_final;
-                guarda.id_nivel_loc3_final = a.id_nivel_loc3_final;
-                guarda.id_nivel_loc4_final = a.id_nivel_loc4_final;
-            }
-        }
 
         const janelaMetricas = avaliacao.metricas && avaliacao.metricas.janela;
         let gatewayCandidatoResumo = gateway;
@@ -1273,188 +1496,82 @@ module.exports = (app, dbConnection) => {
             if (strId(avaliacao.candidato.id_gateway) === strId(gateway._id)) {
                 gatewayCandidatoResumo = Object.assign({}, resumoGateway(gateway), {
                     melhor_rssi: avaliacao.candidato.melhor_rssi,
-                    count: avaliacao.candidato.count
+                    count: avaliacao.candidato.count,
+                    media: avaliacao.candidato.media
                 });
             } else {
                 const gwCand = await Gateway.findOne({ _id: avaliacao.candidato.id_gateway });
                 gatewayCandidatoResumo = Object.assign({}, resumoGateway(gwCand) || { _id: avaliacao.candidato.id_gateway }, {
                     melhor_rssi: avaliacao.candidato.melhor_rssi,
-                    count: avaliacao.candidato.count
+                    count: avaliacao.candidato.count,
+                    media: avaliacao.candidato.media
                 });
             }
         }
 
-        async function encerrarGuardaAberta(status, motivo) {
-            if (simular || !guarda) return;
-            guarda.status = status;
-            guarda.motivo = motivo || guarda.motivo;
-            await guarda.save();
-        }
-
-        async function abrirProximoCicloSeNecessario() {
-            if (simular) return;
-            if (dataMs <= janelaFimGuardaMs) return;
-            const prox = criarGuarda(dataLeitura, [leituraDoc]);
-            await prox.save();
-        }
-
-        if (!avaliacao.ok) {
-            if (!simular) {
-                guarda.motivo = avaliacao.motivo;
-                guarda.confirmacoes = avaliacao.placar_pontos || 0;
-                // Janela já fechou: encerra ciclo (gordura, empate ou fechamento) e abre o próximo
-                if (dataMs >= janelaFimGuardaMs) {
-                    const motivoFim = avaliacao.ganhouPorGordura
-                        ? (avaliacao.motivo || 'Campeão mantido por gordura')
-                        : (avaliacao.empate
-                            ? 'Empate na janela'
-                            : (avaliacao.motivo || 'Janela encerrada sem aplicação'));
-                    await encerrarGuardaAberta(
-                        avaliacao.ganhouPorGordura ? 'descartado' : 'expirado',
-                        motivoFim
-                    );
-                    await abrirProximoCicloSeNecessario();
-                } else {
-                    await guarda.save();
-                }
-            }
-            return finalizar({
-                success: true,
-                ignored: false,
-                pending: true,
-                message: avaliacao.motivo,
-                guarda: {
-                    _id: guarda._id,
-                    leituras: leiturasBase.length,
-                    placar_pontos: avaliacao.placar_pontos || 0,
-                    janela_inicio: (janelaMetricas && janelaMetricas.inicio) || guarda.janela_inicio,
-                    janela_fim: (janelaMetricas && janelaMetricas.fim) || guarda.janela_fim,
-                    melhor_rssi: avaliacao.candidato ? avaliacao.candidato.melhor_rssi : null,
-                    id_gateway_vencedor: avaliacao.candidato ? avaliacao.candidato.id_gateway : null,
-                    leituras_vencedor: avaliacao.candidato ? avaliacao.candidato.count : 0
-                },
-                regra: resumoRegra(regraDisputa),
-                tag, tokem
-            }, {
-                avaliacao,
-                gatewayCandidato: gatewayCandidatoResumo
-            });
-        }
-
-        const amostraWin = avaliacao.candidato && avaliacao.candidato.amostra;
-        const locVencedor = {
-            id_nivel_loc1: (amostraWin && amostraWin.id_nivel_loc1) || '',
-            id_nivel_loc2: (amostraWin && amostraWin.id_nivel_loc2) || '',
-            id_nivel_loc3: (amostraWin && amostraWin.id_nivel_loc3) || '',
-            id_nivel_loc4: (amostraWin && amostraWin.id_nivel_loc4) || '',
-            id_nivel_loc1_final: (amostraWin && amostraWin.id_nivel_loc1_final) || '',
-            id_nivel_loc2_final: (amostraWin && amostraWin.id_nivel_loc2_final) || '',
-            id_nivel_loc3_final: (amostraWin && amostraWin.id_nivel_loc3_final) || '',
-            id_nivel_loc4_final: (amostraWin && amostraWin.id_nivel_loc4_final) || ''
+        const memoriaResumo = {
+            via: 'memoria',
+            leituras_total: st.leituras.length,
+            leituras_janela_atual: leiturasNaJanelaAtual.length,
+            placar_pontos: avaliacao.placar_pontos || 0,
+            janela_inicio: (janelaMetricas && janelaMetricas.inicio) || st.janela_inicio,
+            janela_fim: (janelaMetricas && janelaMetricas.fim) || st.janela_fim,
+            id_gateway_campeao: st.id_gateway_campeao || null,
+            melhor_rssi: avaliacao.candidato ? avaliacao.candidato.melhor_rssi : null,
+            id_gateway_vencedor_janela: avaliacao.candidato ? avaliacao.candidato.id_gateway : null
         };
 
-        let gatewayAplicar = gateway;
-        const idWin = avaliacao.candidato && avaliacao.candidato.id_gateway;
-        if (idWin && strId(idWin) !== strId(gateway._id)) {
-            const gwWin = await Gateway.findOne({ _id: idWin, ativo: 1 });
-            if (gwWin) gatewayAplicar = gwWin;
-        }
+        if (fechamento && fechamento.fechou) {
+            const avF = fechamento.avaliacao || avaliacao;
+            const gwCand = fechamento.gatewayAplicar || gatewayCandidatoResumo;
 
-        const tol = resolverToleranciaVencedor({
-            ultimoRegistro,
-            gatewayVencedorId: gatewayAplicar._id,
-            locVencedor,
-            dataLeitura,
-            toleranciaSeg
-        });
-
-        if (tol.soPermanencia) {
-            let aplicado = { retorno: 'Permanência (simulado)', status: 'permanencia', registro: ultimoRegistro };
-            if (!simular) {
-                aplicado = await atualizarPermanencia({
-                    gateway: gatewayAplicar,
-                    item,
-                    tag,
-                    loc: locVencedor,
-                    leitura: amostraWin || leituraDoc,
-                    dataLeitura,
-                    ultimoRegistro
+            if (fechamento.applied) {
+                return finalizar({
+                    success: true,
+                    ignored: false,
+                    applied: true,
+                    permanence: !!fechamento.permanence,
+                    ciclo: !!fechamento.ciclo,
+                    message: (fechamento.aplicado && fechamento.aplicado.retorno) || avF.motivo,
+                    status: fechamento.aplicado && fechamento.aplicado.status,
+                    gap_segundos: fechamento.tolerancia && fechamento.tolerancia.gap,
+                    tolerancia_segundos: toleranciaSeg,
+                    id_registro: fechamento.aplicado && fechamento.aplicado.registro && fechamento.aplicado.registro._id,
+                    memoria: memoriaResumo,
+                    regra: resumoRegra(regraDisputa),
+                    tag, tokem
+                }, {
+                    avaliacao: avF,
+                    tolerancia: fechamento.tolerancia,
+                    gatewayCandidato: gwCand
                 });
-                guarda.status = 'aplicado';
-                guarda.motivo = aplicado.retorno;
-                guarda.id_registro = aplicado.registro && aplicado.registro._id;
-                await guarda.save();
-                await abrirProximoCicloSeNecessario();
             }
+
             return finalizar({
                 success: true,
                 ignored: false,
-                applied: !simular,
-                permanence: true,
-                message: simular ? 'Simulação: permanência após disputa' : aplicado.retorno,
-                status: aplicado.status,
-                gap_segundos: tol.gap,
-                tolerancia_segundos: toleranciaSeg,
-                id_registro: aplicado.registro && aplicado.registro._id,
-                guarda: {
-                    _id: guarda._id,
-                    leituras: leiturasBase.length,
-                    placar_pontos: avaliacao.placar_pontos || 0,
-                    melhor_rssi: avaliacao.candidato ? avaliacao.candidato.melhor_rssi : null,
-                    id_gateway_vencedor: idWin || null
-                },
+                pending: !!fechamento.pending,
+                message: avF.motivo || 'Janela fechada',
+                memoria: memoriaResumo,
                 regra: resumoRegra(regraDisputa),
                 tag, tokem
             }, {
-                avaliacao,
-                tolerancia: tol,
-                gatewayCandidato: gatewayAplicar
+                avaliacao: avF,
+                gatewayCandidato: gatewayCandidatoResumo
             });
-        }
-
-        let aplicado = { retorno: 'Entrada (simulado)', status: 'entrada', registro: null, ciclo: true };
-        if (!simular) {
-            aplicado = await aplicarLocalizacao({
-                gateway: gatewayAplicar,
-                item,
-                tag,
-                loc: locVencedor,
-                leitura: amostraWin || leituraDoc,
-                dataLeitura,
-                ultimoRegistro,
-                forcarNovoCiclo: !!tol.forcarNovoCiclo,
-                gapSegundos: tol.gap
-            });
-            guarda.status = 'aplicado';
-            guarda.motivo = aplicado.retorno;
-            guarda.id_registro = aplicado.registro && aplicado.registro._id;
-            await guarda.save();
-            await abrirProximoCicloSeNecessario();
         }
 
         return finalizar({
             success: true,
             ignored: false,
-            applied: !simular,
-            ciclo: !!aplicado.ciclo,
-            message: simular ? 'Simulação: aplicaria disputa' : aplicado.retorno,
-            status: aplicado.status,
-            gap_segundos: tol.gap,
-            id_registro: aplicado.registro && aplicado.registro._id,
-            guarda: {
-                _id: guarda._id,
-                leituras: leiturasBase.length,
-                placar_pontos: avaliacao.placar_pontos || 0,
-                melhor_rssi: avaliacao.candidato ? avaliacao.candidato.melhor_rssi : null,
-                id_gateway_vencedor: idWin || null,
-                leituras_vencedor: avaliacao.candidato ? avaliacao.candidato.count : 0
-            },
+            pending: true,
+            message: avaliacao.motivo || 'Aguardando fechamento da janela de análise',
+            memoria: memoriaResumo,
             regra: resumoRegra(regraDisputa),
             tag, tokem
         }, {
             avaliacao,
-            tolerancia: tol,
-            gatewayCandidato: gatewayAplicar
+            gatewayCandidato: gatewayCandidatoResumo
         });
     }
 
@@ -1543,5 +1660,7 @@ module.exports = (app, dbConnection) => {
             });
         }
     });
+
+    setInterval(sweepJanelasMemoria, SWEEP_JANELA_MS);
 
 };
