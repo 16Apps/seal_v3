@@ -65,54 +65,33 @@
                                             </div>
 
                                             <div class="row gx-3">
-                                                <div class="col-md-4 mb-3">
+                                                <div class="col-md-6 mb-3">
                                                     <label class="form-label">Janela de análise (s)</label>
                                                     <input ng-model="$ctrl._editRegra.janela_analise" type="number"
                                                         class="form-control" min="0" step="1"
-                                                        title="0 = ignora. Tempo de guarda das leituras antes de decidir.">
-                                                    <small class="text-secondary">0 = ignora. Guarda leituras antes de decidir.</small>
+                                                        title="0 = ignora. A cada N segundos avalia leituras e define campeão da disputa.">
+                                                    <small class="text-secondary">0 = ignora. Intervalo da checagem por tag na janela (segundos).</small>
                                                 </div>
-                                                <div class="col-md-4 mb-3">
-                                                    <label class="form-label">Leituras mínimas</label>
-                                                    <input ng-model="$ctrl._editRegra.leituras_minima" type="number"
-                                                        class="form-control" min="0" step="1"
-                                                        title="0 = ignora.">
-                                                    <small class="text-secondary">0 = ignora.</small>
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label">Gordura (%)</label>
+                                                    <input ng-model="$ctrl._editRegra.gordura_percentual" type="number"
+                                                        class="form-control" min="0" step="0.1"
+                                                        title="0 = ignora. Na troca, desafiante precisa superar o campeão em X% nos 3 critérios (qtd, média e melhor RSSI).">
+                                                    <small class="text-secondary">0 = ignora. Vantagem mínima (%) em leituras, média RSSI e melhor RSSI para assumir o campeonato.</small>
                                                 </div>
-                                                <div class="col-md-4 mb-3">
+                                                <div class="col-md-6 mb-3">
                                                     <label class="form-label">RSSI mínimo</label>
                                                     <input ng-model="$ctrl._editRegra.minima_rssi" type="number"
                                                         class="form-control" min="0" step="1"
                                                         title="0 = ignora. Informe 30 para exigir RSSI >= -30 dBm.">
                                                     <small class="text-secondary">0 = ignora. Ex.: 30 → aceita só RSSI ≥ -30 dBm.</small>
                                                 </div>
-                                                <div class="col-md-4 mb-3">
-                                                    <label class="form-label">Diferença de RSSI (dB)</label>
-                                                    <input ng-model="$ctrl._editRegra.diferenca_rssi" type="number"
-                                                        class="form-control" min="0" step="1"
-                                                        title="0 = ignora. Na troca, o desafiante precisa superar o campeão em pelo menos X dB.">
-                                                    <small class="text-secondary">0 = ignora. Ex.: 6 → desafiante precisa de +6 dB sobre o atual.</small>
-                                                </div>
-                                                <div class="col-md-4 mb-3">
-                                                    <label class="form-label">Confirmações consecutivas</label>
-                                                    <input ng-model="$ctrl._editRegra.confirmacoes_consecutivas"
-                                                        type="number" class="form-control" min="0" step="1"
-                                                        title="0 = ignora.">
-                                                    <small class="text-secondary">0 = ignora.</small>
-                                                </div>
-                                                <div class="col-md-4 mb-3">
+                                                <div class="col-md-6 mb-3">
                                                     <label class="form-label">Tolerância / permanência (s)</label>
                                                     <input ng-model="$ctrl._editRegra.tolerancia_sem_leitura"
                                                         type="number" class="form-control" min="0" step="1"
                                                         title="0 = ignora. Dentro do tempo: atualiza data_permanecia; outro gateway é ignorado.">
                                                     <small class="text-secondary">0 = ignora. Mesmo local atualiza permanência; outro gateway espera.</small>
-                                                </div>
-                                                <div class="col-md-4 mb-3">
-                                                    <label class="form-label">Tempo mínimo no local (s)</label>
-                                                    <input ng-model="$ctrl._editRegra.tempo_minimo_local" type="number"
-                                                        class="form-control" min="0" step="1"
-                                                        title="0 = ignora. Filtra passagens rápidas antes de trocar de local.">
-                                                    <small class="text-secondary">0 = ignora. Filtra passagem rápida.</small>
                                                 </div>
                                             </div>
 

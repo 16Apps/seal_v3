@@ -477,46 +477,44 @@
                                                         </span>
                                                     </div>
                                                     <div class="row g-1">
-                                                        <div class="col-sm-6 col-xl-4">
+                                                        <div class="col-sm-6 col-xl-3">
                                                             <div class="h-100 rounded-2"
                                                                  style="padding:0.45rem 0.55rem; background:rgba(15,23,42,0.72); border:1px solid rgba(148,163,184,0.2);">
                                                                 <div style="font-size:0.62rem; color:#cbd5e1; line-height:1.2;">Janela de análise</div>
-                                                                <div class="fw-bold mb-0" style="font-size:0.95rem; color:#f8fafc;">{{ $ctrl._regraTrackingSelecionada.janela_analise }} segundos</div>
+                                                                <div class="fw-bold mb-0" style="font-size:0.95rem; color:#f8fafc;">
+                                                                    <span ng-if="!$ctrl._regraTrackingSelecionada.janela_analise">0 (ignora)</span>
+                                                                    <span ng-if="$ctrl._regraTrackingSelecionada.janela_analise">{{ $ctrl._regraTrackingSelecionada.janela_analise }} s</span>
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                        <div class="col-sm-6 col-xl-4">
+                                                        <div class="col-sm-6 col-xl-3">
                                                             <div class="h-100 rounded-2"
                                                                  style="padding:0.45rem 0.55rem; background:rgba(15,23,42,0.72); border:1px solid rgba(148,163,184,0.2);">
-                                                                <div style="font-size:0.62rem; color:#cbd5e1; line-height:1.2;">Leituras mínimas</div>
-                                                                <div class="fw-bold mb-0" style="font-size:0.95rem; color:#f8fafc;">{{ $ctrl._regraTrackingSelecionada.leituras_minima }} </div>
+                                                                <div style="font-size:0.62rem; color:#cbd5e1; line-height:1.2;">Gordura</div>
+                                                                <div class="fw-bold mb-0" style="font-size:0.95rem; color:#f8fafc;">
+                                                                    <span ng-if="!$ctrl._regraTrackingSelecionada.gordura_percentual">0% (ignora)</span>
+                                                                    <span ng-if="$ctrl._regraTrackingSelecionada.gordura_percentual">{{ $ctrl._regraTrackingSelecionada.gordura_percentual }}%</span>
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                        <div class="col-sm-6 col-xl-4">
+                                                        <div class="col-sm-6 col-xl-3">
                                                             <div class="h-100 rounded-2"
                                                                  style="padding:0.45rem 0.55rem; background:rgba(15,23,42,0.72); border:1px solid rgba(148,163,184,0.2);">
                                                                 <div style="font-size:0.62rem; color:#cbd5e1; line-height:1.2;">RSSI mínimo</div>
-                                                                <div class="fw-bold mb-0" style="font-size:0.95rem; color:#f8fafc;">{{ $ctrl._regraTrackingSelecionada.minima_rssi }} → -{{ $ctrl._regraTrackingSelecionada.minima_rssi }} dBm</div>
+                                                                <div class="fw-bold mb-0" style="font-size:0.95rem; color:#f8fafc;">
+                                                                    <span ng-if="!$ctrl._regraTrackingSelecionada.minima_rssi">0 (ignora)</span>
+                                                                    <span ng-if="$ctrl._regraTrackingSelecionada.minima_rssi">{{ $ctrl._regraTrackingSelecionada.minima_rssi }} → -{{ $ctrl._regraTrackingSelecionada.minima_rssi }} dBm</span>
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                        <div class="col-sm-6 col-xl-4">
-                                                            <div class="h-100 rounded-2"
-                                                                 style="padding:0.45rem 0.55rem; background:rgba(15,23,42,0.72); border:1px solid rgba(148,163,184,0.2);">
-                                                                <div style="font-size:0.62rem; color:#cbd5e1; line-height:1.2;">Confirmações</div>
-                                                                <div class="fw-bold mb-0" style="font-size:0.95rem; color:#f8fafc;">{{ $ctrl._regraTrackingSelecionada.confirmacoes_consecutivas }}</div>
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-sm-6 col-xl-4">
+                                                        <div class="col-sm-6 col-xl-3">
                                                             <div class="h-100 rounded-2"
                                                                  style="padding:0.45rem 0.55rem; background:rgba(15,23,42,0.72); border:1px solid rgba(148,163,184,0.2);">
                                                                 <div style="font-size:0.62rem; color:#cbd5e1; line-height:1.2;">Tolerância / permanência</div>
-                                                                <div class="fw-bold mb-0" style="font-size:0.95rem; color:#f8fafc;">{{ $ctrl._regraTrackingSelecionada.tolerancia_sem_leitura }} segundos</div>
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-sm-6 col-xl-4">
-                                                            <div class="h-100 rounded-2"
-                                                                 style="padding:0.45rem 0.55rem; background:rgba(15,23,42,0.72); border:1px solid rgba(148,163,184,0.2);">
-                                                                <div style="font-size:0.62rem; color:#cbd5e1; line-height:1.2;">Tempo mín. local</div>
-                                                                <div class="fw-bold mb-0" style="font-size:0.95rem; color:#f8fafc;">{{ $ctrl._regraTrackingSelecionada.tempo_minimo_local }} segundos</div>
+                                                                <div class="fw-bold mb-0" style="font-size:0.95rem; color:#f8fafc;">
+                                                                    <span ng-if="!$ctrl._regraTrackingSelecionada.tolerancia_sem_leitura">0 (ignora)</span>
+                                                                    <span ng-if="$ctrl._regraTrackingSelecionada.tolerancia_sem_leitura">{{ $ctrl._regraTrackingSelecionada.tolerancia_sem_leitura }} s</span>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>

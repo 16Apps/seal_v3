@@ -48,17 +48,17 @@
                           }"></i>
                         </th>
                         <th class="sortable" ng-click="sortBy('janela_analise')">
-                          Janela análise
+                          Janela (s)
                           <i class="bi" ng-class="{
                             'bi-caret-up-fill': sortField=='janela_analise' && !sortReverse,
                             'bi-caret-down-fill': sortField=='janela_analise' && sortReverse
                           }"></i>
                         </th>
-                        <th class="sortable" ng-click="sortBy('leituras_minima')">
-                          Leituras mín.
+                        <th class="sortable" ng-click="sortBy('gordura_percentual')">
+                          Gordura (%)
                           <i class="bi" ng-class="{
-                            'bi-caret-up-fill': sortField=='leituras_minima' && !sortReverse,
-                            'bi-caret-down-fill': sortField=='leituras_minima' && sortReverse
+                            'bi-caret-up-fill': sortField=='gordura_percentual' && !sortReverse,
+                            'bi-caret-down-fill': sortField=='gordura_percentual' && sortReverse
                           }"></i>
                         </th>
                         <th class="sortable" ng-click="sortBy('minima_rssi')">
@@ -68,32 +68,11 @@
                             'bi-caret-down-fill': sortField=='minima_rssi' && sortReverse
                           }"></i>
                         </th>
-                        <th class="sortable" ng-click="sortBy('diferenca_rssi')">
-                          Diff. RSSI
-                          <i class="bi" ng-class="{
-                            'bi-caret-up-fill': sortField=='diferenca_rssi' && !sortReverse,
-                            'bi-caret-down-fill': sortField=='diferenca_rssi' && sortReverse
-                          }"></i>
-                        </th>
-                        <th class="sortable" ng-click="sortBy('confirmacoes_consecutivas')">
-                          Confirmações
-                          <i class="bi" ng-class="{
-                            'bi-caret-up-fill': sortField=='confirmacoes_consecutivas' && !sortReverse,
-                            'bi-caret-down-fill': sortField=='confirmacoes_consecutivas' && sortReverse
-                          }"></i>
-                        </th>
                         <th class="sortable" ng-click="sortBy('tolerancia_sem_leitura')">
-                          Tolerância / permanência
+                          Tolerância (s)
                           <i class="bi" ng-class="{
                             'bi-caret-up-fill': sortField=='tolerancia_sem_leitura' && !sortReverse,
                             'bi-caret-down-fill': sortField=='tolerancia_sem_leitura' && sortReverse
-                          }"></i>
-                        </th>
-                        <th class="sortable" ng-click="sortBy('tempo_minimo_local')">
-                          Tempo mín. local
-                          <i class="bi" ng-class="{
-                            'bi-caret-up-fill': sortField=='tempo_minimo_local' && !sortReverse,
-                            'bi-caret-down-fill': sortField=='tempo_minimo_local' && sortReverse
                           }"></i>
                         </th>
                         <th class="sortable" ng-click="sortBy('ativo')">
@@ -110,12 +89,9 @@
                       <tr ng-repeat="item in _listRegras | orderBy:sortField:sortReverse">
                         <td>{{ item.descricao }}</td>
                         <td>{{ item.janela_analise }}</td>
-                        <td>{{ item.leituras_minima }}</td>
+                        <td>{{ item.gordura_percentual }}</td>
                         <td>{{ item.minima_rssi }}</td>
-                        <td>{{ item.diferenca_rssi }}</td>
-                        <td>{{ item.confirmacoes_consecutivas }}</td>
                         <td>{{ item.tolerancia_sem_leitura }}</td>
-                        <td>{{ item.tempo_minimo_local }}</td>
                         <td>
                           <span class="badge" ng-class="item.ativo == 1 ? 'bg-success' : 'bg-secondary'">
                             {{ item.ativo == 1 ? 'Sim' : 'Não' }}
@@ -128,7 +104,7 @@
                         </td>
                       </tr>
                       <tr ng-if="!_listRegras.length">
-                        <td colspan="10" class="text-secondary text-center py-4">
+                        <td colspan="7" class="text-secondary text-center py-4">
                           Nenhuma regra cadastrada.
                         </td>
                       </tr>

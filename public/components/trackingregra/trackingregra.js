@@ -53,23 +53,17 @@ app.component('trackingregra', {
           ativo: '1',
           descricao: '',
           janela_analise: 0,
-          leituras_minima: 0,
+          gordura_percentual: 0,
           minima_rssi: 0,
-          diferenca_rssi: 0,
-          confirmacoes_consecutivas: 0,
-          tolerancia_sem_leitura: 0,
-          tempo_minimo_local: 0
+          tolerancia_sem_leitura: 0
         };
       } else {
         $ctrl._editRegra = angular.copy(reg);
         $ctrl._editRegra.ativo = String($ctrl._editRegra.ativo != null ? $ctrl._editRegra.ativo : 1);
         $ctrl._editRegra.janela_analise = num($ctrl._editRegra.janela_analise, 0);
-        $ctrl._editRegra.leituras_minima = num($ctrl._editRegra.leituras_minima, 0);
+        $ctrl._editRegra.gordura_percentual = num($ctrl._editRegra.gordura_percentual, 0);
         $ctrl._editRegra.minima_rssi = num($ctrl._editRegra.minima_rssi, 0);
-        $ctrl._editRegra.diferenca_rssi = num($ctrl._editRegra.diferenca_rssi, 0);
-        $ctrl._editRegra.confirmacoes_consecutivas = num($ctrl._editRegra.confirmacoes_consecutivas, 0);
         $ctrl._editRegra.tolerancia_sem_leitura = num($ctrl._editRegra.tolerancia_sem_leitura, 0);
-        $ctrl._editRegra.tempo_minimo_local = num($ctrl._editRegra.tempo_minimo_local, 0);
       }
     };
 
@@ -127,13 +121,13 @@ app.component('trackingregra', {
       var payload = angular.copy($ctrl._editRegra);
       payload.ativo = Number(payload.ativo) === 0 ? 0 : 1;
       payload.janela_analise = num(payload.janela_analise, 0);
-      payload.leituras_minima = num(payload.leituras_minima, 0);
+      payload.gordura_percentual = num(payload.gordura_percentual, 0);
       payload.minima_rssi = num(payload.minima_rssi, 0);
-      payload.diferenca_rssi = num(payload.diferenca_rssi, 0);
-      payload.confirmacoes_consecutivas = num(payload.confirmacoes_consecutivas, 0);
       payload.tolerancia_sem_leitura = num(payload.tolerancia_sem_leitura, 0);
-      payload.tempo_minimo_local = num(payload.tempo_minimo_local, 0);
       payload.id_conta = payload.id_conta || $ctrl._regConta._id;
+      ['leituras_minima', 'diferenca_rssi', 'confirmacoes_consecutivas', 'tempo_minimo_local'].forEach(function (k) {
+        delete payload[k];
+      });
 
       $ctrl._salvando = true;
       uteisService.patchBase('/trackingregra', payload)

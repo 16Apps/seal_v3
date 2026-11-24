@@ -156,14 +156,217 @@ module.exports = (app, dbConnection) => {
             _id: regra._id,
             descricao: regra.descricao || '',
             janela_analise: numParam(regra.janela_analise),
-            leituras_minima: numParam(regra.leituras_minima),
+            gordura_percentual: numParam(regra.gordura_percentual),
             minima_rssi: numParam(regra.minima_rssi),
-            diferenca_rssi: numParam(regra.diferenca_rssi),
-            confirmacoes_consecutivas: numParam(regra.confirmacoes_consecutivas),
             tolerancia_sem_leitura: numParam(regra.tolerancia_sem_leitura),
-            tempo_minimo_local: numParam(regra.tempo_minimo_local),
             ativo: regra.ativo
         };
+    }
+
+    /**
+     * Vantagem percentual do desafiante sobre o campeão (mesma regra do Aferidor).
+     */
+    function vantagemPercentual(valorCampeao, valorDesafiante, opts) {
+        opts = opts || {};
+        const c = Number(valorCampeao);
+        const d = Number(valorDesafiante);
+        if (!Number.isFinite(c) || !Number.isFinite(d)) return null;
+        const base = opts.usarAbs ? Math.abs(c) : c;
+        if (!(base > 0)) return null;
+        return ((d - c) / base) * 100;
+    }
+
+    /**
+     * Métricas por gateway na janela (após filtro RSSI).
+     */
+    function calcularMetricasPorGateway(leituras, tIni, tFim, regra) {
+        const mapa = {};
+        const tIniMs = tIni ? new Date(tIni).getTime() : null;
+        const tFimMs = tFim ? new Date(tFim).getTime() : null;
+
+        (leituras || []).forEach(function (l) {
+            if (!l) return;
+            if (tIniMs != null || tFimMs != null) {
+                const t = l.data_leitura ? new Date(l.data_leitura).getTime() : NaN;
+                if (!Number.isFinite(t)) return;
+                if (tIniMs != null && t < tIniMs) return;
+                if (tFimMs != null && t > tFimMs) return;
+            }
+            if (!rssiAtendeMinimo(l.rssi, regra)) return;
+
+            const idGw = strId(l.id_gateway);
+            if (!idGw) return;
+
+            if (!mapa[idGw]) {
+                mapa[idGw] = {
+                    id_gateway: idGw,
+                    qtd: 0,
+                    somaRssi: 0,
+                    qtdRssi: 0,
+                    media: null,
+                    melhor: null,
+                    melhor_rssi: -Infinity,
+                    leituras: [],
+                    amostra: l
+                };
+            }
+            const m = mapa[idGw];
+            m.qtd += 1;
+            m.leituras.push(l);
+            const rssi = Number(l.rssi);
+            if (Number.isFinite(rssi)) {
+                m.somaRssi += rssi;
+                m.qtdRssi += 1;
+                if (m.melhor == null || rssi > m.melhor) {
+                    m.melhor = rssi;
+                    m.melhor_rssi = rssi;
+                    m.amostra = l;
+                }
+            }
+        });
+
+        Object.keys(mapa).forEach(function (idGw) {
+            const m = mapa[idGw];
+            m.media = m.qtdRssi > 0 ? (m.somaRssi / m.qtdRssi) : null;
+            if (!Number.isFinite(m.melhor_rssi)) m.melhor_rssi = m.melhor;
+        });
+        return mapa;
+    }
+
+    /**
+     * Placar 3 critérios (qtd, média RSSI, melhor RSSI) — igual ao Aferidor.
+     */
+    function calcularVencedorDisputa(porGw) {
+        const ids = Object.keys(porGw || {});
+        const resultadoVazio = {
+            id_gateway: null,
+            placar: {},
+            criterios: {},
+            empate: true,
+            grupos: []
+        };
+        if (!ids.length) return resultadoVazio;
+
+        const placar = {};
+        ids.forEach(function (id) {
+            placar[id] = { qtd: 0, media: 0, melhor: 0, total: 0 };
+        });
+
+        function disputaCriterio(campo, maiorMelhor) {
+            let melhorVal = null;
+            const ganhadores = [];
+            ids.forEach(function (id) {
+                let v = porGw[id][campo];
+                if (v == null || !Number.isFinite(Number(v))) return;
+                v = Number(v);
+                if (melhorVal == null) {
+                    melhorVal = v;
+                    ganhadores.length = 0;
+                    ganhadores.push(id);
+                    return;
+                }
+                if (maiorMelhor) {
+                    if (v > melhorVal) { melhorVal = v; ganhadores.length = 0; ganhadores.push(id); }
+                    else if (v === melhorVal) ganhadores.push(id);
+                } else {
+                    if (v < melhorVal) { melhorVal = v; ganhadores.length = 0; ganhadores.push(id); }
+                    else if (v === melhorVal) ganhadores.push(id);
+                }
+            });
+            if (ganhadores.length === 1) {
+                placar[ganhadores[0]][campo] = 1;
+                placar[ganhadores[0]].total += 1;
+            }
+            return { valor: melhorVal, ganhadores: ganhadores };
+        }
+
+        const dQtd = disputaCriterio('qtd', true);
+        const dMedia = disputaCriterio('media', true);
+        const dMelhor = disputaCriterio('melhor', true);
+
+        let vencedorId = null;
+        let melhorTotal = -1;
+        ids.forEach(function (id) {
+            if (placar[id].total > melhorTotal) {
+                melhorTotal = placar[id].total;
+                vencedorId = id;
+            } else if (placar[id].total === melhorTotal) {
+                vencedorId = null;
+            }
+        });
+
+        const grupos = ids.map(function (id) {
+            const m = porGw[id];
+            return {
+                key: id,
+                id_gateway: id,
+                count: m.qtd,
+                melhor_rssi: Number.isFinite(m.melhor_rssi) ? m.melhor_rssi : m.melhor,
+                amostra: m.amostra,
+                leituras: m.leituras,
+                media: m.media
+            };
+        }).sort(function (a, b) {
+            if (b.count !== a.count) return b.count - a.count;
+            return (b.melhor_rssi || -Infinity) - (a.melhor_rssi || -Infinity);
+        });
+
+        return {
+            id_gateway: vencedorId,
+            placar: placar,
+            criterios: { qtd: dQtd, media: dMedia, melhor: dMelhor },
+            empate: !vencedorId && melhorTotal >= 0,
+            grupos: grupos
+        };
+    }
+
+    /**
+     * Gordura nos 3 critérios ao trocar campeão (mesma lógica do Aferidor).
+     */
+    function aplicarGorduraDisputa(venc, porGw, idCampeaoAtual, gorduraPct) {
+        const gordura = numParam(gorduraPct);
+        const resultado = {
+            id_gateway: venc && venc.id_gateway ? venc.id_gateway : null,
+            empate: !!(venc && venc.empate),
+            placar: (venc && venc.placar) || {},
+            ganhouPorGordura: false,
+            gorduraExigida: gordura,
+            vantagens: null,
+            motivoGordura: null
+        };
+
+        if (!venc || !venc.id_gateway || gordura <= 0) return resultado;
+
+        const idCamp = strId(idCampeaoAtual);
+        const idCand = strId(venc.id_gateway);
+        if (!idCamp || !idCand || idCamp === idCand) return resultado;
+
+        const mCamp = porGw[idCamp];
+        const mCand = porGw[idCand];
+        if (!mCamp || !mCand) return resultado;
+
+        const pctQtd = vantagemPercentual(mCamp.qtd || 0, mCand.qtd || 0, { usarAbs: false });
+        const pctMedia = vantagemPercentual(mCamp.media, mCand.media, { usarAbs: true });
+        const pctMelhor = vantagemPercentual(mCamp.melhor, mCand.melhor, { usarAbs: true });
+
+        resultado.vantagens = { qtd: pctQtd, media: pctMedia, melhor: pctMelhor };
+
+        function atende(pct) {
+            return pct != null && pct >= gordura;
+        }
+
+        if (!(atende(pctQtd) && atende(pctMedia) && atende(pctMelhor))) {
+            resultado.id_gateway = idCamp;
+            resultado.empate = false;
+            resultado.ganhouPorGordura = true;
+            resultado.motivoGordura =
+                `Campeão mantido por gordura (${gordura}% nos 3 critérios). ` +
+                `Vantagens: qtd ${pctQtd != null ? pctQtd.toFixed(1) + '%' : '—'}, ` +
+                `média ${pctMedia != null ? pctMedia.toFixed(1) + '%' : '—'}, ` +
+                `melhor ${pctMelhor != null ? pctMelhor.toFixed(1) + '%' : '—'}.`;
+        }
+
+        return resultado;
     }
 
     function resumoGateway(gw) {
@@ -192,230 +395,155 @@ module.exports = (app, dbConnection) => {
     }
 
     /**
-     * Avalia a guarda (disputa na janela):
-     * - filtra pela janela efetiva (deslizante) quando janela_analise > 0
-     * - filtra RSSI mínimo (se > 0; 0 = ignora)
-     * - exige leituras_minima / confirmacoes_consecutivas (0 = ignora)
-     * - diferenca_rssi (0 = ignora): na troca, desafiante precisa superar o campeão em dB
-     * - vencedor = gateway com MAIS leituras; empate → melhor RSSI (-31 ganha de -50)
+     * Avalia a guarda ao fechar a janela (lógica alinhada ao Aferidor):
+     * - decisão apenas quando dataRef >= janela_fim
+     * - placar em 3 critérios (qtd, média RSSI, melhor RSSI)
+     * - gordura_percentual ao trocar campeão
      *
-     * opts: { dataRef, idGatewayCampeao, idGatewayDesafiante }
+     * opts: { dataRef, idGatewayCampeao }
      */
     function avaliarGuarda(guarda, regra, opts) {
         opts = opts || {};
         const janelaSeg = numParam(regra && regra.janela_analise);
-        const dataRef = opts.dataRef || (guarda && guarda.janela_fim) || new Date();
-        const leiturasBrutas = filtrarLeiturasJanela(
-            guarda && guarda.leituras,
-            janelaSeg,
-            dataRef
-        );
+        const dataRef = opts.dataRef ? new Date(opts.dataRef) : new Date();
+        const janelaInicio = (guarda && guarda.janela_inicio) || dataRef;
+        const janelaFim = (guarda && guarda.janela_fim) || dataRef;
+        const janelaFimMs = new Date(janelaFim).getTime();
+        const dataRefMs = dataRef.getTime();
 
-        const janelaInicio = janelaSeg > 0
-            ? new Date(new Date(dataRef).getTime() - janelaSeg * 1000)
-            : (guarda && guarda.janela_inicio) || null;
-        const janelaFim = janelaSeg > 0
-            ? new Date(dataRef)
-            : (guarda && guarda.janela_fim) || new Date(dataRef);
+        const leiturasBrutas = Array.isArray(guarda && guarda.leituras) ? guarda.leituras : [];
+        const limiar = limiarRssi(regra && regra.minima_rssi);
 
         const baseMetricas = {
             janela: {
                 inicio: janelaInicio,
                 fim: janelaFim,
                 segundos: janelaSeg,
-                leituras_brutas: Array.isArray(guarda && guarda.leituras) ? guarda.leituras.length : 0,
-                leituras_na_janela: leiturasBrutas.length
+                leituras_brutas: leiturasBrutas.length,
+                fechada: dataRefMs >= janelaFimMs
             },
-            leituras: { consideradas: 0, minima: numParam(regra && regra.leituras_minima) },
             minima_rssi: {
-                usado: null,
-                limite: limiarRssi(regra && regra.minima_rssi),
-                atende: true,
-                ignorado: limiarRssi(regra && regra.minima_rssi) == null
+                limite: limiar,
+                ignorado: limiar == null
             },
-            diferenca_rssi: {
-                gateway_concorrente_id: null,
-                rssi_candidato: null,
-                rssi_concorrente: null,
-                vantagem: null,
-                exigida: numParam(regra && regra.diferenca_rssi),
-                atende: true,
-                ignorado: numParam(regra && regra.diferenca_rssi) <= 0,
-                aplicavel: false
-            },
-            confirmacoes: {
-                obtidas: 0,
-                necessarias: numParam(regra && regra.confirmacoes_consecutivas),
-                atende: true,
-                ignorado: numParam(regra && regra.confirmacoes_consecutivas) <= 0
+            placar: {},
+            gordura: {
+                exigida: numParam(regra && regra.gordura_percentual),
+                ignorado: numParam(regra && regra.gordura_percentual) <= 0
             }
         };
 
-        if (!leiturasBrutas.length) {
+        if (dataRefMs < janelaFimMs) {
+            const resto = Math.ceil((janelaFimMs - dataRefMs) / 1000);
             return {
                 ok: false,
-                motivo: 'Nenhuma leitura na janela',
+                motivo: `Aguardando fechamento da janela (${resto}s)`,
                 metricas: baseMetricas,
                 grupos: [],
                 candidato: null,
-                confirmacoes: 0
+                placar_pontos: 0
             };
         }
 
-        const leituras = leiturasBrutas.filter(function (l) {
-            return rssiAtendeMinimo(l.rssi, regra);
-        });
+        const porGw = calcularMetricasPorGateway(leiturasBrutas, janelaInicio, janelaFim, regra);
+        const idsGw = Object.keys(porGw);
 
-        const leiturasMin = numParam(regra.leituras_minima);
-        const confMin = numParam(regra.confirmacoes_consecutivas);
-        const limiar = limiarRssi(regra.minima_rssi);
-        const diffExigida = numParam(regra.diferenca_rssi);
+        baseMetricas.leituras_consideradas = idsGw.reduce(function (acc, id) {
+            return acc + porGw[id].qtd;
+        }, 0);
 
-        baseMetricas.leituras.consideradas = leituras.length;
-        if (leituras.length) {
-            let melhorAbs = -Infinity;
-            leituras.forEach(function (l) {
-                const r = Number(l.rssi);
-                if (Number.isFinite(r) && r > melhorAbs) melhorAbs = r;
-            });
-            baseMetricas.minima_rssi.usado = Number.isFinite(melhorAbs) ? melhorAbs : null;
-        }
-
-        if (!leituras.length) {
-            baseMetricas.minima_rssi.atende = false;
+        if (!idsGw.length) {
             return {
                 ok: false,
                 motivo: limiar != null
-                    ? `Nenhuma leitura com RSSI >= ${limiar} dBm`
+                    ? `Nenhuma leitura com RSSI >= ${limiar} dBm na janela`
                     : 'Nenhuma leitura válida na janela',
                 metricas: baseMetricas,
                 grupos: [],
                 candidato: null,
-                confirmacoes: 0
+                placar_pontos: 0
             };
         }
 
-        if (leiturasMin > 0 && leituras.length < leiturasMin) {
+        const disputa = calcularVencedorDisputa(porGw);
+        baseMetricas.placar = disputa.placar;
+        baseMetricas.criterios = disputa.criterios;
+
+        if (disputa.empate || !disputa.id_gateway) {
             return {
                 ok: false,
-                motivo: `Aguardando leituras mínimas (${leituras.length}/${leiturasMin})`,
+                motivo: 'Empate na disputa da janela (placar dos 3 critérios)',
                 metricas: baseMetricas,
-                grupos: [],
-                candidato: null,
-                confirmacoes: 0
+                grupos: disputa.grupos,
+                candidato: disputa.grupos[0] || null,
+                empate: true,
+                placar_pontos: 0
             };
         }
 
-        const grupos = {};
-        leituras.forEach(function (l) {
-            const k = chaveGatewayLeitura(l);
-            if (!grupos[k]) {
-                grupos[k] = {
-                    key: k,
-                    id_gateway: strId(l.id_gateway),
-                    count: 0,
-                    melhor_rssi: -Infinity,
-                    amostra: l,
-                    leituras: []
-                };
-            }
-            const g = grupos[k];
-            g.count += 1;
-            g.leituras.push(l);
-            const r = Number(l.rssi);
-            if (Number.isFinite(r) && r > g.melhor_rssi) {
-                g.melhor_rssi = r;
-                g.amostra = l;
-            }
+        const gord = aplicarGorduraDisputa(
+            disputa,
+            porGw,
+            opts.idGatewayCampeao,
+            regra && regra.gordura_percentual
+        );
+        baseMetricas.gordura = Object.assign(baseMetricas.gordura, {
+            vantagens: gord.vantagens,
+            ganhouPorGordura: gord.ganhouPorGordura,
+            motivo: gord.motivoGordura,
+            id_final: gord.id_gateway
         });
 
-        const ordenados = Object.keys(grupos).map(function (k) { return grupos[k]; })
-            .sort(function (a, b) {
-                if (b.count !== a.count) return b.count - a.count;
-                return b.melhor_rssi - a.melhor_rssi;
-            });
-
-        const vencedor = ordenados[0];
-        if (!vencedor) {
+        const idFinal = strId(gord.id_gateway);
+        if (!idFinal || !porGw[idFinal]) {
             return {
                 ok: false,
-                motivo: 'Sem candidato de gateway/localização',
+                motivo: gord.motivoGordura || 'Sem vencedor após gordura',
                 metricas: baseMetricas,
-                grupos: ordenados,
+                grupos: disputa.grupos,
                 candidato: null,
-                confirmacoes: 0
+                ganhouPorGordura: gord.ganhouPorGordura,
+                placar_pontos: 0
             };
         }
 
-        baseMetricas.minima_rssi.usado = Number.isFinite(vencedor.melhor_rssi)
-            ? vencedor.melhor_rssi
-            : baseMetricas.minima_rssi.usado;
+        const gwWin = porGw[idFinal];
+        const candidato = {
+            key: idFinal,
+            id_gateway: idFinal,
+            count: gwWin.qtd,
+            melhor_rssi: gwWin.melhor_rssi,
+            amostra: gwWin.amostra,
+            leituras: gwWin.leituras,
+            media: gwWin.media
+        };
 
-        let consecutivas = 0;
-        for (var i = leituras.length - 1; i >= 0; i--) {
-            const l = leituras[i];
-            const k = chaveGatewayLeitura(l);
-            if (k === vencedor.key) consecutivas += 1;
-            else break;
-        }
+        const placarPontos = (disputa.placar[idFinal] && disputa.placar[idFinal].total) || 0;
 
-        baseMetricas.confirmacoes.obtidas = consecutivas;
-        baseMetricas.confirmacoes.atende = !(confMin > 0 && consecutivas < confMin);
-
-        // diferenca_rssi: só na tentativa de troca (candidato ≠ campeão atual)
-        const idCampeao = strId(opts.idGatewayCampeao);
-        const idVencedor = strId(vencedor.id_gateway);
-        if (diffExigida > 0 && idCampeao && idVencedor && idCampeao !== idVencedor) {
-            const grupoCampeao = ordenados.find(function (g) {
-                return strId(g.id_gateway) === idCampeao;
-            });
-            const rssiCand = Number.isFinite(vencedor.melhor_rssi) ? vencedor.melhor_rssi : null;
-            const rssiCamp = grupoCampeao && Number.isFinite(grupoCampeao.melhor_rssi)
-                ? grupoCampeao.melhor_rssi
-                : null;
-            const vantagem = (rssiCand != null && rssiCamp != null) ? (rssiCand - rssiCamp) : null;
-
-            baseMetricas.diferenca_rssi.aplicavel = true;
-            baseMetricas.diferenca_rssi.gateway_concorrente_id = idCampeao;
-            baseMetricas.diferenca_rssi.rssi_candidato = rssiCand;
-            baseMetricas.diferenca_rssi.rssi_concorrente = rssiCamp;
-            baseMetricas.diferenca_rssi.vantagem = vantagem;
-            baseMetricas.diferenca_rssi.ignorado = false;
-
-            if (vantagem == null || vantagem < diffExigida) {
-                baseMetricas.diferenca_rssi.atende = false;
-                return {
-                    ok: false,
-                    motivo: vantagem == null
-                        ? `Aguardando leitura do gateway atual para comparar diferença de RSSI (${diffExigida} dB)`
-                        : `Diferença de RSSI insuficiente (${vantagem} dB / ${diffExigida} dB exigidos)`,
-                    metricas: baseMetricas,
-                    grupos: ordenados,
-                    candidato: vencedor,
-                    confirmacoes: consecutivas
-                };
-            }
-            baseMetricas.diferenca_rssi.atende = true;
-        }
-
-        if (confMin > 0 && consecutivas < confMin) {
+        if (gord.ganhouPorGordura) {
             return {
                 ok: false,
-                motivo: `Aguardando confirmações consecutivas do gateway vencedor (${consecutivas}/${confMin})`,
+                motivo: gord.motivoGordura,
                 metricas: baseMetricas,
-                grupos: ordenados,
-                candidato: vencedor,
-                confirmacoes: consecutivas
+                grupos: disputa.grupos,
+                candidato: candidato,
+                ganhouPorGordura: true,
+                id_vencedor_janela: disputa.id_gateway,
+                id_campeao_mantido: idFinal,
+                placar_pontos: placarPontos
             };
         }
 
         return {
             ok: true,
-            motivo: 'Disputa resolvida na janela',
+            motivo: idsGw.length > 1
+                ? 'Disputa resolvida na janela (placar + gordura)'
+                : 'Janela fechada — gateway único',
             metricas: baseMetricas,
-            grupos: ordenados,
-            candidato: vencedor,
-            confirmacoes: consecutivas
+            grupos: disputa.grupos,
+            candidato: candidato,
+            disputa_multi_gateway: idsGw.length > 1,
+            placar_pontos: placarPontos
         };
     }
 
@@ -434,46 +562,32 @@ module.exports = (app, dbConnection) => {
         }
 
         const mesmo = strId(gwCamp._id) === strId(gwCand._id);
-        const conf = m.confirmacoes || {};
-        const diff = m.diferenca_rssi || {};
+        const gord = m.gordura || {};
         const partes = [];
 
-        if (mesmo) {
+        if (ctx.motivo) partes.push(ctx.motivo);
+        else if (mesmo) {
             partes.push(`${itemNome} permanece em ${nome(gwCamp)}.`);
         } else {
-            partes.push(`${itemNome} continua em ${nome(gwCamp)}.`);
-            if (diff.rssi_candidato != null && diff.rssi_concorrente != null) {
-                partes.push(
-                    `O ${nome(gwCand)} está lendo melhor, com ${diff.rssi_candidato} dBm contra ${diff.rssi_concorrente} dBm do ${nome(gwCamp)}.`
-                );
-                if (!diff.ignorado && diff.exigida > 0) {
-                    const vantagem = diff.vantagem != null ? diff.vantagem : (diff.rssi_candidato - diff.rssi_concorrente);
-                    if (diff.atende) {
-                        partes.push(
-                            `A vantagem de ${vantagem} dB atende aos ${diff.exigida} dB exigidos pela regra do ${nome(gwLeitura || gwCand)}.`
-                        );
-                    } else {
-                        partes.push(
-                            `A vantagem de ${vantagem} dB ainda não atende aos ${diff.exigida} dB exigidos pela regra do ${nome(gwLeitura || gwCand)}.`
-                        );
-                    }
-                }
-            } else if (Number.isFinite(gwCand.melhor_rssi)) {
-                partes.push(`O ${nome(gwCand)} lidera a janela com ${gwCand.melhor_rssi} dBm.`);
+            partes.push(`${itemNome}: disputa entre ${nome(gwCamp)} e ${nome(gwCand)}.`);
+            if (Number.isFinite(gwCand.melhor_rssi)) {
+                partes.push(`Líder provisório ${nome(gwCand)} (melhor RSSI ${gwCand.melhor_rssi} dBm).`);
             }
         }
 
-        if (!conf.ignorado && conf.necessarias > 0) {
+        if (gord.ganhouPorGordura && gord.motivo) {
+            partes.push(gord.motivo);
+        } else if (!gord.ignorado && gord.exigida > 0 && gord.vantagens) {
+            const v = gord.vantagens;
             partes.push(
-                `O ${nome(gwCand)} já obteve ${conf.obtidas} das ${conf.necessarias} confirmações necessárias para assumir.`
+                `Gordura ${gord.exigida}%: vantagens qtd ${v.qtd != null ? v.qtd.toFixed(1) + '%' : '—'}, ` +
+                `média ${v.media != null ? v.media.toFixed(1) + '%' : '—'}, ` +
+                `melhor ${v.melhor != null ? v.melhor.toFixed(1) + '%' : '—'}.`
             );
         }
 
-        if (ctx.tempoMinimo && ctx.tempoMinimo.aplicavel && !ctx.tempoMinimo.ok) {
-            const falta = Math.max(0, (ctx.tempoMinimo.exigido || 0) - (ctx.tempoMinimo.permanencia || 0));
-            partes.push(
-                `Ainda faltam ${falta}s de permanência mínima no local atual (${ctx.tempoMinimo.permanencia || 0}s / ${ctx.tempoMinimo.exigido || 0}s).`
-            );
+        if (m.janela && m.janela.fechada === false) {
+            partes.push('Aguardando fechamento da janela de análise.');
         }
 
         if (ctx.applied && !mesmo) {
@@ -486,9 +600,7 @@ module.exports = (app, dbConnection) => {
     function montarPayloadAfericao(ctx) {
         const m = (ctx.avaliacao && ctx.avaliacao.metricas) || {};
         const tol = ctx.tolerancia || {};
-        const tMin = ctx.tempoMinimo || { ok: true };
         const regraDisp = ctx.regraDisputa;
-        const regraLocal = ctx.regraLocalAtual;
 
         return {
             tipo: 'tracking_afericao',
@@ -507,19 +619,23 @@ module.exports = (app, dbConnection) => {
                         _id: ctx.avaliacao.candidato.id_gateway,
                         descricao: ctx.avaliacao.candidato.id_gateway,
                         melhor_rssi: ctx.avaliacao.candidato.melhor_rssi,
-                        count: ctx.avaliacao.candidato.count
+                        count: ctx.avaliacao.candidato.count,
+                        media: ctx.avaliacao.candidato.media
                     }
                     : null
             ),
             desafiante: !!ctx.desafiante,
             regra: resumoRegra(regraDisp),
-            regra_local_atual: resumoRegra(regraLocal),
             precedencia: ctx.precedencia || 'leitura',
             janela: m.janela || null,
-            leituras: m.leituras || null,
+            leituras_consideradas: m.leituras_consideradas != null ? m.leituras_consideradas : null,
             minima_rssi: m.minima_rssi || null,
-            diferenca_rssi: m.diferenca_rssi || null,
-            confirmacoes: m.confirmacoes || null,
+            placar: m.placar || null,
+            criterios: m.criterios || null,
+            gordura: m.gordura || {
+                exigida: numParam(regraDisp && regraDisp.gordura_percentual),
+                ignorado: numParam(regraDisp && regraDisp.gordura_percentual) <= 0
+            },
             tolerancia_sem_leitura: {
                 desde_ultima: tol.gap != null ? tol.gap : null,
                 configurada: ctx.toleranciaSeg != null ? ctx.toleranciaSeg : numParam(regraDisp && regraDisp.tolerancia_sem_leitura),
@@ -527,20 +643,12 @@ module.exports = (app, dbConnection) => {
                 troca_local: !!tol.trocaLocal,
                 ignorado: !(ctx.toleranciaSeg > 0)
             },
-            tempo_minimo_local: {
-                permanencia: tMin.diffSeg != null ? tMin.diffSeg : null,
-                exigido: numParam((regraLocal || regraDisp) && (regraLocal || regraDisp).tempo_minimo_local),
-                falta: (!tMin.ok && tMin.diffSeg != null)
-                    ? Math.max(0, numParam((regraLocal || regraDisp).tempo_minimo_local) - tMin.diffSeg)
-                    : 0,
-                atende: tMin.ok !== false,
-                aplicavel: !!tMin.aplicavel || (tMin.ok === false),
-                motivo: tMin.motivo || null,
-                origem_regra: regraLocal && regraDisp && strId(regraLocal._id) !== strId(regraDisp._id)
-                    ? 'local_atual'
-                    : 'disputa'
-            },
-            disputa: !!(ctx.avaliacao && ctx.avaliacao.grupos && ctx.avaliacao.grupos.length > 1),
+            disputa: !!(ctx.avaliacao && (
+                ctx.avaliacao.disputa_multi_gateway ||
+                (ctx.avaliacao.grupos && ctx.avaliacao.grupos.length > 1)
+            )),
+            ganhou_por_gordura: !!(ctx.avaliacao && ctx.avaliacao.ganhouPorGordura),
+            placar_pontos: ctx.avaliacao && ctx.avaliacao.placar_pontos,
             decisao: {
                 ok: !!(ctx.avaliacao && ctx.avaliacao.ok),
                 pending: !!ctx.pending,
@@ -631,42 +739,6 @@ module.exports = (app, dbConnection) => {
             return { soPermanencia: false, forcarNovoCiclo: true, gap: gap };
         }
         return { soPermanencia: false, forcarNovoCiclo: false, gap: gap };
-    }
-
-    /**
-     * tempo_minimo_local: filtra passagem rápida (só permite TROCA de local após X s no local atual).
-     * 0 → ignora. Mesmo local sempre ok.
-     */
-    function tempoMinimoLocalOk(item, regra, locAlvo, dataLeitura) {
-        const minLocal = numParam(regra && regra.tempo_minimo_local);
-        if (minLocal <= 0) return { ok: true, aplicavel: false, ignorado: true };
-
-        const mesmoLocal = mesmoLocalReal(
-            item.id_nivel_loc1, item.id_nivel_loc2, item.id_nivel_loc3, item.id_nivel_loc4,
-            locAlvo.id_nivel_loc1, locAlvo.id_nivel_loc2, locAlvo.id_nivel_loc3, locAlvo.id_nivel_loc4
-        );
-
-        if (mesmoLocal) return { ok: true, mesmoLocal: true, aplicavel: false };
-
-        const ref =
-            (item.registro_atual && item.registro_atual.data_registro) ||
-            (item.registro_atual && item.registro_atual.data_permanecia) ||
-            item.updatedAt ||
-            null;
-
-        if (!ref) return { ok: true, aplicavel: true, exigido: minLocal };
-
-        const diffSeg = diffSegundos(ref, dataLeitura);
-        if (diffSeg < minLocal) {
-            return {
-                ok: false,
-                aplicavel: true,
-                motivo: `Tempo mínimo no local não atingido (${diffSeg}s / ${minLocal}s)`,
-                diffSeg: diffSeg,
-                exigido: minLocal
-            };
-        }
-        return { ok: true, aplicavel: true, diffSeg: diffSeg, exigido: minLocal };
     }
 
     async function atualizarPermanencia({ gateway, item, tag, loc, leitura, dataLeitura, ultimoRegistro }) {
@@ -916,30 +988,13 @@ module.exports = (app, dbConnection) => {
             .limit(1);
 
         let gatewayCampeao = null;
-        let regraCampeao = null;
         if (ultimoRegistro && ultimoRegistro.id_gateway) {
             gatewayCampeao = await Gateway.findOne({ _id: ultimoRegistro.id_gateway, ativo: 1 });
-            if (gatewayCampeao && gatewayCampeao.id_tracking_regra) {
-                regraCampeao = await TrackingRegra.findOne({
-                    _id: gatewayCampeao.id_tracking_regra,
-                    ativo: 1
-                });
-                if (regraCampeao && regraCampeao.id_conta &&
-                    strId(regraCampeao.id_conta) !== strId(gateway.id_conta)) {
-                    regraCampeao = null;
-                }
-            }
         }
 
         const desafiante = !!(gatewayCampeao && strId(gatewayCampeao._id) !== strId(gateway._id));
-        /**
-         * Precedência:
-         * - disputa/troca → regra do desafiante (janela, leituras, rssi, diferença, confirmações)
-         * - tempo_minimo_local da troca → regra do local atual (campeão), se existir; senão do desafiante
-         * - keep-alive no mesmo GW → regra do próprio gateway
-         */
+        /** Disputa e filtros usam a regra vinculada ao gateway que está lendo. */
         const regraDisputa = regraLeitura;
-        const regraLocalAtual = (desafiante && regraCampeao) ? regraCampeao : regraLeitura;
         const precedencia = desafiante ? 'desafiante' : 'leitura';
 
         const janelaSeg = numParam(regraDisputa.janela_analise);
@@ -961,7 +1016,6 @@ module.exports = (app, dbConnection) => {
                 gatewayCampeao: gatewayCampeao || gateway,
                 gatewayCandidato: candidatoGw,
                 metricas: extraAfericao.avaliacao && extraAfericao.avaliacao.metricas,
-                tempoMinimo: extraAfericao.tempoMinimo,
                 motivo: resposta.message,
                 applied: resposta.applied,
                 avaliacao: extraAfericao.avaliacao
@@ -975,12 +1029,10 @@ module.exports = (app, dbConnection) => {
                 gatewayCandidato: candidatoGw,
                 desafiante,
                 regraDisputa,
-                regraLocalAtual,
                 precedencia,
                 avaliacao: extraAfericao.avaliacao,
                 tolerancia: extraAfericao.tolerancia,
                 toleranciaSeg,
-                tempoMinimo: extraAfericao.tempoMinimo,
                 pending: resposta.pending,
                 applied: resposta.applied,
                 permanence: resposta.permanence,
@@ -1012,11 +1064,9 @@ module.exports = (app, dbConnection) => {
                     ok: false,
                     motivo: `RSSI abaixo do mínimo`,
                     metricas: {
-                        janela: { inicio: dataLeitura, fim: dataLeitura, segundos: janelaSeg, leituras_brutas: 1, leituras_na_janela: 1 },
-                        leituras: { consideradas: 0, minima: numParam(regraDisputa.leituras_minima) },
-                        minima_rssi: { usado: rssiNum, limite: limiarRssiRegra, atende: false, ignorado: false },
-                        diferenca_rssi: { exigida: numParam(regraDisputa.diferenca_rssi), atende: true, ignorado: numParam(regraDisputa.diferenca_rssi) <= 0, aplicavel: false },
-                        confirmacoes: { obtidas: 0, necessarias: numParam(regraDisputa.confirmacoes_consecutivas), atende: true, ignorado: numParam(regraDisputa.confirmacoes_consecutivas) <= 0 }
+                        janela: { inicio: dataLeitura, fim: dataLeitura, segundos: janelaSeg, leituras_brutas: 1, fechada: true },
+                        minima_rssi: { limite: limiarRssiRegra, atende: false, ignorado: false, usado: rssiNum },
+                        leituras_consideradas: 0
                     }
                 }
             });
@@ -1120,22 +1170,6 @@ module.exports = (app, dbConnection) => {
                 });
             }
 
-            const tMin = tempoMinimoLocalOk(item, regraLocalAtual, loc, dataLeitura);
-            if (!tMin.ok) {
-                return finalizar({
-                    success: true,
-                    ignored: true,
-                    pending: true,
-                    message: tMin.motivo,
-                    regra: resumoRegra(regraDisputa),
-                    tag, tokem
-                }, {
-                    tolerancia: tol,
-                    tempoMinimo: tMin,
-                    gatewayCandidato: gateway
-                });
-            }
-
             let aplicado = { retorno: 'Entrada (simulado)', status: 'entrada', registro: null, ciclo: true };
             if (!simular) {
                 aplicado = await aplicarLocalizacao({
@@ -1158,7 +1192,6 @@ module.exports = (app, dbConnection) => {
                 tag, tokem
             }, {
                 tolerancia: tol,
-                tempoMinimo: tMin,
                 gatewayCandidato: gateway
             });
         }
@@ -1196,17 +1229,6 @@ module.exports = (app, dbConnection) => {
                 leituras: [],
                 confirmacoes: 0
             });
-        } else if (desafiante) {
-            // Troca: reancora a guarda na regra/janela do desafiante
-            guarda.id_tracking_regra = regraDisputa._id;
-            const fimDesafiante = new Date(agora + janelaSeg * 1000);
-            if (!guarda.janela_fim || new Date(guarda.janela_fim).getTime() < fimDesafiante.getTime()) {
-                guarda.janela_fim = fimDesafiante;
-            }
-            const inicioDesejado = new Date(agora - janelaSeg * 1000);
-            if (!guarda.janela_inicio || new Date(guarda.janela_inicio).getTime() > inicioDesejado.getTime()) {
-                guarda.janela_inicio = inicioDesejado;
-            }
         }
 
         // Cópia das leituras para simulação não poluir a guarda persistida
@@ -1224,12 +1246,11 @@ module.exports = (app, dbConnection) => {
 
         const avaliacao = avaliarGuarda(guardaEval, regraDisputa, {
             dataRef: dataLeitura,
-            idGatewayCampeao: gatewayCampeao && gatewayCampeao._id,
-            idGatewayDesafiante: desafiante ? gateway._id : null
+            idGatewayCampeao: gatewayCampeao && gatewayCampeao._id
         });
 
         if (!simular) {
-            guarda.confirmacoes = avaliacao.confirmacoes || 0;
+            guarda.confirmacoes = avaliacao.placar_pontos || 0;
             if (avaliacao.candidato && avaliacao.candidato.amostra) {
                 const a = avaliacao.candidato.amostra;
                 guarda.melhor_rssi = avaliacao.candidato.melhor_rssi;
@@ -1275,7 +1296,7 @@ module.exports = (app, dbConnection) => {
                 guarda: {
                     _id: guarda._id,
                     leituras: leiturasBase.length,
-                    confirmacoes: avaliacao.confirmacoes || 0,
+                    placar_pontos: avaliacao.placar_pontos || 0,
                     janela_inicio: (janelaMetricas && janelaMetricas.inicio) || guarda.janela_inicio,
                     janela_fim: (janelaMetricas && janelaMetricas.fim) || guarda.janela_fim,
                     melhor_rssi: avaliacao.candidato ? avaliacao.candidato.melhor_rssi : null,
@@ -1347,7 +1368,7 @@ module.exports = (app, dbConnection) => {
                 guarda: {
                     _id: guarda._id,
                     leituras: leiturasBase.length,
-                    confirmacoes: avaliacao.confirmacoes || 0,
+                    placar_pontos: avaliacao.placar_pontos || 0,
                     melhor_rssi: avaliacao.candidato ? avaliacao.candidato.melhor_rssi : null,
                     id_gateway_vencedor: idWin || null
                 },
@@ -1356,33 +1377,6 @@ module.exports = (app, dbConnection) => {
             }, {
                 avaliacao,
                 tolerancia: tol,
-                gatewayCandidato: gatewayAplicar
-            });
-        }
-
-        // Permanência mínima: regra do local atual (campeão) na troca
-        const tMin = tempoMinimoLocalOk(item, regraLocalAtual, locVencedor, dataLeitura);
-        if (!tMin.ok) {
-            if (!simular) {
-                guarda.motivo = tMin.motivo;
-                await guarda.save();
-            }
-            return finalizar({
-                success: true,
-                ignored: false,
-                pending: true,
-                message: tMin.motivo,
-                guarda: {
-                    _id: guarda._id,
-                    leituras: leiturasBase.length,
-                    confirmacoes: avaliacao.confirmacoes || 0
-                },
-                regra: resumoRegra(regraDisputa),
-                tag, tokem
-            }, {
-                avaliacao,
-                tolerancia: tol,
-                tempoMinimo: tMin,
                 gatewayCandidato: gatewayAplicar
             });
         }
@@ -1418,7 +1412,7 @@ module.exports = (app, dbConnection) => {
             guarda: {
                 _id: guarda._id,
                 leituras: leiturasBase.length,
-                confirmacoes: avaliacao.confirmacoes || 0,
+                placar_pontos: avaliacao.placar_pontos || 0,
                 melhor_rssi: avaliacao.candidato ? avaliacao.candidato.melhor_rssi : null,
                 id_gateway_vencedor: idWin || null,
                 leituras_vencedor: avaliacao.candidato ? avaliacao.candidato.count : 0
@@ -1428,7 +1422,6 @@ module.exports = (app, dbConnection) => {
         }, {
             avaliacao,
             tolerancia: tol,
-            tempoMinimo: tMin,
             gatewayCandidato: gatewayAplicar
         });
     }
