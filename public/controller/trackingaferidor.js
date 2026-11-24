@@ -49,6 +49,14 @@ app.controller('trackingAferidorCtrl', function ($scope, uteisService, $timeout,
     $scope._disputaInicio = null;
     $scope._disputaFim = null;
 
+    // Janela de checagem (segundos) — a cada N s avalia métricas e aloca campeão
+    $scope._janelaChecagemSeg = 10;
+    $scope._janelaAtualInicio = null;
+    $scope._janelaAtualFimPrevisto = null;
+    $scope._segundosRestantes = null;
+    $scope._campeaoPorTag = {}; // tag -> { id_gateway, nome, quando, janela_inicio, janela_fim, pontos, empate }
+    $scope._historicoChecagens = [];
+
     // leituras da disputa atual: { tag, id_gateway, gateway_descricao, rssi, data_leitura, _id_local }
     $scope._leiturasDisputa = [];
     // tags vistas: [{ tag, aba }]
@@ -67,8 +75,10 @@ app.controller('trackingAferidorCtrl', function ($scope, uteisService, $timeout,
     var LIMITE_LEITURAS = 2000;
     var _dragCardId = null;
     var _clockTimer = null;
+    var _janelaTimer = null;
     var STORAGE_KEY = 'seal_aferidor_gateways';
     var REF_KEY = 'seal_aferidor_referencia';
+    var JANELA_KEY = 'seal_aferidor_janela';
 
     function podeAcessar(colaborador) {
         if (!colaborador) return false;
@@ -153,6 +163,139 @@ app.controller('trackingAferidorCtrl', function ($scope, uteisService, $timeout,
         } catch (e) { /* ignore */ }
     }
 
+    function janelaKey() {
+        var id = ($scope._regConta && $scope._regConta._id) || 'x';
+        return JANELA_KEY + ':' + id;
+    }
+
+    function carregarJanelaPreferencia() {
+        try {
+            var n = Number(localStorage.getItem(janelaKey()));
+            if (Number.isFinite(n) && n >= 1) $scope._janelaChecagemSeg = Math.floor(n);
+        } catch (e) { /* ignore */ }
+    }
+
+    function salvarJanelaPreferencia() {
+        try {
+            localStorage.setItem(janelaKey(), String(Math.max(1, Math.floor(Number($scope._janelaChecagemSeg) || 10))));
+        } catch (e) { /* ignore */ }
+    }
+
+    $scope.onJanelaChange = function () {
+        var n = Math.floor(Number($scope._janelaChecagemSeg));
+        if (!Number.isFinite(n) || n < 1) n = 1;
+        if (n > 3600) n = 3600;
+        $scope._janelaChecagemSeg = n;
+        salvarJanelaPreferencia();
+        if ($scope._disputaStatus === 'running' || $scope._disputaStatus === 'paused') {
+            // Reancora o fim previsto da janela aberta a partir do início atual
+            if ($scope._janelaAtualInicio) {
+                $scope._janelaAtualFimPrevisto = new Date(
+                    new Date($scope._janelaAtualInicio).getTime() + n * 1000
+                ).toISOString();
+            }
+            atualizarContagemJanela();
+        }
+    };
+
+    function janelaSeg() {
+        var n = Math.floor(Number($scope._janelaChecagemSeg));
+        return (Number.isFinite(n) && n >= 1) ? n : 10;
+    }
+
+    function abrirNovaJanela(inicioIso) {
+        var ini = inicioIso || new Date().toISOString();
+        $scope._janelaAtualInicio = ini;
+        $scope._janelaAtualFimPrevisto = new Date(
+            new Date(ini).getTime() + janelaSeg() * 1000
+        ).toISOString();
+        atualizarContagemJanela();
+    }
+
+    function atualizarContagemJanela() {
+        if (!$scope._janelaAtualFimPrevisto) {
+            $scope._segundosRestantes = null;
+            return;
+        }
+        var resto = Math.ceil((new Date($scope._janelaAtualFimPrevisto).getTime() - Date.now()) / 1000);
+        $scope._segundosRestantes = resto > 0 ? resto : 0;
+    }
+
+    function pararTimerJanela() {
+        if (_janelaTimer) {
+            $interval.cancel(_janelaTimer);
+            _janelaTimer = null;
+        }
+    }
+
+    function iniciarTimerJanela() {
+        pararTimerJanela();
+        _janelaTimer = $interval(function () {
+            if ($scope._disputaStatus !== 'running') {
+                atualizarContagemJanela();
+                return;
+            }
+            atualizarContagemJanela();
+            if ($scope._janelaAtualFimPrevisto && Date.now() >= new Date($scope._janelaAtualFimPrevisto).getTime()) {
+                executarChecagemJanela();
+            } else {
+                $scope.onRecalcularCards();
+            }
+        }, 1000);
+    }
+
+    function executarChecagemJanela(opts) {
+        opts = opts || {};
+        var ini = $scope._janelaAtualInicio;
+        var fim = $scope._janelaAtualFimPrevisto || new Date().toISOString();
+        if (!ini) {
+            if (!opts.semAbrirProxima) abrirNovaJanela();
+            return;
+        }
+
+        var metricasJanela = calcularMetricas(ini, fim);
+        var vencedores = calcularVencedores(metricasJanela);
+        var quando = new Date().toISOString();
+
+        Object.keys(vencedores).forEach(function (tag) {
+            var venc = vencedores[tag];
+            var nome = '—';
+            if (venc.id_gateway) {
+                var m = metricasJanela[tag] && metricasJanela[tag][venc.id_gateway];
+                nome = (m && m.gateway_descricao) || venc.id_gateway;
+            } else if (venc.empate) {
+                nome = 'Empate';
+            }
+            $scope._campeaoPorTag[tag] = {
+                id_gateway: venc.id_gateway || null,
+                nome: nome,
+                quando: quando,
+                janela_inicio: ini,
+                janela_fim: fim,
+                pontos: venc.placar || {},
+                empate: !!venc.empate
+            };
+        });
+
+        // Também registra tags que só existem no total mas sem leitura na janela? não — só quem teve métrica na janela
+
+        $scope._historicoChecagens.unshift({
+            _id: Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+            quando: quando,
+            janela_inicio: ini,
+            janela_fim: fim,
+            campeoes: angular.copy($scope._campeaoPorTag)
+        });
+        if ($scope._historicoChecagens.length > 50) {
+            $scope._historicoChecagens = $scope._historicoChecagens.slice(0, 50);
+        }
+
+        if (!opts.semAbrirProxima) {
+            abrirNovaJanela(fim);
+        }
+        $scope.onRecalcularCards();
+    }
+
     function idsSelecionados() {
         return ($scope._gatewaysSelecionados || []).map(function (g) { return strId(g._id); });
     }
@@ -228,6 +371,7 @@ app.controller('trackingAferidorCtrl', function ($scope, uteisService, $timeout,
         atualizarRelogio();
         _clockTimer = $interval(atualizarRelogio, 1000);
         carregarReferencia();
+        carregarJanelaPreferencia();
         await $scope.onCarregaGateways();
         $scope.onSocket();
         $scope.onRecalcularCards();
@@ -383,22 +527,36 @@ app.controller('trackingAferidorCtrl', function ($scope, uteisService, $timeout,
             uteisService.onToast('Selecione ao menos um gateway para iniciar.', 'warning', 2200, 'top-end');
             return;
         }
+        salvarJanelaPreferencia();
         $scope._leiturasDisputa = [];
         $scope._tagsDisputa = [];
         $scope._tagAtivaPorGateway = {};
+        $scope._campeaoPorTag = {};
+        $scope._historicoChecagens = [];
         $scope._disputaInicio = new Date().toISOString();
         $scope._disputaFim = null;
         $scope._disputaStatus = 'running';
+        abrirNovaJanela($scope._disputaInicio);
+        iniciarTimerJanela();
         $scope.onRecalcularCards();
-        uteisService.onToast('Disputa iniciada.', 'success', 1800, 'top-end');
+        uteisService.onToast(
+            'Disputa iniciada. Checagem a cada ' + janelaSeg() + 's.',
+            'success', 2000, 'top-end'
+        );
     };
 
     $scope.onPausarDisputa = function () {
         if ($scope._disputaStatus === 'running') {
             $scope._disputaStatus = 'paused';
+            // Congela o restante da janela: ao retomar, recoloca o fim a partir de agora + resto
+            $scope._pausaRestanteSeg = $scope._segundosRestantes;
             uteisService.onToast('Disputa pausada.', 'info', 1600, 'top-end');
         } else if ($scope._disputaStatus === 'paused') {
             $scope._disputaStatus = 'running';
+            var resto = Number($scope._pausaRestanteSeg);
+            if (!Number.isFinite(resto) || resto < 0) resto = janelaSeg();
+            $scope._janelaAtualFimPrevisto = new Date(Date.now() + resto * 1000).toISOString();
+            atualizarContagemJanela();
             uteisService.onToast('Disputa retomada.', 'success', 1600, 'top-end');
         }
         $scope.onRecalcularCards();
@@ -406,8 +564,15 @@ app.controller('trackingAferidorCtrl', function ($scope, uteisService, $timeout,
 
     $scope.onEncerrarDisputa = function () {
         if (!$scope.podeEncerrar()) return;
+        // Checagem final da janela aberta (parcial)
+        if ($scope._janelaAtualInicio) {
+            $scope._janelaAtualFimPrevisto = new Date().toISOString();
+            executarChecagemJanela({ semAbrirProxima: true });
+        }
+        pararTimerJanela();
         $scope._disputaStatus = 'ended';
         $scope._disputaFim = new Date().toISOString();
+        $scope._segundosRestantes = null;
         $scope.onRecalcularCards();
 
         var snapshot = montarSnapshotReferencia();
@@ -416,12 +581,18 @@ app.controller('trackingAferidorCtrl', function ($scope, uteisService, $timeout,
     };
 
     $scope.onLimpar = function () {
+        pararTimerJanela();
         $scope._leiturasDisputa = [];
         $scope._tagsDisputa = [];
         $scope._tagAtivaPorGateway = {};
+        $scope._campeaoPorTag = {};
+        $scope._historicoChecagens = [];
         $scope._disputaStatus = 'idle';
         $scope._disputaInicio = null;
         $scope._disputaFim = null;
+        $scope._janelaAtualInicio = null;
+        $scope._janelaAtualFimPrevisto = null;
+        $scope._segundosRestantes = null;
         $scope.onRecalcularCards();
     };
 
@@ -446,15 +617,26 @@ app.controller('trackingAferidorCtrl', function ($scope, uteisService, $timeout,
     };
 
     /**
-     * Métricas por tag → por gateway:
-     * { [tag]: { [idGw]: { qtd, somaRssi, media, melhor, leituras[] } } }
+     * Métricas por tag → por gateway.
+     * Se inicio/fim informados, considera só leituras nessa janela (inclusive).
      */
-    function calcularMetricas() {
+    function calcularMetricas(inicioIso, fimIso) {
         var mapa = {};
+        var tIni = inicioIso ? new Date(inicioIso).getTime() : null;
+        var tFim = fimIso ? new Date(fimIso).getTime() : null;
+
         ($scope._leiturasDisputa || []).forEach(function (l) {
             var tag = String(l.tag || '');
             var idGw = strId(l.id_gateway);
             if (!tag || !idGw) return;
+
+            if (tIni != null || tFim != null) {
+                var t = new Date(l.data_leitura).getTime();
+                if (!Number.isFinite(t)) return;
+                if (tIni != null && t < tIni) return;
+                if (tFim != null && t > tFim) return;
+            }
+
             if (!mapa[tag]) mapa[tag] = {};
             if (!mapa[tag][idGw]) {
                 mapa[tag][idGw] = {
@@ -606,8 +788,16 @@ app.controller('trackingAferidorCtrl', function ($scope, uteisService, $timeout,
     }
 
     $scope.onRecalcularCards = function () {
-        var metricas = calcularMetricas();
-        var vencedores = calcularVencedores(metricas);
+        var agoraIso = new Date().toISOString();
+        var janelaIni = $scope._janelaAtualInicio;
+        var janelaFim = ($scope._disputaStatus === 'running' || $scope._disputaStatus === 'paused')
+            ? agoraIso
+            : ($scope._janelaAtualFimPrevisto || agoraIso);
+
+        var metricasJanela = calcularMetricas(janelaIni, janelaFim);
+        var metricasTotal = calcularMetricas();
+        // Placar ao vivo da janela aberta (só visual); campeão oficial vem da última checagem
+        var vencedoresJanelaLive = calcularVencedores(metricasJanela);
         var tags = ($scope._tagsDisputa || []).map(function (t) { return t.tag; });
 
         var cards = ($scope._gatewaysSelecionados || []).map(function (gw) {
@@ -618,15 +808,24 @@ app.controller('trackingAferidorCtrl', function ($scope, uteisService, $timeout,
                 $scope._tagAtivaPorGateway[idGw] = tagAtiva;
             }
 
-            var mTag = (tagAtiva && metricas[tagAtiva] && metricas[tagAtiva][idGw])
-                ? metricas[tagAtiva][idGw]
+            var mJanela = (tagAtiva && metricasJanela[tagAtiva] && metricasJanela[tagAtiva][idGw])
+                ? metricasJanela[tagAtiva][idGw]
                 : { qtd: 0, media: null, melhor: null, leituras: [] };
 
-            var venc = tagAtiva ? vencedores[tagAtiva] : null;
-            var pontos = (venc && venc.placar[idGw]) ? venc.placar[idGw] : { qtd: 0, media: 0, melhor: 0, total: 0 };
-            var ehVencedor = !!(venc && venc.id_gateway === idGw);
+            var mTotal = (tagAtiva && metricasTotal[tagAtiva] && metricasTotal[tagAtiva][idGw])
+                ? metricasTotal[tagAtiva][idGw]
+                : { qtd: 0, media: null, melhor: null, leituras: [] };
 
-            // referência da disputa anterior para a mesma tag
+            var campeaoOficial = tagAtiva ? ($scope._campeaoPorTag[tagAtiva] || null) : null;
+            var live = tagAtiva ? (vencedoresJanelaLive[tagAtiva] || null) : null;
+            var pontosLive = (live && live.placar[idGw])
+                ? live.placar[idGw]
+                : { qtd: 0, media: 0, melhor: 0, total: 0 };
+
+            var ehVencedor = !!(campeaoOficial && campeaoOficial.id_gateway &&
+                strId(campeaoOficial.id_gateway) === idGw);
+            var empateOficial = !!(campeaoOficial && campeaoOficial.empate);
+
             var refTag = null;
             if ($scope._disputaReferencia && $scope._disputaReferencia.tags && tagAtiva) {
                 refTag = ($scope._disputaReferencia.tags || []).find(function (t) {
@@ -644,18 +843,27 @@ app.controller('trackingAferidorCtrl', function ($scope, uteisService, $timeout,
                 gateway: gw,
                 tags: tags,
                 tagAtiva: tagAtiva,
-                metricas: {
-                    qtd: mTag.qtd || 0,
-                    media: mTag.media,
-                    melhor: mTag.melhor
+                metricasJanela: {
+                    qtd: mJanela.qtd || 0,
+                    media: mJanela.media,
+                    melhor: mJanela.melhor
                 },
-                pontos: pontos,
+                metricasTotal: {
+                    qtd: mTotal.qtd || 0,
+                    media: mTotal.media,
+                    melhor: mTotal.melhor
+                },
+                pontos: pontosLive,
                 ehVencedor: ehVencedor,
-                empate: !!(venc && venc.empate),
-                vencedorNome: venc && venc.id_gateway
-                    ? ((metricas[tagAtiva] && metricas[tagAtiva][venc.id_gateway] && metricas[tagAtiva][venc.id_gateway].gateway_descricao) || venc.id_gateway)
-                    : (venc && venc.empate ? 'Empate' : '—'),
-                leiturasTag: (mTag.leituras || []).slice().reverse(),
+                empate: empateOficial,
+                vencedorNome: campeaoOficial
+                    ? (campeaoOficial.nome || '—')
+                    : 'Aguardando checagem',
+                campeaoQuando: campeaoOficial ? campeaoOficial.quando : null,
+                campeaoJanela: campeaoOficial
+                    ? { inicio: campeaoOficial.janela_inicio, fim: campeaoOficial.janela_fim }
+                    : null,
+                leiturasTag: (mTotal.leituras || []).slice().reverse(),
                 referencia: refGw,
                 referenciaVencedor: refTag ? refTag.vencedor_nome : null,
                 _dragging: false,
@@ -776,5 +984,6 @@ app.controller('trackingAferidorCtrl', function ($scope, uteisService, $timeout,
             $interval.cancel(_clockTimer);
             _clockTimer = null;
         }
+        pararTimerJanela();
     });
 });
