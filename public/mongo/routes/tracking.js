@@ -335,7 +335,7 @@ module.exports = (app, dbConnection) => {
             motivoGordura: null
         };
 
-        if (!venc || !venc.id_gateway || gordura <= 0) return resultado;
+        if (!venc || !venc.id_gateway || gordura <= 0 || !strId(idCampeaoAtual)) return resultado;
 
         const idCamp = strId(idCampeaoAtual);
         const idCand = strId(venc.id_gateway);
@@ -1093,10 +1093,10 @@ module.exports = (app, dbConnection) => {
         };
 
         /**
-         * Keep-alive rápido: SOMENTE mesmo gateway + mesmo local dentro da tolerância
-         * → atualiza permanência sem abrir disputa.
+         * Keep-alive rápido: só sem janela de disputa (janela 0).
+         * Com janela > 0, TODAS as leituras passam pela guarda (como no Aferidor).
          */
-        if (toleranciaSeg > 0 && ultimoRegistro) {
+        if (janelaSeg <= 0 && toleranciaSeg > 0 && ultimoRegistro) {
             const refUltima =
                 ultimoRegistro.data_permanecia ||
                 ultimoRegistro.updatedAt ||
@@ -1196,40 +1196,41 @@ module.exports = (app, dbConnection) => {
             });
         }
 
-        // --- Disputa na janela ---
+        // --- Disputa na janela (mesmo ciclo para todos os gateways da tag) ---
+        let guarda = null;
         if (!simular) {
-            await TrackingGuarda.updateMany(
-                {
-                    id_conta: gateway.id_conta,
-                    tag: tag,
-                    status: 'aberto',
-                    janela_fim: { $lt: dataLeitura }
-                },
-                { $set: { status: 'expirado', motivo: 'Janela de análise expirada' } }
-            );
+            guarda = await TrackingGuarda.findOne({
+                id_conta: gateway.id_conta,
+                tag: tag,
+                status: 'aberto'
+            }).sort({ createdAt: -1 });
         }
 
-        let guarda = await TrackingGuarda.findOne({
-            id_conta: gateway.id_conta,
-            tag: tag,
-            status: 'aberto',
-            janela_fim: { $gte: dataLeitura }
-        }).sort({ createdAt: -1 });
-
-        if (!guarda) {
-            guarda = new TrackingGuarda({
+        const dataMs = dataLeitura.getTime();
+        const criarGuarda = function (ini, leiturasIniciais) {
+            return new TrackingGuarda({
                 _id: shortid.generate(),
                 id_conta: gateway.id_conta,
                 id_tracking_regra: regraDisputa._id,
                 id_item: item._id,
                 tag: tag,
                 status: 'aberto',
-                janela_inicio: dataLeitura,
-                janela_fim: new Date(agora + janelaSeg * 1000),
-                leituras: [],
+                janela_inicio: ini,
+                janela_fim: new Date(new Date(ini).getTime() + janelaSeg * 1000),
+                leituras: leiturasIniciais || [],
                 confirmacoes: 0
             });
+        };
+
+        if (!guarda) {
+            if (!simular) {
+                guarda = criarGuarda(dataLeitura, []);
+            } else {
+                guarda = criarGuarda(dataLeitura, []);
+            }
         }
+
+        const janelaFimGuardaMs = new Date(guarda.janela_fim).getTime();
 
         // Cópia das leituras para simulação não poluir a guarda persistida
         const leiturasBase = Array.isArray(guarda.leituras) ? guarda.leituras.slice() : [];
@@ -1283,10 +1284,39 @@ module.exports = (app, dbConnection) => {
             }
         }
 
+        async function encerrarGuardaAberta(status, motivo) {
+            if (simular || !guarda) return;
+            guarda.status = status;
+            guarda.motivo = motivo || guarda.motivo;
+            await guarda.save();
+        }
+
+        async function abrirProximoCicloSeNecessario() {
+            if (simular) return;
+            if (dataMs <= janelaFimGuardaMs) return;
+            const prox = criarGuarda(dataLeitura, [leituraDoc]);
+            await prox.save();
+        }
+
         if (!avaliacao.ok) {
             if (!simular) {
                 guarda.motivo = avaliacao.motivo;
-                await guarda.save();
+                guarda.confirmacoes = avaliacao.placar_pontos || 0;
+                // Janela já fechou: encerra ciclo (gordura, empate ou fechamento) e abre o próximo
+                if (dataMs >= janelaFimGuardaMs) {
+                    const motivoFim = avaliacao.ganhouPorGordura
+                        ? (avaliacao.motivo || 'Campeão mantido por gordura')
+                        : (avaliacao.empate
+                            ? 'Empate na janela'
+                            : (avaliacao.motivo || 'Janela encerrada sem aplicação'));
+                    await encerrarGuardaAberta(
+                        avaliacao.ganhouPorGordura ? 'descartado' : 'expirado',
+                        motivoFim
+                    );
+                    await abrirProximoCicloSeNecessario();
+                } else {
+                    await guarda.save();
+                }
             }
             return finalizar({
                 success: true,
@@ -1354,6 +1384,7 @@ module.exports = (app, dbConnection) => {
                 guarda.motivo = aplicado.retorno;
                 guarda.id_registro = aplicado.registro && aplicado.registro._id;
                 await guarda.save();
+                await abrirProximoCicloSeNecessario();
             }
             return finalizar({
                 success: true,
@@ -1398,6 +1429,7 @@ module.exports = (app, dbConnection) => {
             guarda.motivo = aplicado.retorno;
             guarda.id_registro = aplicado.registro && aplicado.registro._id;
             await guarda.save();
+            await abrirProximoCicloSeNecessario();
         }
 
         return finalizar({
