@@ -555,6 +555,26 @@ module.exports = (app, dbConnection) => {
         };
     }
 
+    /** Envia leitura ao socket assim que o item está validado (antes de aplicar regras/guarda). */
+    async function emitirSocketLeituraDireta(req, gateway, body, dataLeitura, item, tag) {
+        try {
+            const io = req.app.get('io');
+            if (!io || !gateway) return;
+            const payloadSocket = Object.assign({}, body || {}, {
+                data_leitura: dataLeitura,
+                via: 'tracking',
+                tag: tag,
+                id_gateway: gateway._id,
+                tokem: gateway.tokem || (body && body.tokem) || '',
+                id_item: item && item._id,
+                item_descricao: item && item.descricao,
+                rssi: body && body.rssi != null ? Number(body.rssi) : body && body.rssi
+            });
+            if (gateway._id) io.emit(gateway._id, payloadSocket);
+            if (gateway.id_conta) io.emit(gateway.id_conta, payloadSocket);
+        } catch (e) { /* ignore */ }
+    }
+
     async function emitirSocketAfericao(req, gateway, body, afericao, dataLeitura) {
         try {
             const io = req.app.get('io');
@@ -831,6 +851,33 @@ module.exports = (app, dbConnection) => {
             };
         }
 
+        let item = await Item.findOne({ tag, id_conta: gateway.id_conta });
+        if (!item) {
+            return {
+                success: true,
+                ignored: true,
+                message: `Item ${tag} não cadastrado na conta`,
+                tag, tokem
+            };
+        }
+        if (item.tag_secundaria) {
+            tag = String(item.tag_secundaria).trim();
+            const primario = await Item.findOne({ tag, id_conta: gateway.id_conta });
+            if (!primario) {
+                return {
+                    success: true,
+                    ignored: true,
+                    message: `Item primário ${tag} não cadastrado na conta`,
+                    tag, tokem
+                };
+            }
+            item = primario;
+        }
+
+        if (!simular) {
+            await emitirSocketLeituraDireta(req, gateway, body, dataLeitura, item, tag);
+        }
+
         if (!gateway.id_tracking_regra) {
             return {
                 success: true,
@@ -863,29 +910,6 @@ module.exports = (app, dbConnection) => {
         }
 
         const loc = resolverLocalizacao(body, gateway);
-
-        let item = await Item.findOne({ tag, id_conta: gateway.id_conta });
-        if (!item) {
-            return {
-                success: true,
-                ignored: true,
-                message: `Item ${tag} não cadastrado na conta`,
-                tag, tokem
-            };
-        }
-        if (item.tag_secundaria) {
-            tag = String(item.tag_secundaria).trim();
-            const primario = await Item.findOne({ tag, id_conta: gateway.id_conta });
-            if (!primario) {
-                return {
-                    success: true,
-                    ignored: true,
-                    message: `Item primário ${tag} não cadastrado na conta`,
-                    tag, tokem
-                };
-            }
-            item = primario;
-        }
 
         const ultimoRegistro = await Registro.findOne({ tag, id_conta: gateway.id_conta })
             .sort({ createdAt: -1 })
@@ -969,9 +993,7 @@ module.exports = (app, dbConnection) => {
 
             resposta.afericao = afericao;
             resposta.simulado = simular;
-            if (!simular) {
-                await emitirSocketAfericao(req, gateway, body, afericao, dataLeitura);
-            }
+            // Socket da leitura bruta já foi emitido após validar o item (emitirSocketLeituraDireta).
             return resposta;
         }
 

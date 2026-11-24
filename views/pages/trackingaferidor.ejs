@@ -255,20 +255,25 @@
     font-weight: 700;
     color: #f8fafc;
     margin-top: 0.1rem;
+    line-height: 1.15;
   }
-  .taf-metrics-block-title {
-    font-size: 0.68rem;
-    font-weight: 700;
+  .taf-metric-val-sub {
+    font-size: 0.72rem;
+    font-weight: 600;
     color: #94a3b8;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    margin-bottom: 0.35rem;
+    margin-top: 0.2rem;
+    line-height: 1.1;
+  }
+  .taf-metrics-head {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
+    justify-content: flex-end;
+    min-height: 1.1rem;
+    margin-bottom: 0.35rem;
   }
-  .taf-metrics-block-title .taf-countdown {
+  .taf-metrics-head .taf-countdown {
+    font-size: 0.72rem;
+    font-weight: 700;
     color: #93c5fd;
     font-variant-numeric: tabular-nums;
   }
@@ -279,13 +284,6 @@
   .taf-metrics.is-destaque .taf-metric.is-win {
     border-color: rgba(34, 197, 94, 0.55);
     background: rgba(34, 197, 94, 0.16);
-  }
-  .taf-metrics.is-total .taf-metric {
-    padding: 0.35rem 0.45rem;
-  }
-  .taf-metrics.is-total .taf-metric-val {
-    font-size: 0.92rem;
-    color: #cbd5e1;
   }
   .taf-janela-input {
     width: 72px;
@@ -582,42 +580,25 @@
               </div>
 
               <div ng-if="card.tagAtiva">
-                <div class="taf-metrics-block-title">
-                  <span>Janela atual</span>
-                  <span class="taf-countdown" ng-if="_segundosRestantes != null && (_disputaStatus === 'running' || _disputaStatus === 'paused')">
-                    {{ _segundosRestantes }}s
-                  </span>
+                <div class="taf-metrics-head"
+                     ng-if="_segundosRestantes != null && (_disputaStatus === 'running' || _disputaStatus === 'paused')">
+                  <span class="taf-countdown">{{ _segundosRestantes }}s</span>
                 </div>
                 <div class="taf-metrics is-destaque mb-2">
                   <div class="taf-metric" ng-class="{'is-win': card.pontos.qtd}">
                     <div class="taf-metric-lbl">Leituras</div>
                     <div class="taf-metric-val">{{ card.metricasJanela.qtd }}</div>
+                    <div class="taf-metric-val-sub">{{ card.metricasTotal.qtd }}</div>
                   </div>
                   <div class="taf-metric" ng-class="{'is-win': card.pontos.media}">
                     <div class="taf-metric-lbl">Média RSSI</div>
                     <div class="taf-metric-val">{{ fmtRssi(card.metricasJanela.media) }}</div>
+                    <div class="taf-metric-val-sub">{{ fmtRssi(card.metricasTotal.media) }}</div>
                   </div>
                   <div class="taf-metric" ng-class="{'is-win': card.pontos.melhor}">
                     <div class="taf-metric-lbl">Melhor RSSI</div>
                     <div class="taf-metric-val">{{ card.metricasJanela.melhor != null ? card.metricasJanela.melhor : '—' }}</div>
-                  </div>
-                </div>
-
-                <div class="taf-metrics-block-title">
-                  <span>Toda a disputa</span>
-                </div>
-                <div class="taf-metrics is-total mb-2">
-                  <div class="taf-metric">
-                    <div class="taf-metric-lbl">Leituras</div>
-                    <div class="taf-metric-val">{{ card.metricasTotal.qtd }}</div>
-                  </div>
-                  <div class="taf-metric">
-                    <div class="taf-metric-lbl">Média RSSI</div>
-                    <div class="taf-metric-val">{{ fmtRssi(card.metricasTotal.media) }}</div>
-                  </div>
-                  <div class="taf-metric">
-                    <div class="taf-metric-lbl">Melhor RSSI</div>
-                    <div class="taf-metric-val">{{ card.metricasTotal.melhor != null ? card.metricasTotal.melhor : '—' }}</div>
+                    <div class="taf-metric-val-sub">{{ card.metricasTotal.melhor != null ? card.metricasTotal.melhor : '—' }}</div>
                   </div>
                 </div>
 
