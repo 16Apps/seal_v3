@@ -20,12 +20,9 @@
     color: #94a3b8;
     font-size: 0.9rem;
     margin: 0.35rem 0 0;
-    max-width: 42rem;
+    max-width: 44rem;
   }
-  .taf-datetime {
-    font-size: 0.82rem;
-    color: #cbd5e1;
-  }
+  .taf-datetime { font-size: 0.82rem; color: #cbd5e1; }
   .taf-live {
     display: inline-flex;
     align-items: center;
@@ -38,8 +35,17 @@
     height: 8px;
     border-radius: 50%;
     background: #4ade80;
-    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.55);
     animation: taf-pulse 1.8s infinite;
+  }
+  .taf-live.is-paused { color: #fde68a; }
+  .taf-live.is-paused .taf-live-dot {
+    background: #fbbf24;
+    animation: none;
+  }
+  .taf-live.is-idle { color: #94a3b8; }
+  .taf-live.is-idle .taf-live-dot {
+    background: #64748b;
+    animation: none;
   }
   @keyframes taf-pulse {
     0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.55); }
@@ -55,57 +61,57 @@
   }
   .taf-panel .card-body { padding: 1.1rem 1.25rem; }
 
-  .taf-btn-ghost {
-    border: 1px solid rgba(148, 163, 184, 0.35);
-    background: rgba(15, 23, 42, 0.45);
-    color: #cbd5e1;
+  .taf-btn {
     border-radius: 0.5rem;
     padding: 0.45rem 0.85rem;
     font-size: 0.85rem;
     font-weight: 600;
+    border: 1px solid transparent;
   }
-  .taf-btn-ghost:hover {
-    background: rgba(51, 65, 85, 0.55);
-    color: #f8fafc;
+  .taf-btn-ghost {
+    border-color: rgba(148, 163, 184, 0.35);
+    background: rgba(15, 23, 42, 0.45);
+    color: #cbd5e1;
   }
-  .taf-btn-ghost:disabled { opacity: 0.45; }
+  .taf-btn-ghost:hover { background: rgba(51, 65, 85, 0.55); color: #f8fafc; }
+  .taf-btn-start {
+    border-color: rgba(34, 197, 94, 0.45);
+    background: rgba(34, 197, 94, 0.18);
+    color: #86efac;
+  }
+  .taf-btn-start:hover { background: rgba(34, 197, 94, 0.28); color: #bbf7d0; }
+  .taf-btn-pause {
+    border-color: rgba(251, 191, 36, 0.45);
+    background: rgba(251, 191, 36, 0.15);
+    color: #fde68a;
+  }
+  .taf-btn-pause:hover { background: rgba(251, 191, 36, 0.25); color: #fef3c7; }
+  .taf-btn-stop {
+    border-color: rgba(248, 113, 113, 0.45);
+    background: rgba(239, 68, 68, 0.18);
+    color: #fca5a5;
+  }
+  .taf-btn-stop:hover { background: rgba(239, 68, 68, 0.28); color: #fecaca; }
+  .taf-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
   .taf-input, .taf-select {
     background: #0f172a !important;
     color: #e2e8f0 !important;
     border-color: rgba(148, 163, 184, 0.25) !important;
   }
-  .taf-input:focus, .taf-select:focus {
-    border-color: #3b82f6 !important;
-    box-shadow: 0 0 0 0.15rem rgba(59, 130, 246, 0.2);
-  }
 
-  .taf-gw-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 0.75rem;
-    width: 100%;
-    margin-bottom: 0.35rem;
-  }
-  .taf-gw-label {
-    font-size: 0.72rem;
-    color: #94a3b8;
-    margin: 0;
-  }
+  .taf-gw-label { font-size: 0.72rem; color: #94a3b8; margin: 0 0 0.35rem; }
   .taf-gw-chips {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 0.4rem;
-    min-width: 0;
     width: 100%;
   }
   .taf-gw-chip {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    max-width: 100%;
     font-size: 0.78rem;
     font-weight: 600;
     padding: 0.35rem 0.65rem;
@@ -114,18 +120,12 @@
     background: rgba(37, 99, 235, 0.18);
     color: #93c5fd;
     cursor: pointer;
-    transition: background 0.15s, border-color 0.15s, color 0.15s;
   }
   .taf-gw-chip:hover {
     background: rgba(239, 68, 68, 0.2);
     border-color: rgba(248, 113, 113, 0.45);
     color: #fca5a5;
   }
-  .taf-gw-chip .taf-gw-chip-x {
-    font-size: 0.85rem;
-    opacity: 0.7;
-  }
-  .taf-gw-chip:hover .taf-gw-chip-x { opacity: 1; }
   .taf-gw-add {
     width: 2.15rem;
     height: 2.15rem;
@@ -138,55 +138,32 @@
     background: rgba(15, 23, 42, 0.45);
     color: #93c5fd;
     font-size: 1.1rem;
-    flex-shrink: 0;
   }
   .taf-gw-add:hover {
     border-color: #3b82f6;
     color: #60a5fa;
     background: rgba(37, 99, 235, 0.15);
   }
-  .taf-gw-hint {
-    font-size: 0.72rem;
-    color: #64748b;
-    margin-top: 0.35rem;
-  }
+  .taf-gw-hint { font-size: 0.72rem; color: #64748b; }
 
-  .taf-kpi {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-  .taf-kpi .icon-box {
-    width: 2.4rem;
-    height: 2.4rem;
+  .taf-ref-banner {
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    background: rgba(15, 23, 42, 0.55);
     border-radius: 0.65rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.1rem;
+    padding: 0.65rem 0.9rem;
+    font-size: 0.8rem;
+    color: #94a3b8;
   }
-  .taf-kpi-blue .icon-box { background: rgba(45, 156, 219, 0.2); color: #38bdf8; }
-  .taf-kpi-green .icon-box { background: rgba(34, 197, 94, 0.18); color: #4ade80; }
-  .taf-kpi-red .icon-box { background: rgba(239, 68, 68, 0.18); color: #f87171; }
-  .taf-kpi-purple .icon-box { background: rgba(155, 81, 224, 0.2); color: #c084fc; }
-  .taf-kpi .kpi-val {
-    font-size: 1.35rem;
-    font-weight: 700;
-    line-height: 1.1;
-    color: #f8fafc;
-  }
-  .taf-kpi .kpi-lbl { font-size: 0.78rem; color: #94a3b8; }
+  .taf-ref-banner strong { color: #cbd5e1; }
 
   .taf-cards-board {
     display: flex;
     flex-wrap: wrap;
     gap: 0.85rem;
     align-items: stretch;
-    min-height: 180px;
   }
   .taf-card {
-    flex: 1 1 320px;
-    max-width: 100%;
+    flex: 1 1 340px;
     min-width: min(100%, 300px);
     background: rgba(15, 23, 42, 0.72);
     border: 1px solid rgba(148, 163, 184, 0.22);
@@ -194,20 +171,18 @@
     color: #e2e8f0;
     display: flex;
     flex-direction: column;
-    transition: border-color 0.15s, box-shadow 0.15s, transform 0.12s, opacity 0.12s;
     cursor: grab;
+    transition: border-color 0.15s, box-shadow 0.15s, opacity 0.12s;
   }
   .taf-card:active { cursor: grabbing; }
-  .taf-card.is-dragging {
-    opacity: 0.45;
-    transform: scale(0.98);
-  }
+  .taf-card.is-dragging { opacity: 0.45; }
   .taf-card.is-drag-over {
     border-color: #38bdf8;
     box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.35);
   }
-  .taf-card.has-disputa {
-    border-color: rgba(251, 191, 36, 0.45);
+  .taf-card.is-winner {
+    border-color: rgba(34, 197, 94, 0.5);
+    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.25);
   }
   .taf-card-head {
     display: flex;
@@ -223,52 +198,71 @@
     margin: 0;
     color: #f8fafc;
   }
-  .taf-card-sub {
-    font-size: 0.75rem;
-    color: #94a3b8;
-    margin-top: 0.15rem;
-  }
-  .taf-card-sub a {
-    color: #93c5fd;
-    text-decoration: none;
-  }
-  .taf-card-sub a:hover { color: #bfdbfe; text-decoration: underline; }
-  .taf-drag-handle {
-    color: #64748b;
-    font-size: 1rem;
-    padding: 0.15rem;
-    user-select: none;
-  }
+  .taf-drag-handle { color: #64748b; }
   .taf-card-body {
     padding: 0.75rem 1rem 1rem;
     flex: 1 1 auto;
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.7rem;
     min-height: 0;
   }
 
-  .taf-tag-block {
+  .taf-tag-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+  .taf-tag-tab {
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    background: rgba(30, 41, 59, 0.55);
+    color: #94a3b8;
+    border-radius: 999px;
+    padding: 0.2rem 0.65rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+  .taf-tag-tab.active {
+    background: rgba(37, 99, 235, 0.25);
+    border-color: rgba(59, 130, 246, 0.45);
+    color: #bfdbfe;
+  }
+
+  .taf-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.45rem;
+  }
+  .taf-metric {
     border: 1px solid rgba(148, 163, 184, 0.16);
-    border-radius: 0.6rem;
-    padding: 0.65rem 0.75rem;
     background: rgba(30, 41, 59, 0.45);
+    border-radius: 0.55rem;
+    padding: 0.5rem 0.55rem;
+    text-align: center;
   }
-  .taf-tag-block.is-campeao {
-    border-color: rgba(34, 197, 94, 0.4);
-    background: rgba(34, 197, 94, 0.08);
+  .taf-metric.is-win {
+    border-color: rgba(34, 197, 94, 0.45);
+    background: rgba(34, 197, 94, 0.1);
   }
-  .taf-tag-block.is-perdedora {
-    border-color: rgba(248, 113, 113, 0.4);
-    background: rgba(239, 68, 68, 0.08);
+  .taf-metric-lbl {
+    font-size: 0.65rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
   }
+  .taf-metric-val {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #f8fafc;
+    margin-top: 0.1rem;
+  }
+
   .taf-badge {
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
     font-size: 0.68rem;
     font-weight: 700;
-    letter-spacing: 0.02em;
     text-transform: uppercase;
     padding: 0.2rem 0.45rem;
     border-radius: 0.35rem;
@@ -278,12 +272,7 @@
     color: #86efac;
     border: 1px solid rgba(74, 222, 128, 0.35);
   }
-  .taf-badge-perdedora {
-    background: rgba(239, 68, 68, 0.2);
-    color: #fca5a5;
-    border: 1px solid rgba(248, 113, 113, 0.35);
-  }
-  .taf-badge-disputa {
+  .taf-badge-empate {
     background: rgba(251, 191, 36, 0.18);
     color: #fde68a;
     border: 1px solid rgba(251, 191, 36, 0.35);
@@ -294,39 +283,37 @@
     border: 1px solid rgba(148, 163, 184, 0.25);
   }
 
-  .taf-hist {
-    max-height: 240px;
+  .taf-ref-mini {
+    font-size: 0.72rem;
+    color: #64748b;
+    border-top: 1px dashed rgba(148, 163, 184, 0.18);
+    padding-top: 0.45rem;
+  }
+
+  .taf-log-local {
+    max-height: 220px;
     overflow: auto;
     border-top: 1px dashed rgba(148, 163, 184, 0.18);
-    padding-top: 0.55rem;
+    padding-top: 0.45rem;
   }
-  .taf-hist-title {
-    font-size: 0.72rem;
+  .taf-log-local-title {
+    font-size: 0.68rem;
     font-weight: 700;
     color: #94a3b8;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    margin-bottom: 0.45rem;
+    margin-bottom: 0.35rem;
   }
-  .taf-hist-item {
+  .taf-log-row {
     display: grid;
-    grid-template-columns: 58px 1fr;
-    gap: 0.45rem;
-    padding: 0.4rem 0;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
-    font-size: 0.78rem;
+    grid-template-columns: 58px 1fr 52px;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    padding: 0.28rem 0;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.08);
   }
-  .taf-hist-item:last-child { border-bottom: 0; }
-  .taf-hist-time {
-    color: #64748b;
-    font-variant-numeric: tabular-nums;
-  }
-  .taf-hist-main { min-width: 0; }
-  .taf-hist-motivo {
-    color: #94a3b8;
-    margin-top: 0.15rem;
-    line-height: 1.35;
-  }
+  .taf-log-row:last-child { border-bottom: 0; }
+  .taf-log-time { color: #64748b; font-variant-numeric: tabular-nums; }
 
   .taf-section-title {
     font-size: 0.95rem;
@@ -339,7 +326,6 @@
     color: #94a3b8;
     margin: 0.15rem 0 0;
   }
-
   .taf-table {
     --bs-table-bg: transparent;
     --bs-table-color: #e2e8f0;
@@ -353,15 +339,13 @@
     font-size: 0.72rem;
     text-transform: uppercase;
     letter-spacing: 0.03em;
-    border-bottom-color: rgba(148, 163, 184, 0.2) !important;
   }
   .taf-empty {
     color: #64748b;
     text-align: center;
-    padding: 2rem 1rem;
-    font-size: 0.9rem;
+    padding: 1.5rem 1rem;
+    font-size: 0.88rem;
   }
-
   .taf-nav-pills .nav-link {
     color: #94a3b8;
     border: 1px solid transparent;
@@ -379,9 +363,7 @@
     border: 1px solid rgba(148, 163, 184, 0.2);
   }
   .taf-modal .modal-header,
-  .taf-modal .modal-footer {
-    border-color: rgba(148, 163, 184, 0.18);
-  }
+  .taf-modal .modal-footer { border-color: rgba(148, 163, 184, 0.18); }
   .taf-gw-option {
     background: rgba(15, 23, 42, 0.55);
     color: #e2e8f0;
@@ -406,45 +388,41 @@
       </div>
       <h1 class="taf-title">Aferidor de Gateways</h1>
       <p class="taf-subtitle">
-        Compare coletores lado a lado, acompanhe quem ganha ou perde cada disputa e o motivo da decisão em tempo real.
+        Análise em tempo real por média de RSSI, melhor RSSI e quantidade de leituras — sem regras de tracking.
       </p>
     </div>
     <div class="text-end">
       <div class="taf-datetime">{{ _dataHoraTopo }}</div>
-      <div class="taf-live mt-1">
+      <div class="taf-live mt-1"
+           ng-class="{
+             'is-paused': _disputaStatus === 'paused',
+             'is-idle': _disputaStatus === 'idle' || _disputaStatus === 'ended'
+           }">
         <span class="taf-live-dot"></span>
-        Em tempo real
+        {{ statusDisputaLabel() }}
       </div>
     </div>
   </div>
 
   <div class="app-body taf-page">
 
-    <!-- Barra: gateways + período -->
     <div class="card taf-panel mb-3">
       <div class="card-body">
         <div class="d-flex flex-wrap align-items-end justify-content-between gap-3">
           <div style="flex: 1 1 320px; min-width: 0;">
-            <div class="taf-gw-head">
-              <div class="taf-gw-label">Gateways em aferição</div>
-              <div class="small text-secondary" ng-if="_gatewaysSelecionados.length">
-                Arraste os cards para comparar lado a lado
-              </div>
-            </div>
+            <div class="taf-gw-label">Gateways em aferição</div>
             <div class="taf-gw-chips">
-              <button type="button"
-                      class="taf-gw-add"
-                      title="Vincular gateway"
-                      ng-click="onAbrirModalGateways()">
+              <button type="button" class="taf-gw-add" title="Vincular gateway"
+                      ng-click="onAbrirModalGateways()"
+                      ng-disabled="_disputaStatus === 'running' || _disputaStatus === 'paused'">
                 <i class="bi bi-plus-lg"></i>
               </button>
-              <button type="button"
-                      class="taf-gw-chip"
+              <button type="button" class="taf-gw-chip"
                       ng-repeat="g in _gatewaysSelecionados track by g._id"
                       title="Remover {{ g.descricao || g.tokem }}"
                       ng-click="onRemoverGateway(g)">
                 <span class="text-truncate">{{ g.descricao || g.tokem }}</span>
-                <i class="bi bi-x taf-gw-chip-x"></i>
+                <i class="bi bi-x"></i>
               </button>
               <span class="taf-gw-hint" ng-if="!_gatewaysSelecionados.length">
                 Nenhum vinculado — clique em + para selecionar
@@ -452,74 +430,44 @@
             </div>
           </div>
 
-          <div class="d-flex flex-wrap align-items-end gap-2">
-            <div>
-              <label class="form-label small text-secondary mb-1">Período</label>
-              <select class="form-select form-select-sm taf-select"
-                      style="width:auto; min-width: 110px;"
-                      ng-model="_periodoMinutos"
-                      ng-change="onPeriodoChange()"
-                      ng-options="m as (m + ' min') for m in [1,2,5,10,15,30,60]">
-              </select>
-            </div>
-            <button type="button" class="taf-btn-ghost" ng-click="onLimparLeituras()">
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <button type="button" class="taf-btn taf-btn-start"
+                    ng-click="onIniciarDisputa()"
+                    ng-disabled="!podeIniciar()">
+              <i class="bi bi-play-fill me-1"></i>Iniciar disputa
+            </button>
+            <button type="button" class="taf-btn taf-btn-pause"
+                    ng-click="onPausarDisputa()"
+                    ng-disabled="!podePausar() && !podeRetomar()">
+              <i class="bi" ng-class="podeRetomar() ? 'bi-play-fill' : 'bi-pause-fill'"></i>
+              {{ podeRetomar() ? 'Retomar' : 'Pausar' }}
+            </button>
+            <button type="button" class="taf-btn taf-btn-stop"
+                    ng-click="onEncerrarDisputa()"
+                    ng-disabled="!podeEncerrar()">
+              <i class="bi bi-stop-fill me-1"></i>Encerrar
+            </button>
+            <button type="button" class="taf-btn taf-btn-ghost" ng-click="onLimpar()">
               <i class="bi bi-trash3 me-1"></i>Limpar
             </button>
           </div>
         </div>
-      </div>
-    </div>
 
-    <!-- KPIs -->
-    <div class="row g-3 mb-3">
-      <div class="col-6 col-lg-3">
-        <div class="card taf-panel h-100">
-          <div class="card-body taf-kpi taf-kpi-blue">
-            <div class="icon-box"><i class="bi bi-broadcast-pin"></i></div>
-            <div>
-              <div class="kpi-val">{{ _kpi.gateways }}</div>
-              <div class="kpi-lbl">Gateways</div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="col-6 col-lg-3">
-        <div class="card taf-panel h-100">
-          <div class="card-body taf-kpi taf-kpi-green">
-            <div class="icon-box"><i class="bi bi-trophy"></i></div>
-            <div>
-              <div class="kpi-val">{{ _kpi.campeao }}</div>
-              <div class="kpi-lbl">Tags campeãs</div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="col-6 col-lg-3">
-        <div class="card taf-panel h-100">
-          <div class="card-body taf-kpi taf-kpi-red">
-            <div class="icon-box"><i class="bi bi-flag"></i></div>
-            <div>
-              <div class="kpi-val">{{ _kpi.perdedora }}</div>
-              <div class="kpi-lbl">Tags perdedoras</div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="col-6 col-lg-3">
-        <div class="card taf-panel h-100">
-          <div class="card-body taf-kpi taf-kpi-purple">
-            <div class="icon-box"><i class="bi bi-activity"></i></div>
-            <div>
-              <div class="kpi-val">{{ _kpi.leituras }}</div>
-              <div class="kpi-lbl">Leituras no período</div>
-            </div>
-          </div>
+        <div class="taf-ref-banner mt-3" ng-if="_disputaReferencia">
+          <strong>Referência (última disputa):</strong>
+          {{ fmtDataHora(_disputaReferencia.inicio) }} → {{ fmtDataHora(_disputaReferencia.fim) }}
+          · {{ _disputaReferencia.total_leituras || 0 }} leituras
+          ·
+          <span ng-repeat="t in _disputaReferencia.tags track by t.tag">
+            {{ t.tag }} → <strong>{{ t.vencedor_nome || '—' }}</strong><span ng-if="!$last">; </span>
+          </span>
+          <span ng-if="!_disputaReferencia.tags.length">sem tags</span>
         </div>
       </div>
     </div>
 
     <div class="row g-3">
-      <!-- Cards arrastáveis -->
+      <!-- Cards -->
       <div class="col-xl-7 col-lg-6">
         <div class="taf-cards-board" ng-if="_cardsGateway.length">
           <div class="taf-card"
@@ -527,7 +475,7 @@
                ng-class="{
                  'is-dragging': card._dragging,
                  'is-drag-over': card._dragOver,
-                 'has-disputa': card.qtd_disputa > 0
+                 'is-winner': card.ehVencedor
                }"
                taf-draggable
                taf-drag-start="onCardDragStart($event, card)"
@@ -538,105 +486,78 @@
             <div class="taf-card-head">
               <div class="min-w-0">
                 <h3 class="taf-card-title text-truncate">{{ card.gateway.descricao }}</h3>
-                <div class="taf-card-sub">
-                  Regra:
-                  <a href="javascript:void(0)"
-                     ng-if="card.regra"
-                     ng-click="onVerRegra(card.regra, $event)">
-                    {{ card.regra.descricao }} <i class="bi bi-info-circle"></i>
-                  </a>
-                  <span ng-if="!card.regra">sem regra ativa</span>
-                  <span class="ms-2" ng-if="card.qtd_disputa">
-                    <span class="taf-badge taf-badge-disputa">{{ card.qtd_disputa }} disputa</span>
+                <div class="small text-secondary mt-1">
+                  <span class="taf-badge taf-badge-campeao" ng-if="card.ehVencedor && card.tagAtiva">
+                    <i class="bi bi-trophy"></i> Ganhador
                   </span>
+                  <span class="taf-badge taf-badge-empate" ng-if="card.empate && card.tagAtiva && !card.ehVencedor">
+                    Empate
+                  </span>
+                  <span class="taf-badge taf-badge-neutro" ng-if="card.tagAtiva && !card.ehVencedor && !card.empate">
+                    {{ card.pontos.total }}/3 critérios
+                  </span>
+                  <span class="text-secondary" ng-if="!card.tagAtiva">Aguardando tags…</span>
                 </div>
               </div>
-              <div class="taf-drag-handle" title="Arrastar para reposicionar">
-                <i class="bi bi-grip-vertical"></i>
-              </div>
+              <div class="taf-drag-handle" title="Arrastar"><i class="bi bi-grip-vertical"></i></div>
             </div>
 
             <div class="taf-card-body">
-              <div ng-if="!card.tags.length" class="taf-empty py-3">
-                Aguardando tags em disputa…
+              <div class="taf-tag-tabs" ng-if="card.tags.length">
+                <button type="button" class="taf-tag-tab"
+                        ng-repeat="tag in card.tags track by tag"
+                        ng-class="{active: card.tagAtiva === tag}"
+                        ng-click="onSelecionarTag(card.gateway._id, tag)">
+                  {{ tag }}
+                </button>
+              </div>
+              <div class="taf-empty py-2" ng-if="!card.tags.length">
+                {{ _disputaStatus === 'running' ? 'Aguardando leituras…' : 'Inicie a disputa para coletar tags.' }}
               </div>
 
-              <!-- Tags atuais campeão / perdedora -->
-              <div class="taf-tag-block"
-                   ng-repeat="t in card.tags track by t.tag"
-                   ng-class="{
-                     'is-campeao': t.status === 'campeao',
-                     'is-perdedora': t.status === 'perdedora'
-                   }">
-                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
-                  <div class="min-w-0">
-                    <strong class="text-truncate d-inline-block" style="max-width: 180px;">
-                      {{ t.item_descricao }}
-                    </strong>
-                    <span class="text-secondary small ms-1">{{ t.tag }}</span>
+              <div ng-if="card.tagAtiva">
+                <div class="taf-metrics mb-2">
+                  <div class="taf-metric" ng-class="{'is-win': card.pontos.qtd}">
+                    <div class="taf-metric-lbl">Leituras</div>
+                    <div class="taf-metric-val">{{ card.metricas.qtd }}</div>
                   </div>
-                  <div class="d-flex flex-wrap gap-1">
-                    <span class="taf-badge"
-                          ng-class="{
-                            'taf-badge-campeao': t.status === 'campeao',
-                            'taf-badge-perdedora': t.status === 'perdedora',
-                            'taf-badge-neutro': t.status === 'neutro'
-                          }">
-                      <i class="bi"
-                         ng-class="{
-                           'bi-trophy': t.status === 'campeao',
-                           'bi-flag': t.status === 'perdedora'
-                         }"></i>
-                      {{ t.status === 'campeao' ? 'Campeão' : (t.status === 'perdedora' ? 'Perdedora' : '—') }}
-                    </span>
-                    <span class="taf-badge taf-badge-disputa" ng-if="t.pending">Pendente</span>
+                  <div class="taf-metric" ng-class="{'is-win': card.pontos.media}">
+                    <div class="taf-metric-lbl">Média RSSI</div>
+                    <div class="taf-metric-val">{{ fmtRssi(card.metricas.media) }}</div>
+                  </div>
+                  <div class="taf-metric" ng-class="{'is-win': card.pontos.melhor}">
+                    <div class="taf-metric-lbl">Melhor RSSI</div>
+                    <div class="taf-metric-val">{{ card.metricas.melhor != null ? card.metricas.melhor : '—' }}</div>
                   </div>
                 </div>
-                <div class="small" style="line-height:1.4;" ng-if="t.narrativa">
-                  {{ t.narrativa }}
+
+                <div class="small text-secondary mb-2" ng-if="card.vencedorNome && card.vencedorNome !== '—'">
+                  Ganhador da tag: <strong class="text-light">{{ card.vencedorNome }}</strong>
+                  (mais vitórias entre qtd / média / melhor)
                 </div>
-                <div class="small text-secondary mt-1" ng-if="t.afericao.janela">
-                  Janela {{ fmtHora(t.afericao.janela.inicio) }} → {{ fmtHora(t.afericao.janela.fim) }}
-                  <span ng-if="t.afericao.regra">
-                    · {{ t.afericao.regra.descricao }} ({{ t.afericao.regra.janela_analise || 0 }}s)
+
+                <div class="taf-ref-mini" ng-if="card.referencia || card.referenciaVencedor">
+                  <span ng-if="card.referencia">
+                    Ref. anterior neste GW:
+                    {{ card.referencia.qtd }} leit. ·
+                    média {{ fmtRssi(card.referencia.media) }} ·
+                    melhor {{ card.referencia.melhor != null ? card.referencia.melhor : '—' }}
+                    <span ng-if="card.referencia.vencedor"> · era ganhador</span>
+                  </span>
+                  <span ng-if="!card.referencia && card.referenciaVencedor">
+                    Ref. anterior: ganhador {{ card.referenciaVencedor }}
                   </span>
                 </div>
-              </div>
 
-              <!-- Histórico ganho/perda -->
-              <div class="taf-hist">
-                <div class="taf-hist-title">
-                  Histórico de disputa
-                  <span class="ms-1">({{ card.historico.length }})</span>
-                </div>
-                <div ng-if="!card.historico.length" class="small text-secondary">
-                  Ainda sem eventos de ganho ou perda neste período.
-                </div>
-                <div class="taf-hist-item" ng-repeat="h in card.historico track by h._id">
-                  <div class="taf-hist-time">{{ fmtHora(h.quando) }}</div>
-                  <div class="taf-hist-main">
-                    <div class="d-flex flex-wrap align-items-center gap-1">
-                      <span class="taf-badge"
-                            ng-class="{
-                              'taf-badge-campeao': h.resultado === 'ganhou' || h.resultado === 'manteve',
-                              'taf-badge-perdedora': h.resultado === 'perdeu',
-                              'taf-badge-disputa': h.resultado === 'disputando'
-                            }">
-                        {{ labelResultado(h.resultado) }}
-                      </span>
-                      <strong class="small">{{ h.item_descricao || h.tag }}</strong>
-                    </div>
-                    <div class="taf-hist-motivo">{{ h.motivo || h.narrativa || '—' }}</div>
-                    <div class="text-secondary" style="font-size:0.7rem;" ng-if="h.regra">
-                      Regra: {{ h.regra }}
-                      <span ng-if="h.confirmacoes && !h.confirmacoes.ignorado">
-                        · conf. {{ h.confirmacoes.obtidas }}/{{ h.confirmacoes.necessarias }}
-                      </span>
-                      <span ng-if="h.diferenca_rssi && h.diferenca_rssi.aplicavel">
-                        · Δ {{ h.diferenca_rssi.vantagem != null ? h.diferenca_rssi.vantagem : '—' }} /
-                        {{ h.diferenca_rssi.exigida }} dB
-                      </span>
-                    </div>
+                <div class="taf-log-local">
+                  <div class="taf-log-local-title">
+                    Leituras · {{ card.tagAtiva }} × {{ card.gateway.descricao }}
+                  </div>
+                  <div ng-if="!card.leiturasTag.length" class="small text-secondary">Sem leituras nesta tag.</div>
+                  <div class="taf-log-row" ng-repeat="l in card.leiturasTag track by l._id_local">
+                    <div class="taf-log-time">{{ fmtHora(l.data_leitura) }}</div>
+                    <div class="text-truncate">{{ l.tag }}</div>
+                    <div class="text-end">{{ l.rssi != null ? l.rssi : '—' }}</div>
                   </div>
                 </div>
               </div>
@@ -646,24 +567,24 @@
 
         <div class="card taf-panel" ng-if="!_cardsGateway.length">
           <div class="card-body taf-empty">
-            Vincule gateways pelo botão <strong>+</strong> para montar o painel de aferição.
+            Vincule gateways pelo botão <strong>+</strong> e inicie a disputa.
           </div>
         </div>
       </div>
 
-      <!-- Painel direito: leituras / resumo -->
+      <!-- Log direita -->
       <div class="col-xl-5 col-lg-6">
         <div class="card taf-panel h-100">
           <div class="card-body">
             <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-2">
               <div>
-                <h2 class="taf-section-title">Leituras RFID</h2>
-                <p class="taf-section-sub">Tags recebidas pelo tracking dos gateways vinculados</p>
+                <h2 class="taf-section-title">Log de leituras</h2>
+                <p class="taf-section-sub">Registro incondicional tag × gateway desde o início da disputa</p>
               </div>
               <span class="badge text-bg-primary">{{ leiturasFiltradas().length }}</span>
             </div>
 
-            <ul class="nav nav-pills taf-nav-pills mb-3 gap-1" role="tablist">
+            <ul class="nav nav-pills taf-nav-pills mb-3 gap-1">
               <li class="nav-item">
                 <button type="button" class="nav-link rounded-pill"
                         ng-class="{active: _abaDireita === 'leituras'}"
@@ -683,8 +604,7 @@
             <div class="row g-2 mb-3">
               <div class="col-md-5">
                 <label class="form-label small text-secondary mb-1">Gateway</label>
-                <select class="form-select form-select-sm taf-select"
-                        ng-model="_filtroGateway" ng-change="onPeriodoChange()">
+                <select class="form-select form-select-sm taf-select" ng-model="_filtroGateway">
                   <option value="">Todos</option>
                   <option ng-repeat="g in _gatewaysSelecionados track by g._id" value="{{ g._id }}">
                     {{ g.descricao }}
@@ -707,7 +627,6 @@
                       <th>Tag</th>
                       <th>Gateway</th>
                       <th>RSSI</th>
-                      <th>Decisão</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -716,15 +635,11 @@
                       <td>{{ l.tag }}</td>
                       <td>{{ l.gateway_descricao }}</td>
                       <td>{{ l.rssi != null ? l.rssi : '—' }}</td>
-                      <td>
-                        <span ng-if="l.afericao && l.afericao.decisao">
-                          {{ l.afericao.decisao.pending ? 'Pendente' : (l.afericao.decisao.applied ? 'Aplicado' : (l.afericao.decisao.ignored ? 'Ignorado' : '—')) }}
-                        </span>
-                        <span ng-if="!l.afericao" class="text-secondary">—</span>
-                      </td>
                     </tr>
                     <tr ng-if="!leiturasFiltradas().length">
-                      <td colspan="5" class="taf-empty">Aguardando leituras…</td>
+                      <td colspan="4" class="taf-empty">
+                        {{ _disputaStatus === 'idle' ? 'Inicie a disputa para registrar leituras.' : 'Aguardando leituras…' }}
+                      </td>
                     </tr>
                   </tbody>
                 </table>
@@ -739,9 +654,8 @@
                       <th>Tag</th>
                       <th>Gateway</th>
                       <th>Qtd</th>
+                      <th>Média</th>
                       <th>Melhor</th>
-                      <th>Pior</th>
-                      <th>Última</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -749,12 +663,11 @@
                       <td>{{ r.tag }}</td>
                       <td>{{ r.gateway_descricao }}</td>
                       <td>{{ r.qtd }}</td>
-                      <td>{{ r.melhor_rssi != null ? r.melhor_rssi : '—' }}</td>
-                      <td>{{ r.pior_rssi != null ? r.pior_rssi : '—' }}</td>
-                      <td>{{ fmtHora(r.ultima) }}</td>
+                      <td>{{ fmtRssi(r.media) }}</td>
+                      <td>{{ r.melhor != null ? r.melhor : '—' }}</td>
                     </tr>
                     <tr ng-if="!resumoPorTagGateway().length">
-                      <td colspan="6" class="taf-empty">Sem dados para o filtro atual.</td>
+                      <td colspan="5" class="taf-empty">Sem dados ainda.</td>
                     </tr>
                   </tbody>
                 </table>
@@ -765,38 +678,30 @@
       </div>
     </div>
 
-    <!-- Modal vincular gateways -->
-    <div class="modal fade taf-modal" id="modalAferidorGateways" tabindex="-1"
-         aria-labelledby="modalAferidorGatewaysLabel" aria-hidden="true">
+    <!-- Modal vincular -->
+    <div class="modal fade taf-modal" id="modalAferidorGateways" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="modalAferidorGatewaysLabel">
+            <h5 class="modal-title">
               <i class="bi bi-broadcast-pin me-2"></i>Vincular gateway
             </h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body">
             <p class="text-secondary small mb-3">
-              Selecione os coletores cujas leituras o aferidor deve acompanhar. A escolha fica salva neste navegador.
+              Selecione os coletores para a aferição. A escolha fica salva neste navegador.
             </p>
-
-            <input type="text"
-                   class="form-control form-control-sm taf-input mb-3"
-                   ng-model="_pesquisaModalGw"
-                   ng-change="onFiltraModalGateways()"
-                   placeholder="Pesquisar descrição, tokem ou regra">
+            <input type="text" class="form-control form-control-sm taf-input mb-3"
+                   ng-model="_pesquisaModalGw" ng-change="onFiltraModalGateways()"
+                   placeholder="Pesquisar descrição ou tokem">
 
             <div ng-show="_carregandoGateways" class="text-secondary small">
-              <span class="spinner-border spinner-border-sm me-1"></span>Carregando gateways…
+              <span class="spinner-border spinner-border-sm me-1"></span>Carregando…
             </div>
-
             <div ng-show="!_carregandoGateways && !_listGatewaysDisponiveis.length" class="text-secondary small">
-              <span ng-if="!_listGatewaysTodos.length">Nenhum gateway cadastrado na conta.</span>
-              <span ng-if="_listGatewaysTodos.length && !_pesquisaModalGw">Todos os gateways já estão vinculados.</span>
-              <span ng-if="_listGatewaysTodos.length && _pesquisaModalGw">Nenhum resultado para a pesquisa.</span>
+              Nenhum gateway disponível.
             </div>
-
             <div class="list-group" ng-show="!_carregandoGateways && _listGatewaysDisponiveis.length">
               <button type="button"
                       class="list-group-item list-group-item-action d-flex align-items-center gap-3 taf-gw-option"
@@ -808,8 +713,6 @@
                   <small class="text-secondary">
                     {{ g.tokem || 'Sem token' }}
                     <span ng-show="g.modo"> · {{ g.modo == 'fixo' ? 'Fixo' : (g.modo == 'fluxo' ? 'Fluxo' : 'Móvel') }}</span>
-                    <span ng-if="g._regra"> · {{ g._regra.descricao }}</span>
-                    <span ng-if="!g._regra"> · sem regra</span>
                   </small>
                 </div>
               </button>
@@ -817,39 +720,6 @@
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal parâmetros da regra -->
-    <div class="modal fade taf-modal" id="modalAferidorRegra" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content" ng-if="_regraModal">
-          <div class="modal-header">
-            <h5 class="modal-title">Parâmetros · {{ _regraModal.descricao }}</h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <p class="small text-secondary mb-3">
-              Valor <strong>0</strong> em qualquer campo significa que a restrição é ignorada.
-            </p>
-            <div class="row g-2">
-              <div class="col-md-6" ng-repeat="p in [
-                {k:'janela_analise', u:'s'},
-                {k:'leituras_minima', u:''},
-                {k:'minima_rssi', u:''},
-                {k:'diferenca_rssi', u:'dB'},
-                {k:'confirmacoes_consecutivas', u:''},
-                {k:'tolerancia_sem_leitura', u:'s'},
-                {k:'tempo_minimo_local', u:'s'}
-              ] track by p.k">
-                <div class="border rounded-2 p-2" style="border-color:rgba(148,163,184,0.2)!important;">
-                  <div class="small text-secondary">{{ p.k }}</div>
-                  <div>{{ _regraModal[p.k] || 0 }} <span class="text-secondary small">{{ p.u }}</span></div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
