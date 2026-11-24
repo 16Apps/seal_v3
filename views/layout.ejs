@@ -376,7 +376,7 @@
             </li>
 
             <li
-              ng-class="{'active current-page': isActive('localizacao') || isActive('gateway') || isActive('trackingregra') || isActive('equipamento')}"
+              ng-class="{'active current-page': isActive('localizacao') || isActive('gateway') || isActive('trackingregra') || isActive('trackingaferidor') || isActive('equipamento')}"
               class="treeview">
               <a href="#!">
                 <i class="bi bi-code-square"></i>
@@ -391,6 +391,9 @@
                 </li>
                 <li ng-show="_regColaborador.perfil == 'admin' || (_regColaborador.acesso_modulos && (_regColaborador.acesso_modulos.indexOf('trackingregra') >= 0))">
                   <a href="/trackingregra">Regras de Tracking</a>
+                </li>
+                <li ng-show="_regColaborador.perfil == 'admin' || (_regColaborador.acesso_modulos && (_regColaborador.acesso_modulos.indexOf('trackingregra') >= 0 || _regColaborador.acesso_modulos.indexOf('gateway') >= 0))">
+                  <a href="/trackingaferidor">Aferidor de Gateways</a>
                 </li>
                 <!-- <li>
                   <a href="/ia">Assisten IA (Beta)</a>
@@ -574,6 +577,7 @@
   <script src="/controller/localizacao.js"></script>
   <script src="/controller/gateway.js"></script>
   <script src="/controller/trackingregra.js"></script>
+  <script src="/controller/trackingaferidor.js"></script>
   <script src="/controller/trackingfluxo.js"></script>
   <script src="/controller/equipamento.js"></script>
 

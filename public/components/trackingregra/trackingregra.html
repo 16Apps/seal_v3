@@ -87,6 +87,13 @@
                                                     <small class="text-secondary">0 = ignora. Ex.: 30 → aceita só RSSI ≥ -30 dBm.</small>
                                                 </div>
                                                 <div class="col-md-4 mb-3">
+                                                    <label class="form-label">Diferença de RSSI (dB)</label>
+                                                    <input ng-model="$ctrl._editRegra.diferenca_rssi" type="number"
+                                                        class="form-control" min="0" step="1"
+                                                        title="0 = ignora. Na troca, o desafiante precisa superar o campeão em pelo menos X dB.">
+                                                    <small class="text-secondary">0 = ignora. Ex.: 6 → desafiante precisa de +6 dB sobre o atual.</small>
+                                                </div>
+                                                <div class="col-md-4 mb-3">
                                                     <label class="form-label">Confirmações consecutivas</label>
                                                     <input ng-model="$ctrl._editRegra.confirmacoes_consecutivas"
                                                         type="number" class="form-control" min="0" step="1"

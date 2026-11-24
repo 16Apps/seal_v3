@@ -10,6 +10,7 @@ const TrackingRegraSchema = new mongoose.Schema({
     janela_analise: { type: Number, default: 0 },
     leituras_minima: { type: Number, default: 0 },
     minima_rssi: { type: Number, default: 0 },
+    diferenca_rssi: { type: Number, default: 0 },
     confirmacoes_consecutivas: { type: Number, default: 0 },
     tolerancia_sem_leitura: { type: Number, default: 0 },
     tempo_minimo_local: { type: Number, default: 0 }

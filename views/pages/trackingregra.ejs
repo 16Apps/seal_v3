@@ -68,6 +68,13 @@
                             'bi-caret-down-fill': sortField=='minima_rssi' && sortReverse
                           }"></i>
                         </th>
+                        <th class="sortable" ng-click="sortBy('diferenca_rssi')">
+                          Diff. RSSI
+                          <i class="bi" ng-class="{
+                            'bi-caret-up-fill': sortField=='diferenca_rssi' && !sortReverse,
+                            'bi-caret-down-fill': sortField=='diferenca_rssi' && sortReverse
+                          }"></i>
+                        </th>
                         <th class="sortable" ng-click="sortBy('confirmacoes_consecutivas')">
                           Confirmações
                           <i class="bi" ng-class="{
@@ -105,6 +112,7 @@
                         <td>{{ item.janela_analise }}</td>
                         <td>{{ item.leituras_minima }}</td>
                         <td>{{ item.minima_rssi }}</td>
+                        <td>{{ item.diferenca_rssi }}</td>
                         <td>{{ item.confirmacoes_consecutivas }}</td>
                         <td>{{ item.tolerancia_sem_leitura }}</td>
                         <td>{{ item.tempo_minimo_local }}</td>
@@ -120,7 +128,7 @@
                         </td>
                       </tr>
                       <tr ng-if="!_listRegras.length">
-                        <td colspan="9" class="text-secondary text-center py-4">
+                        <td colspan="10" class="text-secondary text-center py-4">
                           Nenhuma regra cadastrada.
                         </td>
                       </tr>

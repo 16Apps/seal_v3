@@ -55,6 +55,7 @@ app.component('trackingregra', {
           janela_analise: 0,
           leituras_minima: 0,
           minima_rssi: 0,
+          diferenca_rssi: 0,
           confirmacoes_consecutivas: 0,
           tolerancia_sem_leitura: 0,
           tempo_minimo_local: 0
@@ -65,6 +66,7 @@ app.component('trackingregra', {
         $ctrl._editRegra.janela_analise = num($ctrl._editRegra.janela_analise, 0);
         $ctrl._editRegra.leituras_minima = num($ctrl._editRegra.leituras_minima, 0);
         $ctrl._editRegra.minima_rssi = num($ctrl._editRegra.minima_rssi, 0);
+        $ctrl._editRegra.diferenca_rssi = num($ctrl._editRegra.diferenca_rssi, 0);
         $ctrl._editRegra.confirmacoes_consecutivas = num($ctrl._editRegra.confirmacoes_consecutivas, 0);
         $ctrl._editRegra.tolerancia_sem_leitura = num($ctrl._editRegra.tolerancia_sem_leitura, 0);
         $ctrl._editRegra.tempo_minimo_local = num($ctrl._editRegra.tempo_minimo_local, 0);
@@ -127,6 +129,7 @@ app.component('trackingregra', {
       payload.janela_analise = num(payload.janela_analise, 0);
       payload.leituras_minima = num(payload.leituras_minima, 0);
       payload.minima_rssi = num(payload.minima_rssi, 0);
+      payload.diferenca_rssi = num(payload.diferenca_rssi, 0);
       payload.confirmacoes_consecutivas = num(payload.confirmacoes_consecutivas, 0);
       payload.tolerancia_sem_leitura = num(payload.tolerancia_sem_leitura, 0);
       payload.tempo_minimo_local = num(payload.tempo_minimo_local, 0);

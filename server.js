@@ -284,6 +284,9 @@ app.get('/gateway', (req, res) => {
 app.get('/trackingregra', (req, res) => {
   res.render('pages/trackingregra', { layout: 'layout' });
 });
+app.get('/trackingaferidor', (req, res) => {
+  res.render('pages/trackingaferidor', { layout: 'layout' });
+});
 app.get('/trackingfluxo', (req, res) => {
   res.render('pages/trackingfluxo', { layout: 'layout' });
 });

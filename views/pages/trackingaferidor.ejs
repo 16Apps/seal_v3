@@ -1,0 +1,365 @@
+<%- contentFor('body') %>
+  <div ng-controller="trackingAferidorCtrl" class="app-container" ng-cloak>
+
+    <div class="app-hero-header d-flex align-items-center">
+      <ol class="breadcrumb d-none d-lg-flex">
+        <li class="breadcrumb-item">
+          <i class="bi bi-house lh-1"></i>
+          <a class="text-decoration-none">Administração</a>
+        </li>
+        <li class="breadcrumb-item" aria-current="page">Aferidor de Gateways</li>
+        <li class="breadcrumb-item text-info" aria-current="page">
+          Selecionados: {{ _gatewaysSelecionados.length }}
+        </li>
+      </ol>
+
+      <div class="ms-auto d-flex flex-row gap-2 align-items-center">
+        <div class="d-flex align-items-center gap-1">
+          <label class="form-label mb-0 small text-secondary">Período</label>
+          <select class="form-select form-select-sm" style="width:auto;"
+            ng-model="_periodoMinutos" ng-change="onPeriodoChange()"
+            ng-options="m as (m + ' min') for m in [1,2,5,10,15,30,60]">
+          </select>
+        </div>
+        <button type="button" class="btn btn-outline-secondary btn-sm" ng-click="onLimparLeituras()">
+          Limpar leituras
+        </button>
+      </div>
+    </div>
+
+    <div class="app-body">
+
+      <div class="row gx-3">
+
+        <!-- Esquerda: seleção + cards -->
+        <div class="col-xl-7 col-lg-6 mb-3">
+
+          <div class="card mb-3">
+            <div class="card-body">
+              <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                <div>
+                  <h6 class="mb-0">Gateways</h6>
+                  <small class="text-secondary">Selecione os coletores para aferir disputa e desempenho.</small>
+                </div>
+                <button type="button" class="btn btn-outline-secondary btn-sm"
+                  ng-click="onLimparSelecao()" ng-disabled="!_gatewaysSelecionados.length">
+                  Limpar seleção
+                </button>
+              </div>
+
+              <div class="search-container mb-2" style="max-width:320px;">
+                <input type="text" class="form-control form-control-sm"
+                  ng-model="_pesquisaGateway" ng-change="onFiltraGateways()"
+                  placeholder="Pesquisar gateway ou regra">
+                <i class="bi bi-search"></i>
+              </div>
+
+              <div class="table-responsive" style="max-height:220px; overflow:auto;">
+                <table class="table table-sm align-middle table-hover m-0">
+                  <thead>
+                    <tr>
+                      <th style="width:36px;"></th>
+                      <th>Gateway</th>
+                      <th>Regra</th>
+                      <th>Tokem</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr ng-repeat="g in _listGateways track by g._id"
+                      ng-click="onToggleGateway(g)" style="cursor:pointer;"
+                      ng-class="{'table-warning': isGatewaySelecionado(g)}">
+                      <td>
+                        <input type="checkbox" class="form-check-input"
+                          ng-checked="isGatewaySelecionado(g)"
+                          ng-click="$event.stopPropagation(); onToggleGateway(g)">
+                      </td>
+                      <td>{{ g.descricao || '—' }}</td>
+                      <td>
+                        <span ng-if="g._regra">{{ g._regra.descricao }}</span>
+                        <span ng-if="!g._regra" class="text-secondary">Sem regra ativa</span>
+                      </td>
+                      <td class="small text-secondary">{{ g.tokem }}</td>
+                    </tr>
+                    <tr ng-if="!_listGateways.length">
+                      <td colspan="4" class="text-center text-secondary py-3">Nenhum gateway ativo.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div ng-if="!_cardsGateway.length" class="card">
+            <div class="card-body text-secondary text-center py-5">
+              Selecione um ou mais gateways para acompanhar a disputa em tempo real.
+            </div>
+          </div>
+
+          <div class="row gx-3" ng-if="_cardsGateway.length">
+            <div class="col-12 mb-3" ng-repeat="card in _cardsGateway track by card.gateway._id">
+              <div class="card h-100 border"
+                ng-class="{'border-warning': card.qtd_disputa > 0}">
+                <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+                  <div>
+                    <strong>{{ card.gateway.descricao }}</strong>
+                    <span class="badge bg-secondary ms-1" ng-if="card.qtd_disputa">
+                      {{ card.qtd_disputa }} em disputa
+                    </span>
+                    <div class="small text-secondary">
+                      Regra:
+                      <a href="javascript:void(0)" class="text-decoration-none"
+                        ng-if="card.regra" ng-click="onVerRegra(card.regra)">
+                        {{ card.regra.descricao }}
+                        <i class="bi bi-info-circle"></i>
+                      </a>
+                      <span ng-if="!card.regra">sem regra ativa vinculada</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <div ng-if="!card.tags.length" class="text-secondary small">
+                    Aguardando leituras do socket de tracking…
+                  </div>
+
+                  <div class="border rounded-2 p-3 mb-2"
+                    ng-repeat="t in card.tags track by t.tag"
+                    ng-class="{
+                      'border-warning': t.em_disputa || t.pending,
+                      'border-success': t.applied && !t.pending
+                    }">
+                    <div class="d-flex flex-wrap justify-content-between gap-2 mb-1">
+                      <div>
+                        <strong>{{ t.item_descricao }}</strong>
+                        <span class="text-secondary small ms-1">{{ t.tag }}</span>
+                      </div>
+                      <div class="small">
+                        <span class="badge"
+                          ng-class="t.pending ? 'bg-warning text-dark' : (t.applied ? 'bg-success' : 'bg-secondary')">
+                          {{ t.pending ? 'Pendente' : (t.applied ? 'Aplicado' : 'Acompanhando') }}
+                        </span>
+                        <span class="badge bg-light text-dark border ms-1"
+                          ng-if="t.precedencia === 'desafiante'">
+                          Regra do desafiante
+                        </span>
+                      </div>
+                    </div>
+
+                    <p class="mb-2 small" ng-if="t.narrativa">{{ t.narrativa }}</p>
+
+                    <div class="table-responsive" ng-if="t.linhas.length">
+                      <table class="table table-sm mb-0 align-middle">
+                        <thead>
+                          <tr>
+                            <th style="width:38%;">Campo da regra</th>
+                            <th>Aferição</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr ng-repeat="ln in t.linhas track by ln.label">
+                            <td class="small text-secondary">{{ ln.label }}</td>
+                            <td class="small"
+                              ng-class="{'text-danger': ln.ok === false, 'text-success': ln.ok === true}">
+                              {{ ln.valor }}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div class="small text-secondary mt-2" ng-if="t.afericao.janela">
+                      Janela usada:
+                      {{ fmtDataHora(t.afericao.janela.inicio) }}
+                      →
+                      {{ fmtDataHora(t.afericao.janela.fim) }}
+                      <span ng-if="t.afericao.regra">
+                        · regra {{ t.afericao.regra.descricao }}
+                        ({{ t.afericao.regra.janela_analise || 0 }}s)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Direita: abas leituras / resumo -->
+        <div class="col-xl-5 col-lg-6 mb-3">
+          <div class="card">
+            <div class="card-body">
+
+              <ul class="nav nav-pills mb-3 gap-1" role="tablist">
+                <li class="nav-item" role="presentation">
+                  <button type="button" class="nav-link rounded-pill"
+                    ng-class="{active: _abaDireita === 'leituras'}"
+                    ng-click="_abaDireita = 'leituras'">
+                    Todas as leituras
+                    <span class="badge text-bg-light text-dark ms-1">{{ leiturasFiltradas().length }}</span>
+                  </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button type="button" class="nav-link rounded-pill"
+                    ng-class="{active: _abaDireita === 'resumo'}"
+                    ng-click="_abaDireita = 'resumo'">
+                    Resumo por tag e gateway
+                  </button>
+                </li>
+              </ul>
+
+              <div class="row gx-2 mb-3">
+                <div class="col-md-5 mb-2">
+                  <label class="form-label small mb-1">Gateway</label>
+                  <select class="form-select form-select-sm" ng-model="_filtroGateway" ng-change="onPeriodoChange()">
+                    <option value="">Todos</option>
+                    <option ng-repeat="g in _gatewaysSelecionados track by g._id" value="{{ g._id }}">
+                      {{ g.descricao }}
+                    </option>
+                  </select>
+                </div>
+                <div class="col-md-7 mb-2">
+                  <label class="form-label small mb-1">Tag</label>
+                  <input type="text" class="form-control form-control-sm"
+                    ng-model="_filtroTag" placeholder="Filtrar tag">
+                </div>
+              </div>
+
+              <div ng-show="_abaDireita === 'leituras'">
+                <div class="table-responsive" style="max-height:70vh; overflow:auto;">
+                  <table class="table table-sm align-middle table-hover m-0">
+                    <thead>
+                      <tr>
+                        <th>Hora</th>
+                        <th>Tag</th>
+                        <th>Gateway</th>
+                        <th>RSSI</th>
+                        <th>Decisão</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr ng-repeat="l in leiturasFiltradas() track by l._id_local">
+                        <td class="small">{{ fmtHora(l.data_leitura) }}</td>
+                        <td class="small">{{ l.tag }}</td>
+                        <td class="small">{{ l.gateway_descricao }}</td>
+                        <td class="small">{{ l.rssi != null ? l.rssi : '—' }}</td>
+                        <td class="small">
+                          <span ng-if="l.afericao && l.afericao.decisao">
+                            {{ l.afericao.decisao.pending ? 'Pendente' : (l.afericao.decisao.applied ? 'Aplicado' : (l.afericao.decisao.ignored ? 'Ignorado' : '—')) }}
+                          </span>
+                          <span ng-if="!l.afericao" class="text-secondary">—</span>
+                        </td>
+                      </tr>
+                      <tr ng-if="!leiturasFiltradas().length">
+                        <td colspan="5" class="text-center text-secondary py-4">
+                          Nenhuma leitura no período filtrado.
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div ng-show="_abaDireita === 'resumo'">
+                <div class="table-responsive" style="max-height:70vh; overflow:auto;">
+                  <table class="table table-sm align-middle table-hover m-0">
+                    <thead>
+                      <tr>
+                        <th>Tag</th>
+                        <th>Gateway</th>
+                        <th>Qtd</th>
+                        <th>Melhor</th>
+                        <th>Pior</th>
+                        <th>Última</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr ng-repeat="r in resumoPorTagGateway() track by (r.tag + '-' + r.id_gateway)">
+                        <td class="small">{{ r.tag }}</td>
+                        <td class="small">{{ r.gateway_descricao }}</td>
+                        <td class="small">{{ r.qtd }}</td>
+                        <td class="small">{{ r.melhor_rssi != null ? r.melhor_rssi : '—' }}</td>
+                        <td class="small">{{ r.pior_rssi != null ? r.pior_rssi : '—' }}</td>
+                        <td class="small">{{ fmtHora(r.ultima) }}</td>
+                      </tr>
+                      <tr ng-if="!resumoPorTagGateway().length">
+                        <td colspan="6" class="text-center text-secondary py-4">
+                          Sem dados para o filtro atual.
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal parâmetros da regra -->
+      <div class="modal fade" id="modalAferidorRegra" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+          <div class="modal-content" ng-if="_regraModal">
+            <div class="modal-header">
+              <h5 class="modal-title">Parâmetros · {{ _regraModal.descricao }}</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <p class="small text-secondary mb-3">
+                Valor <strong>0</strong> em qualquer campo significa que a restrição é ignorada.
+              </p>
+              <div class="row gx-3">
+                <div class="col-md-6 mb-2">
+                  <div class="border rounded-2 p-2">
+                    <div class="small text-secondary">janela_analise</div>
+                    <div>{{ _regraModal.janela_analise || 0 }} s</div>
+                  </div>
+                </div>
+                <div class="col-md-6 mb-2">
+                  <div class="border rounded-2 p-2">
+                    <div class="small text-secondary">leituras_minima</div>
+                    <div>{{ _regraModal.leituras_minima || 0 }}</div>
+                  </div>
+                </div>
+                <div class="col-md-6 mb-2">
+                  <div class="border rounded-2 p-2">
+                    <div class="small text-secondary">minima_rssi</div>
+                    <div>{{ _regraModal.minima_rssi || 0 }}
+                      <span class="text-secondary small" ng-if="_regraModal.minima_rssi > 0">
+                        (limiar −{{ _regraModal.minima_rssi }} dBm)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6 mb-2">
+                  <div class="border rounded-2 p-2">
+                    <div class="small text-secondary">diferenca_rssi</div>
+                    <div>{{ _regraModal.diferenca_rssi || 0 }} dB</div>
+                  </div>
+                </div>
+                <div class="col-md-6 mb-2">
+                  <div class="border rounded-2 p-2">
+                    <div class="small text-secondary">confirmacoes_consecutivas</div>
+                    <div>{{ _regraModal.confirmacoes_consecutivas || 0 }}</div>
+                  </div>
+                </div>
+                <div class="col-md-6 mb-2">
+                  <div class="border rounded-2 p-2">
+                    <div class="small text-secondary">tolerancia_sem_leitura</div>
+                    <div>{{ _regraModal.tolerancia_sem_leitura || 0 }} s</div>
+                  </div>
+                </div>
+                <div class="col-md-6 mb-2">
+                  <div class="border rounded-2 p-2">
+                    <div class="small text-secondary">tempo_minimo_local</div>
+                    <div>{{ _regraModal.tempo_minimo_local || 0 }} s</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
