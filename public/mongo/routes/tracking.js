@@ -563,7 +563,8 @@ module.exports = (app, dbConnection) => {
     }
 
     /**
-     * Gordura nos 3 critérios ao trocar campeão (mesma lógica do Aferidor).
+     * Gordura ao trocar campeão (mesma lógica do Aferidor).
+     * 2+ pontos no placar → vencedor assume; 0–1 ponto → gordura nos 3 tópicos.
      */
     function aplicarGorduraDisputa(venc, porGw, idCampeaoAtual, gorduraPct) {
         const gordura = numParam(gorduraPct);
@@ -582,6 +583,14 @@ module.exports = (app, dbConnection) => {
         const idCamp = strId(idCampeaoAtual);
         const idCand = strId(venc.id_gateway);
         if (!idCamp || !idCand || idCamp === idCand) return resultado;
+
+        const placarCand = (venc.placar && venc.placar[idCand]) || {};
+        const pontosVencedor = Number(placarCand.total) || 0;
+        if (pontosVencedor >= 2) {
+            resultado.motivoGordura =
+                'Troca pelo placar (' + pontosVencedor + '/3 critérios); gordura não bloqueia com 2+ pontos.';
+            return resultado;
+        }
 
         const mCamp = porGw[idCamp];
         const mCand = porGw[idCand];

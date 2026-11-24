@@ -245,9 +245,9 @@ app.controller('trackingAferidorCtrl', function ($scope, uteisService, $timeout,
     }
 
     /**
-     * Aplica gordura nos 3 tópicos (qtd, média RSSI, melhor RSSI).
-     * Se o vencedor da janela ≠ campeão atual, o desafiante só assume se tiver
-     * vantagem >= gordura% em TODOS os três. Caso contrário o campeão permanece.
+     * Gordura ao trocar campeão (vantagem % nos 3 tópicos).
+     * - Vencedor da janela com 2 ou 3 pontos no placar → assume (gordura não bloqueia).
+     * - Com 0 ou 1 ponto → exige vantagem >= gordura% em qtd, média e melhor ou mantém o atual.
      * gordura 0 = regra ignorada.
      */
     function aplicarGorduraCampeao(tag, venc, metricasJanela) {
@@ -273,6 +273,14 @@ app.controller('trackingAferidorCtrl', function ($scope, uteisService, $timeout,
         var idCamp = strId(atual.id_gateway);
         var idCand = strId(venc.id_gateway);
         if (!idCamp || !idCand || idCamp === idCand) {
+            return resultado;
+        }
+
+        var placarCand = (venc.placar && venc.placar[idCand]) || {};
+        var pontosVencedor = Number(placarCand.total) || 0;
+        if (pontosVencedor >= 2) {
+            resultado.motivoGordura =
+                'Troca pelo placar (' + pontosVencedor + '/3 critérios); gordura não bloqueia com 2+ pontos.';
             return resultado;
         }
 
