@@ -282,6 +282,15 @@ module.exports = (app, dbConnection) => {
         return String(v).trim();
     }
 
+    /** Tag EPC/MAC: remove separadores e reinsere como AA:BB:CC:… (aceita entrada com ou sem ":"). */
+    function formatarTagLeitura(valor) {
+        if (valor == null) return '';
+        const limpo = String(valor).replace(/[^0-9A-Fa-f]/g, '').toUpperCase();
+        if (!limpo) return String(valor).trim();
+        const pares = limpo.match(/.{1,2}/g);
+        return pares ? pares.join(':') : limpo;
+    }
+
     function numParam(v) {
         const n = Number(v);
         return Number.isFinite(n) ? n : 0;
@@ -1149,7 +1158,7 @@ module.exports = (app, dbConnection) => {
         opts = opts || {};
         const simular = !!(opts.simular || body.simular);
         const tokem = strId(body.tokem);
-        let tag = strId(body.tag);
+        let tag = formatarTagLeitura(body.tag);
 
         if (!tokem || !tag) {
             return {
@@ -1184,7 +1193,7 @@ module.exports = (app, dbConnection) => {
             };
         }
         if (item.tag_secundaria) {
-            tag = String(item.tag_secundaria).trim();
+            tag = formatarTagLeitura(item.tag_secundaria);
             const primario = await Item.findOne({ tag, id_conta: gateway.id_conta });
             if (!primario) {
                 return {
