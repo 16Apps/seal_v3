@@ -19,9 +19,25 @@ function temNivelRegistro(reg) {
     ));
 }
 
-async function concluirItemPosicaoChegada(posicao, id_item) {
+function strNivelLoc(v) {
+    if (v == null || v === '') return '';
+    return String(v);
+}
+
+function gatewayDeveChecarPosicaoDestino(gw) {
+    if (!gw) return false;
+    return Number(gw.posicao_esperada_auto) === 2;
+}
+
+async function concluirItemPosicaoChegada(posicao, id_item, tag) {
     const agora = moment().toDate();
-    const item = posicao.itens.find(function (i) { return i.id_item === id_item; });
+    const idItem = id_item ? String(id_item) : '';
+    const tagNorm = tag ? String(tag).trim() : '';
+    const item = (posicao.itens || []).find(function (i) {
+        if (idItem && String(i.id_item || '') === idItem) return true;
+        if (tagNorm && String(i.tag || '').trim() === tagNorm) return true;
+        return false;
+    });
     if (!item) return null;
 
     item.status_destino = 'concluido';
@@ -43,57 +59,133 @@ async function concluirItemPosicaoChegada(posicao, id_item) {
     return posicao;
 }
 
-/**
- * Atende ordem pendente quando o item chega ao destino (gateway posicao_esperada_auto = 2).
- */
-async function checkPosicaoEsperadaEntrada(_reg, logTag) {
-    if (!_reg || !_reg.id_item) return;
+function montarFiltroDestinoPosicao(_reg) {
+    const loc1 = strNivelLoc(_reg.id_nivel_loc1);
+    const loc2 = strNivelLoc(_reg.id_nivel_loc2);
+    const loc3 = strNivelLoc(_reg.id_nivel_loc3);
+    const loc4 = strNivelLoc(_reg.id_nivel_loc4);
 
-    const tag = logTag || '[posicao-entrada]';
-    const inicio = new Date();
-    inicio.setHours(0, 0, 0, 0);
-    const fim = new Date();
-    fim.setHours(23, 59, 59, 999);
+    if (!loc1 && !loc2 && !loc3 && !loc4) return null;
 
-    const filtro = {
-        previsao_chegada_data: { $gte: inicio, $lte: fim },
-        itens: {
-            $elemMatch: {
-                id_item: _reg.id_item,
-                status_destino: 'pendente'
-            }
-        }
-    };
+    const filtro = {};
 
-    if (_reg.id_nivel_loc4) {
-        filtro.id_nivel_loc1_destino = _reg.id_nivel_loc1;
-        filtro.id_nivel_loc2_destino = _reg.id_nivel_loc2;
-        filtro.id_nivel_loc3_destino = _reg.id_nivel_loc3;
-        filtro.id_nivel_loc4_destino = _reg.id_nivel_loc4;
-    } else if (_reg.id_nivel_loc3) {
-        filtro.id_nivel_loc1_destino = _reg.id_nivel_loc1;
-        filtro.id_nivel_loc2_destino = _reg.id_nivel_loc2;
-        filtro.id_nivel_loc3_destino = _reg.id_nivel_loc3;
+    if (loc4) {
+        filtro.id_nivel_loc1_destino = loc1;
+        filtro.id_nivel_loc2_destino = loc2;
+        filtro.id_nivel_loc3_destino = loc3;
+        filtro.id_nivel_loc4_destino = loc4;
+    } else if (loc3) {
+        filtro.id_nivel_loc1_destino = loc1;
+        filtro.id_nivel_loc2_destino = loc2;
+        filtro.id_nivel_loc3_destino = loc3;
         filtro.id_nivel_loc4_destino = '';
-    } else if (_reg.id_nivel_loc2) {
-        filtro.id_nivel_loc1_destino = _reg.id_nivel_loc1;
-        filtro.id_nivel_loc2_destino = _reg.id_nivel_loc2;
-        filtro.id_nivel_loc3_destino = '';
-        filtro.id_nivel_loc4_destino = '';
-    } else if (_reg.id_nivel_loc1) {
-        filtro.id_nivel_loc1_destino = _reg.id_nivel_loc1;
-        filtro.id_nivel_loc2_destino = '';
+    } else if (loc2) {
+        filtro.id_nivel_loc1_destino = loc1;
+        filtro.id_nivel_loc2_destino = loc2;
         filtro.id_nivel_loc3_destino = '';
         filtro.id_nivel_loc4_destino = '';
     } else {
+        filtro.id_nivel_loc1_destino = loc1;
+        filtro.id_nivel_loc2_destino = '';
+        filtro.id_nivel_loc3_destino = '';
+        filtro.id_nivel_loc4_destino = '';
+    }
+
+    return filtro;
+}
+
+/**
+ * Atende ordem pendente no destino (aba Destino / status_destino).
+ */
+async function checkPosicaoEsperadaEntrada(_reg, logTag) {
+    if (!_reg) return;
+
+    const tagLog = logTag || '[posicao-entrada]';
+    const idConta = strNivelLoc(_reg.id_conta);
+    const tagLeitura = String(_reg.tag || '').trim();
+    const idItem = _reg.id_item ? String(_reg.id_item) : '';
+
+    if (!idItem && !tagLeitura) return;
+
+    const destino = montarFiltroDestinoPosicao(_reg);
+    if (!destino) return;
+
+    const criterioItem = [];
+    if (idItem) criterioItem.push({ id_item: idItem });
+    if (tagLeitura) criterioItem.push({ tag: tagLeitura });
+    if (!criterioItem.length) return;
+
+    const statusDestinoPendente = {
+        $or: [
+            { status_destino: 'pendente' },
+            { status_destino: '' },
+            { status_destino: null }
+        ]
+    };
+
+    const filtroBase = Object.assign({}, destino, {
+        itens: {
+            $elemMatch: {
+                $and: [
+                    { $or: criterioItem },
+                    statusDestinoPendente
+                ]
+            }
+        },
+        status: { $in: ['aberta', 'parcial', 'pendente', 'partida', 'concluido'] }
+    });
+
+    if (idConta) filtroBase.id_conta = idConta;
+
+    let posicao = await Posicao.findOne(filtroBase).sort({ createdAt: -1 });
+
+    if (!posicao) {
+        const inicio = new Date();
+        inicio.setHours(0, 0, 0, 0);
+        const fim = new Date();
+        fim.setHours(23, 59, 59, 999);
+        const filtroComData = Object.assign({}, filtroBase, {
+            previsao_chegada_data: { $gte: inicio, $lte: fim }
+        });
+        posicao = await Posicao.findOne(filtroComData).sort({ createdAt: -1 });
+    }
+
+    if (!posicao) {
+        console.log(tagLog + ' Nenhuma ordem pendente no destino para tag=' + tagLeitura + ' item=' + idItem);
         return;
     }
 
-    const posicao = await Posicao.findOne(filtro);
-    if (!posicao) return;
+    const resultado = await concluirItemPosicaoChegada(posicao, idItem, tagLeitura);
+    if (resultado) {
+        console.log(tagLog + ' Ordem atendida (destino) tag=' + tagLeitura + ' posicao=' + posicao._id);
+    }
+}
 
-    await concluirItemPosicaoChegada(posicao, _reg.id_item);
-    console.log(tag + ' Ordem atendida (chegada) item ' + _reg.id_item);
+/**
+ * Checagem de ordem no destino (entrada ou permanência), conforme gateway.posicao_esperada_auto = 2.
+ */
+async function posProcessamentoChegadaPosicao(reg, gateway, logTagOrOpts) {
+    if (!reg || !reg._id) return;
+
+    var logTag = '[chegada-posicao]';
+    if (typeof logTagOrOpts === 'string') {
+        logTag = logTagOrOpts;
+    } else if (logTagOrOpts && logTagOrOpts.logTag) {
+        logTag = logTagOrOpts.logTag;
+    }
+
+    const gw = gateway || await Gateway.findOne({ _id: reg.id_gateway, ativo: 1 }).lean();
+    if (!gatewayDeveChecarPosicaoDestino(gw)) return;
+
+    const st = String(reg.status || '');
+    if (st !== 'entrada' && st !== 'permanencia') return;
+    if (!temNivelRegistro(reg)) return;
+
+    try {
+        await checkPosicaoEsperadaEntrada(reg, logTag);
+    } catch (err) {
+        console.error(logTag + ' erro:', err && err.message ? err.message : err);
+    }
 }
 
 async function gerarOrdemPosicaoEsperada(_regBase, logTag) {
@@ -357,13 +449,7 @@ async function posProcessamentoNovoRegistro(reg, gateway, opts) {
     const gw = gateway || await Gateway.findOne({ _id: reg.id_gateway, ativo: 1 }).lean();
     if (!gw) return;
 
-    if (Number(gw.posicao_esperada_auto) === 2 && reg.status === 'entrada' && temNivelRegistro(reg)) {
-        try {
-            await checkPosicaoEsperadaEntrada(reg, logTag);
-        } catch (err) {
-            console.error(logTag + ' erro ao checar posição:', err && err.message ? err.message : err);
-        }
-    }
+    await posProcessamentoChegadaPosicao(reg, gw, logTag);
 
     if (Number(gw.gera_associao) === 1) {
         const runAssociacao = function () {
@@ -381,8 +467,10 @@ async function posProcessamentoNovoRegistro(reg, gateway, opts) {
 
 module.exports = {
     posProcessamentoNovoRegistro,
+    posProcessamentoChegadaPosicao,
     checkAssociacao,
     gerarOrdemPosicaoEsperada,
     checkPosicaoEsperadaEntrada,
-    concluirItemPosicaoChegada
+    concluirItemPosicaoChegada,
+    gatewayDeveChecarPosicaoDestino
 };

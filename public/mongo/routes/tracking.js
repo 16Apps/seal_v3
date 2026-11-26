@@ -6,7 +6,10 @@ const Item = require('../models/item');
 const Registro = require('../models/registro');
 const TrackingRegra = require('../models/trackingregra');
 const TrackingGuarda = require('../models/trackingguarda');
-const { posProcessamentoNovoRegistro } = require('../helpers/registroPosProcessamento');
+const {
+    posProcessamentoNovoRegistro,
+    posProcessamentoChegadaPosicao
+} = require('../helpers/registroPosProcessamento');
 
 module.exports = (app, dbConnection) => {
 
@@ -1026,6 +1029,14 @@ module.exports = (app, dbConnection) => {
         }
         item.registro_atual = ultimoRegistro.toObject ? ultimoRegistro.toObject() : ultimoRegistro;
         await item.save();
+
+        void posProcessamentoChegadaPosicao(
+            ultimoRegistro.toObject ? ultimoRegistro.toObject() : ultimoRegistro,
+            gateway,
+            { logTag: '[tracking]' }
+        ).catch(function (err) {
+            console.error('[tracking] chegada posição (permanência):', err && err.message ? err.message : err);
+        });
 
         return {
             status: 'permanencia',

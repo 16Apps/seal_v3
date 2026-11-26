@@ -21,6 +21,7 @@ const {
     normalizarTotaisPosicao,
     aplicarTotaisNaPosicao
 } = require('../helpers/posicaoTotais');
+const { posProcessamentoChegadaPosicao } = require('../helpers/registroPosProcessamento');
 
 const ultimasLeituras = new Map(); // { "tag|tokem" => timestamp }
 const DEBOUNCE_LEITURA_SEG = 6; // leitor envia ~5s; folga evita processar o próximo tick como ciclo novo
@@ -614,6 +615,12 @@ module.exports = (app, dbConnection) => {
                 } catch (err) {
                     console.error('Erro ao sincronizar item na permanência:', err.message);
                 }
+
+                const regPerm = ultimoRegistro.toObject ? ultimoRegistro.toObject() : ultimoRegistro;
+                void posProcessamentoChegadaPosicao(regPerm, gateway, { logTag: '[registro]' })
+                    .catch(function (err) {
+                        console.error('[registro] chegada posição (permanência):', err && err.message ? err.message : err);
+                    });
 
                 status = 'permanencia';
                 retorno = retorno || 'Sem movimentação, mesma localização (permanência)';
