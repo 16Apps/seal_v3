@@ -1,4 +1,4 @@
-app.controller('gatewayCtrl', function ($scope, $http, params, uteisService) {
+app.controller('gatewayCtrl', function ($scope, $http, $timeout, params, uteisService) {
 
     $scope._regConta = {};
     $scope._regColaborador = []
@@ -7,7 +7,29 @@ app.controller('gatewayCtrl', function ($scope, $http, params, uteisService) {
     $scope.sortField = 'descricao';
     $scope.sortReverse = false;
 
+    /** Reset explícito — evita reutilizar funcao/edit da edição anterior */
+    $scope.funcaoLoc = null;
+    $scope.editLoc = null;
+
     var modalInstance = undefined;
+    var modalEl = null;
+
+    function resetBindingsModal() {
+        $scope.funcaoLoc = null;
+        $scope.editLoc = null;
+    }
+
+    function initModalGateway() {
+        modalEl = document.getElementById('modalGateway');
+        if (!modalEl || modalEl._gatewayModalBound) return;
+        modalEl._gatewayModalBound = true;
+        modalEl.addEventListener('hidden.bs.modal', function () {
+            modalInstance = undefined;
+            $timeout(function () {
+                resetBindingsModal();
+            });
+        });
+    }
 
     $scope.filtraGateway = function (item) {
         const q = ($scope._pesquisa || '')
@@ -39,7 +61,8 @@ app.controller('gatewayCtrl', function ($scope, $http, params, uteisService) {
 
         $scope._regColaborador = uteisService.getCookie('_colaborador');
 
-        $scope.onCarregaRegistros()
+        initModalGateway();
+        $scope.onCarregaRegistros();
     });
 
     $scope.onCarregaRegistros = async function () {
@@ -119,28 +142,33 @@ app.controller('gatewayCtrl', function ($scope, $http, params, uteisService) {
     };
 
 
-    $scope.onGateway = async function (_acao, _edit) {
+    /**
+     * Sem argumentos: fecha o modal (callback do componente).
+     * Com _acao: abre novo/add ou edit (edit recebe cópia do registro).
+     */
+    $scope.onGateway = function (_acao, _edit) {
+        initModalGateway();
 
-        setTimeout(() => {
-            $scope.$apply(() => {       // força o Angular a perceber a mudança
-                $scope.funcaoLoc = _acao;
-                $scope.editLoc = _edit;
-            });
-        }, 10);
-
-        if (modalInstance != undefined) {
-            modalInstance.hide();
-            modalInstance = undefined
-
-            $scope.onCarregaRegistros()
-            $scope.funcaoLoc = '';
-            $scope.editLoc = undefined;
-
-            $scope.$apply();
-        } else {
-            modalInstance = new bootstrap.Modal(document.getElementById('modalGateway'));
-            modalInstance.show();
+        if (!_acao) {
+            if (modalInstance) {
+                modalInstance.hide();
+            } else {
+                resetBindingsModal();
+            }
+            $scope.onCarregaRegistros();
+            return;
         }
 
+        resetBindingsModal();
+
+        $timeout(function () {
+            $scope.funcaoLoc = _acao;
+            $scope.editLoc = (_acao === 'edit' && _edit) ? angular.copy(_edit) : null;
+
+            if (!modalInstance) {
+                modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl || document.getElementById('modalGateway'));
+            }
+            modalInstance.show();
+        }, 0);
     };
 });

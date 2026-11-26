@@ -6,6 +6,7 @@ const Item = require('../models/item');
 const Registro = require('../models/registro');
 const TrackingRegra = require('../models/trackingregra');
 const TrackingGuarda = require('../models/trackingguarda');
+const { posProcessamentoNovoRegistro } = require('../helpers/registroPosProcessamento');
 
 module.exports = (app, dbConnection) => {
 
@@ -1139,6 +1140,11 @@ module.exports = (app, dbConnection) => {
         }
         item.registro_atual = novoRegistro.toObject ? novoRegistro.toObject() : novoRegistro;
         await item.save();
+
+        void posProcessamentoNovoRegistro(novoRegistro, gateway, {
+            logTag: '[tracking]',
+            fireAndForgetAssociacao: true
+        });
 
         return {
             status,

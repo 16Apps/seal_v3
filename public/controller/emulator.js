@@ -59,8 +59,7 @@ function sealEmulatorBootstrap($scope, $timeout, uteisService) {
     var MAX_HISTORY_EVENTS = 120;
     var itemTracking = {};
     var rafId = null;
-    var REGISTRO_POLL_MS = 5000;
-    var registroIntervalId = null;
+    var leituraPollIntervalId = null;
     var gatewayItemsModalEl = document.getElementById('emulatorGatewayItemsModal');
     var gatewayItemsModal = null;
     var gatewayPickerModalEl = document.getElementById('emulatorGatewayPickerModal');
@@ -68,13 +67,48 @@ function sealEmulatorBootstrap($scope, $timeout, uteisService) {
     var itemPickerModalEl = document.getElementById('emulatorItemPickerModal');
     var itemPickerModal = null;
 
-    function buildRegistroPayload(gatewayLabel, itemMeta) {
+    function getLeituraDestino() {
+        var d = ($scope.emulator && $scope.emulator.leituraDestino) || 'registro';
+        return d === 'tracking' ? 'tracking' : 'registro';
+    }
+
+    function getLeituraApiPath() {
+        return getLeituraDestino() === 'tracking' ? '/tracking' : '/registro';
+    }
+
+    function getPollMs() {
+        var seg = Number($scope.emulator && $scope.emulator.pollIntervalSeg);
+        if (!Number.isFinite(seg) || seg < 3) seg = 5;
+        if (getLeituraDestino() === 'registro' && seg < 7) seg = 7;
+        return Math.round(seg * 1000);
+    }
+
+    function gatewayMetaFromPlace(place, gateways) {
+        if (!place || place.key === 'outside') return null;
+        var gwId = place.key.replace(/^gateway:/, '');
+        for (var i = 0; i < gateways.length; i++) {
+            var m = gateways[i].getAttr('meta');
+            if (m && m.id === gwId) return m;
+        }
+        return null;
+    }
+
+    function tokemFromGatewayMeta(gwMeta, place) {
+        if (gwMeta) {
+            return (gwMeta.tokem || gwMeta.tag || gwMeta.name || '').trim();
+        }
+        return (place && place.label) || '';
+    }
+
+    function buildRegistroPayload(tokem, itemMeta, opts) {
+        opts = opts || {};
+        var rssi = opts.rssi != null ? opts.rssi : -58;
         return {
-            tokem: gatewayLabel,
+            tokem: tokem,
             tag: (itemMeta.tag || itemMeta.id),
             data_leitura: new Date().toISOString(),
             antena: '0',
-            rssi: -58,
+            rssi: rssi,
             bateria: '0',
             temperatura: '0',
             latitude: '',
@@ -90,39 +124,90 @@ function sealEmulatorBootstrap($scope, $timeout, uteisService) {
         };
     }
 
-    function flushRegistrosInsideGateways() {
-        if ($scope.$$destroyed) return;
-        if (!uteisService || !angular.isFunction(uteisService.posthBase)) return;
+    function resumoRespostaLeitura(res) {
+        if (!res) return 'sem resposta';
+        if (res.ignored) return 'ignorada: ' + (res.message || '');
+        if (res.pending) return 'pendente (janela): ' + (res.message || '');
+        if (res.permanence) return 'permanência';
+        if (res.status) return String(res.status) + (res.message ? ' — ' + res.message : '');
+        if (res.success === false) return res.message || 'erro';
+        return res.message || 'ok';
+    }
 
+    function postLeituraPayload(body) {
+        if (!uteisService || !angular.isFunction(uteisService.posthBase)) {
+            return Promise.reject(new Error('posthBase indisponível'));
+        }
+        var path = getLeituraApiPath();
+        return uteisService.posthBase(path, body).then(function (res) {
+            $scope.$applyAsync(function () {
+                if ($scope.$$destroyed) return;
+                $scope.emulator.lastLeituraResumo = resumoRespostaLeitura(res);
+            });
+            return res;
+        });
+    }
+
+    function collectLeiturasDentroGateways() {
         var gateways = mainLayer.find('.sim-object').filter(function (node) {
             return node.getAttr('meta').type === 'gateway';
         });
         var items = mainLayer.find('.sim-object').filter(function (node) {
             return node.getAttr('meta').type === 'item';
         });
-        if (!gateways.length || !items.length) return;
+        var out = [];
+        if (!gateways.length || !items.length) return out;
 
-        var bodies = [];
         items.forEach(function (item) {
             var meta = item.getAttr('meta');
             var place = resolvePlace(item, gateways);
             if (place.key === 'outside') return;
-            bodies.push(buildRegistroPayload(place.label, meta));
+            var gwMeta = gatewayMetaFromPlace(place, gateways);
+            var tokem = tokemFromGatewayMeta(gwMeta, place);
+            if (!tokem) return;
+            out.push(buildRegistroPayload(tokem, meta));
         });
+        return out;
+    }
+
+    function flushLeiturasInsideGateways() {
+        if ($scope.$$destroyed) return;
+        if ($scope.emulator && $scope.emulator.envioAutomatico === false) return;
+
+        var bodies = collectLeiturasDentroGateways();
         if (!bodies.length) return;
 
-        $scope.$applyAsync(function () {
-            if ($scope.$$destroyed) return;
-            bodies.forEach(function (body) {
-                uteisService.posthBase('/registro', body)
-                    .then(function (res) {
-                        console.log(res);
-                    })
-                    .catch(function (error) {
-                        console.log(error);
-                    });
-            });
+        bodies.forEach(function (body) {
+            postLeituraPayload(body)
+                .then(function (res) { console.log('[emulator]', getLeituraApiPath(), res); })
+                .catch(function (error) { console.log('[emulator]', error); });
         });
+    }
+
+    function enviarLeituraEntradaGateway(itemNode, gateways, place) {
+        if ($scope.emulator && $scope.emulator.envioAutomatico === false) return;
+        if (!place || place.key === 'outside') return;
+        var meta = itemNode.getAttr('meta');
+        var gwMeta = gatewayMetaFromPlace(place, gateways);
+        var tokem = tokemFromGatewayMeta(gwMeta, place);
+        if (!tokem || !meta) return;
+        var body = buildRegistroPayload(tokem, meta, { rssi: -52 });
+        postLeituraPayload(body)
+            .then(function (res) {
+                console.log('[emulator] entrada', tokem, meta.tag, res);
+            })
+            .catch(function (error) {
+                console.log('[emulator] entrada erro', error);
+            });
+    }
+
+    function restartLeituraPoll() {
+        if (leituraPollIntervalId) {
+            window.clearInterval(leituraPollIntervalId);
+            leituraPollIntervalId = null;
+        }
+        if ($scope.emulator && $scope.emulator.envioAutomatico === false) return;
+        leituraPollIntervalId = window.setInterval(flushLeiturasInsideGateways, getPollMs());
     }
 
     function formatDurationMs(ms) {
@@ -334,6 +419,9 @@ function sealEmulatorBootstrap($scope, $timeout, uteisService) {
                 track.segmentStartPerf = now;
                 track.segmentStartWall = wall;
                 track.placeLabels[place.key] = place.label;
+                if (place.key.indexOf('gateway:') === 0) {
+                    enviarLeituraEntradaGateway(item, gateways, place);
+                }
                 if ($scope.emulator.historyItemId === id) renderHistoryLog();
             }
         });
@@ -656,6 +744,8 @@ function sealEmulatorBootstrap($scope, $timeout, uteisService) {
             type: 'gateway',
             name: config.name || ('Gateway ' + idCounter),
             tag: config.tag || '',
+            tokem: config.tokem || config.tag || config.name || '',
+            gatewayDbId: config.gatewayDbId || '',
             range: Number(config.range || 120)
         };
 
@@ -848,6 +938,8 @@ function sealEmulatorBootstrap($scope, $timeout, uteisService) {
                 type: meta.type,
                 name: meta.name,
                 tag: meta.tag,
+                tokem: meta.tokem,
+                gatewayDbId: meta.gatewayDbId,
                 range: meta.range,
                 x: group.x(),
                 y: group.y(),
@@ -1014,8 +1106,13 @@ function sealEmulatorBootstrap($scope, $timeout, uteisService) {
         var tokem = reg.tokem || reg.descricao || reg._id || ('Gateway ' + idCounter);
         var group = createGateway({
             name: tokem,
-            tag: reg.tokem || ''
+            tag: reg.tokem || '',
+            tokem: reg.tokem || tokem,
+            gatewayDbId: reg._id
         });
+        if (getLeituraDestino() === 'tracking' && !reg.id_tracking_regra && uteisService && angular.isFunction(uteisService.onToast)) {
+            uteisService.onToast('Este gateway não tem regra de tracking — leituras em /tracking serão ignoradas.', 'warning', 5000, 'top-end');
+        }
         setSelectedGroups([group]);
         saveLayoutSilently();
 
@@ -1130,7 +1227,20 @@ function sealEmulatorBootstrap($scope, $timeout, uteisService) {
         onClearAll: clearAll,
         onSaveLayout: saveLayout,
         onLoadLayout: loadLayout,
-        onExportLayout: exportLayout
+        onExportLayout: exportLayout,
+        restartLeituraPoll: restartLeituraPoll,
+        flushLeiturasManual: function () {
+            var bodies = collectLeiturasDentroGateways();
+            if (!bodies.length) {
+                if (uteisService && angular.isFunction(uteisService.onToast)) {
+                    uteisService.onToast('Nenhum SKU dentro de um gateway.', 'info', 2500, 'top-end');
+                }
+                return;
+            }
+            bodies.forEach(function (body) {
+                postLeituraPayload(body);
+            });
+        }
     };
 
     stage.on('click tap', function (e) {
@@ -1146,14 +1256,14 @@ function sealEmulatorBootstrap($scope, $timeout, uteisService) {
 
     rafId = window.requestAnimationFrame(rafLoop);
 
-    registroIntervalId = window.setInterval(flushRegistrosInsideGateways, REGISTRO_POLL_MS);
+    restartLeituraPoll();
 
     mainLayer.draw();
 
     return function destroySealEmulator() {
-        if (registroIntervalId) {
-            window.clearInterval(registroIntervalId);
-            registroIntervalId = null;
+        if (leituraPollIntervalId) {
+            window.clearInterval(leituraPollIntervalId);
+            leituraPollIntervalId = null;
         }
         delete $scope._emulatorApi;
         $scope.emulator.selectedGateway = null;
@@ -1203,9 +1313,24 @@ app.controller('emulatorCtrl', function ($scope, $http, $timeout, uteisService) 
         posicaoDraftReady: false,
         destinoPicker: null,
         phoneModalView: 'tags',
-        destinoDrill: { chain: [], search: '' }
+        destinoDrill: { chain: [], search: '' },
+        leituraDestino: 'registro',
+        pollIntervalSeg: 7,
+        envioAutomatico: true,
+        lastLeituraResumo: ''
     };
     var destroyEmulator = angular.noop;
+    var EMULATOR_SETTINGS_KEY = 'seal-emulator-leitura-settings-v1';
+
+    try {
+        var rawSettings = localStorage.getItem(EMULATOR_SETTINGS_KEY);
+        if (rawSettings) {
+            var parsedSettings = JSON.parse(rawSettings);
+            if (parsedSettings.leituraDestino) $scope.emulator.leituraDestino = parsedSettings.leituraDestino;
+            if (parsedSettings.pollIntervalSeg != null) $scope.emulator.pollIntervalSeg = parsedSettings.pollIntervalSeg;
+            if (parsedSettings.envioAutomatico != null) $scope.emulator.envioAutomatico = parsedSettings.envioAutomatico;
+        }
+    } catch (e) { /* ignore */ }
 
     function callEmulatorApi(method) {
         if (!$scope._emulatorApi || !angular.isFunction($scope._emulatorApi[method])) return;
@@ -1225,6 +1350,24 @@ app.controller('emulatorCtrl', function ($scope, $http, $timeout, uteisService) 
     $scope.onSaveLayout = function () { callEmulatorApi('onSaveLayout'); };
     $scope.onLoadLayout = function () { callEmulatorApi('onLoadLayout'); };
     $scope.onExportLayout = function () { callEmulatorApi('onExportLayout'); };
+
+    $scope.onEmulatorLeituraConfigChange = function () {
+        try {
+            localStorage.setItem(EMULATOR_SETTINGS_KEY, JSON.stringify({
+                leituraDestino: $scope.emulator.leituraDestino || 'registro',
+                pollIntervalSeg: Number($scope.emulator.pollIntervalSeg) || 7,
+                envioAutomatico: $scope.emulator.envioAutomatico !== false
+            }));
+        } catch (e) { /* ignore */ }
+        if ($scope.emulator.leituraDestino === 'registro' && Number($scope.emulator.pollIntervalSeg) < 7) {
+            $scope.emulator.pollIntervalSeg = 7;
+        }
+        callEmulatorApi('restartLeituraPoll');
+    };
+
+    $scope.onFlushLeiturasManual = function () {
+        callEmulatorApi('flushLeiturasManual');
+    };
 
     async function syncContaLogo() {
         $scope._regConta = uteisService.getCookie('_conta') || {};

@@ -1,6 +1,20 @@
 
 app.controller('contaCtrl', function ($scope, $http, params, uteisService, $location) {
 
+    var FOTO_COLABORADOR_PADRAO = '../assets/images/icon_avatar.png';
+    var FOTO_CARREGANDO = '../assets/images/carregando_icon.gif';
+
+    function resolveFotoColaborador(foto) {
+        if (foto === FOTO_CARREGANDO) return foto;
+        if (!foto || String(foto).trim() === '') return FOTO_COLABORADOR_PADRAO;
+        var s = String(foto).trim();
+        if (s.indexOf('data:') === 0) return s;
+        if (/^https?:\/\//i.test(s)) return s;
+        if (s.indexOf('../assets/') === 0) return s;
+        if (s.indexOf('assets/') === 0) return '../' + s;
+        if (s.indexOf('/image/') !== -1) return s;
+        return uteisService.apiUrl_() + '/image/' + s;
+    }
 
     $scope.options = {
         headers: { 'Content-Type': 'application/json' }
@@ -49,6 +63,7 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
             interacao: 0,
             regs_associados: 0,
             portal: 0,
+            agente_ia: 0,
         },
     
         plano_conta: {
@@ -63,7 +78,7 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
         id_conta: $scope._regConta._id,
         ativo: '1',
         foto: '',
-        _foto: '../assets/images/icon_avatar.png',
+        _foto: FOTO_COLABORADOR_PADRAO,
         nome: '',
         apelido: '',
         id_funcao: null,
@@ -141,6 +156,7 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
                     interacao: "0",
                     regs_associados: "0",
                     portal: "0",
+                    agente_ia: "1",
                 };
             } else {
                 // Garante que os valores sejam números
@@ -150,6 +166,11 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
                 $scope._regConta.plano_monitoramento.interacao = "" + parseInt($scope._regConta.plano_monitoramento.interacao) || 0;
                 $scope._regConta.plano_monitoramento.regs_associados = "" + parseInt($scope._regConta.plano_monitoramento.regs_associados) || "0";
                 $scope._regConta.plano_monitoramento.portal = "" + parseInt($scope._regConta.plano_monitoramento.portal) || "0";
+                var agenteIa = $scope._regConta.plano_monitoramento.agente_ia;
+                if (agenteIa == null || agenteIa === '') {
+                    agenteIa = $scope._regConta.plano_monitoramento.agente_integracao;
+                }
+                $scope._regConta.plano_monitoramento.agente_ia = "" + (parseInt(agenteIa, 10) || 0);
             }
             if (!$scope._regConta.plano_conta) {
                 $scope._regConta.plano_conta = {
@@ -226,11 +247,14 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
                         // uteisService.setCookie('_conta', JSON.stringify($scope._regConta), 365);
                         // uteisService.setCookie('_colaborador', JSON.stringify($scope._regColaborador), 365);
 
-                        res[0].id_conta.widget_layout = []  
-                        uteisService.setCookie('_conta', JSON.stringify(res[0].id_conta), 365);                  
-                        res[0].id_conta = []        
-                  
-                           
+                        var contaSessao = res[0].id_conta;
+                        var idContaSessao = contaSessao && contaSessao._id ? String(contaSessao._id) : '';
+                        if (contaSessao && Array.isArray(contaSessao.widget_layout)) {
+                            contaSessao.widget_layout = [];
+                        }
+                        uteisService.setCookie('_conta', JSON.stringify(contaSessao), 365);
+                        res[0].id_conta = idContaSessao;
+
                         uteisService.setCookie('_colaborador', JSON.stringify(res[0]), 365);
 
 
@@ -464,11 +488,18 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
             _reg.alerta_celular_criterio += $scope._regConta.alerta_celular_criterio_importante ? '1' : '0'
             _reg.alerta_celular_criterio += $scope._regConta.alerta_celular_criterio_critico ? '1' : '0'
 
+            if (_reg.plano_monitoramento) {
+                _reg.plano_monitoramento.agente_ia = parseInt(_reg.plano_monitoramento.agente_ia, 10) || 0;
+                _reg.plano_monitoramento.agente_integracao = _reg.plano_monitoramento.agente_ia;
+            }
+
             uteisService.patchBase('/conta', _reg)
                 .then((res) => {
 
                     uteisService.onToast('Dados atualizados!', 'info', 2000, 'top-end');
-                    uteisService.setCookie('_conta', JSON.stringify(_reg), 365);
+                    var contaCookie = uteisService.normalizarConta(JSON.parse(JSON.stringify(_reg)));
+                    uteisService.setCookie('_conta', JSON.stringify(contaCookie), 365);
+                    $scope._regConta = angular.extend($scope._regConta, contaCookie);
 
                 })
                 .catch((error) => {
@@ -537,14 +568,8 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
         await uteisService.getBase(_url)
             .then((res) => {
 
-                res.map((item) => {
-
-                    item['_foto'] = '../assets/images/icon_avatar.png'
-
-                    if (item.foto && !item.foto.includes('assets')) {
-                        item._foto = uteisService.apiUrl_() + '/image/' + item.foto
-                    };
-
+                res.forEach(function (item) {
+                    item._foto = resolveFotoColaborador(item.foto);
                 });
 
 
@@ -566,7 +591,7 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
                 id_conta: $scope._regConta._id,
                 ativo: '1',
                 foto: '',
-                _foto: '../assets/images/icon_avatar.png',
+                _foto: FOTO_COLABORADOR_PADRAO,
                 nome: '',
                 apelido: '',
                 id_funcao: null,
@@ -594,12 +619,7 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
             $scope._regColaborador.ativo = "" + $scope._regColaborador.ativo;
             
 
-            $scope._regColaborador['_foto'] = '../assets/images/icon_avatar.png'
-            if ($scope._regColaborador.foto) {
-                if ($scope._regColaborador.foto.includes("avatar") == false) {
-                    $scope._regColaborador._foto = uteisService.apiUrl_() + '/image/' + $scope._regColaborador.foto
-                }
-            };
+            $scope._regColaborador._foto = resolveFotoColaborador($scope._regColaborador.foto);
         };
     };
 
@@ -629,30 +649,29 @@ app.controller('contaCtrl', function ($scope, $http, params, uteisService, $loca
     };
 
     $scope.onGetFotoColoborador = function () {
-        document.getElementById('imgload').click();
+        var input = document.getElementById('imgloadColaborador');
+        if (!input) return;
 
-        document.getElementById('imgload').onchange = function () {
-            // Seta o gif temporário
-            $scope.$apply(() => {
-                $scope._regColaborador._foto = "assets/images/carregando_icon.gif";
+        input.onchange = function () {
+            var file = input.files && input.files[0];
+            input.value = '';
+            if (!file || !$scope._regColaborador) return;
+
+            $scope.$apply(function () {
+                $scope._regColaborador._foto = FOTO_CARREGANDO;
             });
 
-            setTimeout(() => {
-                const file = this.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = function (e) {
-                        // Atualiza o logo com a imagem carregada
-                        $scope.$apply(() => {
-                            $scope._regColaborador._foto = e.target.result;
-                            $scope.onPostFotoColoborador(e.target.result);
-                        });
-                    };
-                    reader.readAsDataURL(file);
-                }
-            }, 1200);
-
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                $scope.$apply(function () {
+                    $scope._regColaborador._foto = e.target.result;
+                    $scope.onPostFotoColoborador(e.target.result);
+                });
+            };
+            reader.readAsDataURL(file);
         };
+
+        input.click();
     };
 
     $scope.onPostFotoColoborador = function (foto) {

@@ -551,11 +551,12 @@ module.exports = (app, dbConnection) => {
         try {
             const { id_conta, id_nivel_loc1, id_nivel_loc2, id_nivel_loc3, id_nivel_loc4 } = req.query;
 
-            if (!id_conta) {
+            const idConta = String(id_conta || '').trim();
+            if (!idConta) {
                 return res.status(400).json({ ok: false, erro: 'id_conta é obrigatório' });
             }
 
-            const match = { id_conta: String(id_conta) };
+            const match = { id_conta: idConta };
             if (id_nivel_loc4) match.id_nivel_loc4 = String(id_nivel_loc4);
             else if (id_nivel_loc3) match.id_nivel_loc3 = String(id_nivel_loc3);
             else if (id_nivel_loc2) match.id_nivel_loc2 = String(id_nivel_loc2);
@@ -624,8 +625,19 @@ module.exports = (app, dbConnection) => {
                 {
                     $lookup: {
                         from: CategoriaColl,
-                        localField: 'id_categoria',
-                        foreignField: '_id',
+                        let: { refId: '$id_categoria', contaId: '$id_conta' },
+                        pipeline: [
+                            {
+                                $match: {
+                                    $expr: {
+                                        $and: [
+                                            { $eq: ['$_id', '$$refId'] },
+                                            { $eq: ['$id_conta', '$$contaId'] }
+                                        ]
+                                    }
+                                }
+                            }
+                        ],
                         as: 'categoria'
                     }
                 },
@@ -633,16 +645,99 @@ module.exports = (app, dbConnection) => {
                 {
                     $lookup: {
                         from: CategoriaItemColl,
-                        localField: 'id_categoria_reg1',
-                        foreignField: '_id',
+                        let: { refId: '$id_categoria_reg1', contaId: '$id_conta' },
+                        pipeline: [
+                            {
+                                $match: {
+                                    $expr: {
+                                        $and: [
+                                            { $eq: ['$_id', '$$refId'] },
+                                            { $eq: ['$id_conta', '$$contaId'] }
+                                        ]
+                                    }
+                                }
+                            }
+                        ],
                         as: 'categoria_reg1'
                     }
                 },
                 { $unwind: { path: '$categoria_reg1', preserveNullAndEmptyArrays: true } },
-                { $lookup: { from: LocalizacaoColl, localField: 'id_nivel_loc1', foreignField: '_id', as: 'loc1' } },
-                { $lookup: { from: LocalizacaoColl, localField: 'id_nivel_loc2', foreignField: '_id', as: 'loc2' } },
-                { $lookup: { from: LocalizacaoColl, localField: 'id_nivel_loc3', foreignField: '_id', as: 'loc3' } },
-                { $lookup: { from: LocalizacaoColl, localField: 'id_nivel_loc4', foreignField: '_id', as: 'loc4' } },
+                {
+                    $lookup: {
+                        from: LocalizacaoColl,
+                        let: { refId: '$id_nivel_loc1', contaId: '$id_conta' },
+                        pipeline: [
+                            {
+                                $match: {
+                                    $expr: {
+                                        $and: [
+                                            { $eq: ['$_id', '$$refId'] },
+                                            { $eq: ['$id_conta', '$$contaId'] }
+                                        ]
+                                    }
+                                }
+                            }
+                        ],
+                        as: 'loc1'
+                    }
+                },
+                {
+                    $lookup: {
+                        from: LocalizacaoColl,
+                        let: { refId: '$id_nivel_loc2', contaId: '$id_conta' },
+                        pipeline: [
+                            {
+                                $match: {
+                                    $expr: {
+                                        $and: [
+                                            { $eq: ['$_id', '$$refId'] },
+                                            { $eq: ['$id_conta', '$$contaId'] }
+                                        ]
+                                    }
+                                }
+                            }
+                        ],
+                        as: 'loc2'
+                    }
+                },
+                {
+                    $lookup: {
+                        from: LocalizacaoColl,
+                        let: { refId: '$id_nivel_loc3', contaId: '$id_conta' },
+                        pipeline: [
+                            {
+                                $match: {
+                                    $expr: {
+                                        $and: [
+                                            { $eq: ['$_id', '$$refId'] },
+                                            { $eq: ['$id_conta', '$$contaId'] }
+                                        ]
+                                    }
+                                }
+                            }
+                        ],
+                        as: 'loc3'
+                    }
+                },
+                {
+                    $lookup: {
+                        from: LocalizacaoColl,
+                        let: { refId: '$id_nivel_loc4', contaId: '$id_conta' },
+                        pipeline: [
+                            {
+                                $match: {
+                                    $expr: {
+                                        $and: [
+                                            { $eq: ['$_id', '$$refId'] },
+                                            { $eq: ['$id_conta', '$$contaId'] }
+                                        ]
+                                    }
+                                }
+                            }
+                        ],
+                        as: 'loc4'
+                    }
+                },
                 { $unwind: { path: '$loc1', preserveNullAndEmptyArrays: true } },
                 { $unwind: { path: '$loc2', preserveNullAndEmptyArrays: true } },
                 { $unwind: { path: '$loc3', preserveNullAndEmptyArrays: true } },

@@ -14,6 +14,28 @@ app.controller('portalEnderecoCtrl', function ($scope, $http, $timeout, params, 
     $scope._enderecos = [];
 
     var _timerAuto = null;
+    var _ultimoIdContaCarregado = null;
+
+    /**
+     * Conta ativa da sessão: prioriza cookie _conta._id; fallback id_conta do colaborador (string).
+     */
+    function resolveIdContaSessao() {
+        var conta = uteisService.getCookie('_conta');
+        conta = uteisService.normalizarConta(conta) || {};
+        var id = conta._id != null ? String(conta._id).trim() : '';
+
+        if (!id) {
+            var colab = uteisService.getCookie('_colaborador') || {};
+            var cid = colab.id_conta;
+            if (cid && typeof cid === 'object' && cid._id) {
+                id = String(cid._id).trim();
+            } else if (typeof cid === 'string' && cid.trim()) {
+                id = cid.trim();
+            }
+        }
+
+        return id || null;
+    }
 
     function formatarNumero(n) {
         var num = Number(n) || 0;
@@ -60,11 +82,26 @@ app.controller('portalEnderecoCtrl', function ($scope, $http, $timeout, params, 
     }
 
     $scope.onCarregaEnderecos = async function () {
-        if (!$scope._regConta || !$scope._regConta._id) return;
+        var idConta = resolveIdContaSessao();
+        if (!idConta) {
+            $scope._kpis = montarKpis({});
+            $scope._enderecos = [];
+            uteisService.onToast('Conta da sessão inválida. Entre novamente no sistema.', 'warning', 3500, 'top-end');
+            return;
+        }
+
+        if (_ultimoIdContaCarregado && _ultimoIdContaCarregado !== idConta) {
+            $scope._enderecos = [];
+            $scope._kpis = montarKpis({});
+        }
+        _ultimoIdContaCarregado = idConta;
+
+        $scope._regConta = uteisService.normalizarConta(uteisService.getCookie('_conta') || {});
+        $scope._regColaborador = uteisService.getCookie('_colaborador') || {};
 
         $scope._carregando = true;
         try {
-            var url = '/portal/itens-por-endereco?id_conta=' + encodeURIComponent($scope._regConta._id);
+            var url = '/portal/itens-por-endereco?id_conta=' + encodeURIComponent(idConta);
             var res = await uteisService.getBase(url).catch(function () { return null; });
 
             if (!res || res.ok === false) {
@@ -128,9 +165,6 @@ app.controller('portalEnderecoCtrl', function ($scope, $http, $timeout, params, 
     });
 
     $scope.$watch('$viewContentLoaded', async function () {
-        $scope._regConta = uteisService.getCookie('_conta') || {};
-        $scope._regConta = uteisService.normalizarConta($scope._regConta);
-        $scope._regColaborador = uteisService.getCookie('_colaborador') || [];
         await $scope.onCarregaEnderecos();
         iniciarAutoUpdate();
     });

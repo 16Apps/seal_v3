@@ -884,7 +884,7 @@
                                         </a></td>
                                       <td>
                                         <div class="d-flex align-items-center">
-                                          <img src="{{ item._foto }}" class="rounded-circle me-2" width="32"
+                                          <img ng-src="{{ item._foto }}" class="rounded-circle me-2" width="32"
                                             alt="Client">
                                           <span class="text-white">
                                             {{ item.nome }}
@@ -927,7 +927,7 @@
 
                             <div class="d-flex align-items-center flex-column position-relative" style="width: 100%;">
                               <div class="position-relative mb-3">
-                                <img src="{{ _regColaborador._foto }}" class="img-6x rounded-circle border"
+                                <img ng-src="{{ _regColaborador._foto }}" class="img-6x rounded-circle border"
                                   alt="Foto do Usuário" />
 
                                 <!-- Botão para trocar foto -->
@@ -936,6 +936,7 @@
                                   title="Alterar foto">
                                   <i class="bi bi-camera-fill"></i>
                                 </button>
+                                <input type="file" id="imgloadColaborador" accept="image/*" style="display:none" />
                               </div>
                             </div>
 
@@ -1155,6 +1156,19 @@
                                   <option value="1">Habilitado</option>
                                 </select>
                                 <small class="text-muted">Sistema de portal</small>
+                              </div>
+                            </div>
+                            <div class="col-sm-2">
+                              <div class="mb-3">
+                                <label for="agenteIa" class="form-label">
+                                  <i class="bi bi-robot me-1"></i>Agente IA
+                                </label>
+                                <select id="agenteIa" ng-model="_regConta.plano_monitoramento.agente_ia"
+                                  class="form-select form-select-sm">
+                                  <option value="0">Desabilitado</option>
+                                  <option value="1">Habilitado</option>
+                                </select>
+                                <small class="text-muted">Menu IA Assistente no sistema</small>
                               </div>
                             </div>
                           </div>

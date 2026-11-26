@@ -268,7 +268,8 @@
               </a>
             </li> -->
 
-            <li ng-class="{'active current-page': isActive('ia')}">
+            <li ng-show="_regConta.plano_monitoramento.agente_ia > 0"
+              ng-class="{'active current-page': isActive('ia')}">
               <a href="/ia">
                 <i class="bi bi-robot"></i>
                 <span class="menu-text">IA Assistente</span>
@@ -437,7 +438,7 @@
             </li> -->
 
             <li>
-              <a href="/auth/logout">
+              <a href="/">
                 <i class="bi bi-box-arrow-right"></i>
                 <span class="menu-text">Sair</span>
               </a>

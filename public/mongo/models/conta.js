@@ -49,6 +49,8 @@ const ContaSchema = new mongoose.Schema({
         interacao: { type: Number, enum: [0, 1], default: 1 },
         regs_associados: { type: Number, enum: [0, 1], default: 1 },
         portal: { type: Number, enum: [0, 1], default: 1 },
+        agente_integracao: { type: Number, enum: [0, 1], default: 1 },
+        agente_ia: { type: Number, enum: [0, 1], default: 1 },
     },
 
     plano_conta: {

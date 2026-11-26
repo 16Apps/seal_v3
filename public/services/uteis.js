@@ -386,14 +386,28 @@ app.service('uteisService', ['$rootScope', '$http', function ($rootScope, $http)
         software: 'seal',
         posicao_esperada: 0,
         painel_alertas: 0,
-        interacao: 0
+        interacao: 0,
+        regs_associados: 0,
+        portal: 0,
+        agente_ia: 1
       };
     } else {
       // Garante que os valores sejam números
-      regConta.plano_monitoramento.software = regConta.plano_monitoramento.software || 'seal';
-      regConta.plano_monitoramento.posicao_esperada = parseInt(regConta.plano_monitoramento.posicao_esperada) || 0;
-      regConta.plano_monitoramento.painel_alertas = parseInt(regConta.plano_monitoramento.painel_alertas) || 0;
-      regConta.plano_monitoramento.interacao = parseInt(regConta.plano_monitoramento.interacao) || 0;
+      var pm = regConta.plano_monitoramento;
+      pm.software = pm.software || 'seal';
+      pm.posicao_esperada = parseInt(pm.posicao_esperada, 10) || 0;
+      pm.painel_alertas = parseInt(pm.painel_alertas, 10) || 0;
+      pm.interacao = parseInt(pm.interacao, 10) || 0;
+      pm.regs_associados = parseInt(pm.regs_associados, 10) || 0;
+      pm.portal = parseInt(pm.portal, 10) || 0;
+      if (pm.agente_ia == null || pm.agente_ia === '') {
+        pm.agente_ia = parseInt(pm.agente_integracao, 10);
+      }
+      if (pm.agente_ia == null || pm.agente_ia === '' || isNaN(pm.agente_ia)) {
+        pm.agente_ia = 1;
+      } else {
+        pm.agente_ia = parseInt(pm.agente_ia, 10) || 0;
+      }
     }
 
     // Verifica e inicializa plano_conta

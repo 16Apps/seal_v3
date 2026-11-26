@@ -13,7 +13,7 @@ const GatewaySchema = new mongoose.Schema({
     latitude: { type: String },
     longitude: { type: String },
 
-    posicao_esperada_auto: { type: Number, enum: [0, 1], default: 0 },
+    posicao_esperada_auto: { type: Number, enum: [0, 1, 2], default: 0 },
 
     modo: { type: String, enum: ['fixo', 'movel', 'fluxo'], default: 'fixo' },
     id_colaborador: { type: String, ref: 'Colaborador' },

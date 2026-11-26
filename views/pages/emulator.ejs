@@ -24,6 +24,34 @@
             <p class="small mb-0">Gateways e caixas: selecione, arraste, edite e salve o layout.</p>
           </div>
 
+          <div class="details mb-3">
+            <div class="section-title">Envio de leituras</div>
+            <label for="leituraDestino">Rota da API</label>
+            <select id="leituraDestino" class="form-select form-select-sm mb-2" ng-model="emulator.leituraDestino"
+              ng-change="onEmulatorLeituraConfigChange()">
+              <option value="registro">Registro (/_bd/registro)</option>
+              <option value="tracking">Tracking (/_bd/tracking)</option>
+            </select>
+            <label for="pollIntervalSeg">Intervalo no gateway (permanência)</label>
+            <input id="pollIntervalSeg" type="number" class="form-control form-control-sm mb-1"
+              min="3" max="120" step="1" ng-model="emulator.pollIntervalSeg"
+              ng-change="onEmulatorLeituraConfigChange()" />
+            <p class="small text-muted mb-2" ng-show="emulator.leituraDestino === 'registro'">
+              Registro ignora leituras com menos de 7s no mesmo coletor — use intervalo ≥ 7.
+            </p>
+            <p class="small text-muted mb-2" ng-show="emulator.leituraDestino === 'tracking'">
+              Tracking: regra vinculada ao gateway; entrada ao chegar e permanência com o intervalo acima.
+            </p>
+            <label class="d-flex align-items-center gap-2 mb-2">
+              <input type="checkbox" ng-model="emulator.envioAutomatico" ng-change="onEmulatorLeituraConfigChange()" />
+              <span class="small">Envio automático (poll + entrada)</span>
+            </label>
+            <button type="button" class="action-btn w-100" ng-click="onFlushLeiturasManual()">Enviar leituras agora</button>
+            <div class="small text-muted mt-2" ng-if="emulator.lastLeituraResumo">
+              Último: {{ emulator.lastLeituraResumo }}
+            </div>
+          </div>
+
           <div class="toolbox">
             <div class="section-title">Objetos</div>
             <div class="d-flex gap-2">  

@@ -27,6 +27,7 @@ app.component('gateway', {
     // Sequência para ignorar respostas atrasadas (causa do "ora carrega ora não")
     $ctrl._seqNiveis = 0;
     $ctrl._seqNiveisDestino = 0;
+    $ctrl._seqEdicao = 0;
 
     $ctrl._regLeituras = [];
     $ctrl.socket = null;
@@ -48,16 +49,43 @@ app.component('gateway', {
       //$ctrl.onCarregaNiveisPlanta('01');
     };
 
-    $ctrl.$onChanges = function (changes) {
+    function aplicarDigestLista() {
+      $timeout(function () { }, 0);
+    }
 
-
-
-      if ($ctrl.funcao == 'add') {
-        $ctrl.onEditar(undefined)
-      } else if ($ctrl.funcao == 'edit') {
-        $ctrl.onEditar($ctrl.edit)
+    $ctrl.limparEstadoFormulario = function () {
+      $ctrl._seqEdicao = ($ctrl._seqEdicao || 0) + 1;
+      $ctrl._seqNiveis += 1;
+      $ctrl._seqNiveisDestino += 1;
+      $ctrl._editGateway = {};
+      $ctrl._listNivel1 = [];
+      $ctrl._listNivel2 = [];
+      $ctrl._listNivel3 = [];
+      $ctrl._listNivel4 = [];
+      $ctrl._listNivel1_destino = [];
+      $ctrl._listNivel2_destino = [];
+      $ctrl._listNivel3_destino = [];
+      $ctrl._listNivel4_destino = [];
+      $ctrl._regLeituras = [];
+      $ctrl._regraTrackingSelecionada = null;
+      if ($ctrl.socket) {
+        $ctrl.socket.disconnect();
+        $ctrl.socket = null;
       }
+      aplicarDigestLista();
+    };
 
+    $ctrl.$onChanges = function (changes) {
+      if (!changes.funcao && !changes.edit) return;
+
+      var fn = $ctrl.funcao;
+      if (fn === 'add') {
+        $ctrl.onEditar(undefined);
+      } else if (fn === 'edit' && $ctrl.edit) {
+        $ctrl.onEditar(angular.copy($ctrl.edit));
+      } else if (!fn || fn === null) {
+        $ctrl.limparEstadoFormulario();
+      }
     };
 
     $ctrl.onCarregaTrackingRegras = async function () {
@@ -91,12 +119,29 @@ app.component('gateway', {
 
     $ctrl.onEditar = async function (reg) {
 
+      $ctrl._seqEdicao = ($ctrl._seqEdicao || 0) + 1;
+      const seqEdicao = $ctrl._seqEdicao;
+
       const tabTrigger = document.querySelector('#gateways-a-tab');
-      const tab = new bootstrap.Tab(tabTrigger);
-      tab.show();
+      if (tabTrigger) {
+        const tab = new bootstrap.Tab(tabTrigger);
+        tab.show();
+      }
+
+      $ctrl._listNivel1 = [];
+      $ctrl._listNivel2 = [];
+      $ctrl._listNivel3 = [];
+      $ctrl._listNivel4 = [];
+      $ctrl._listNivel1_destino = [];
+      $ctrl._listNivel2_destino = [];
+      $ctrl._listNivel3_destino = [];
+      $ctrl._listNivel4_destino = [];
+      aplicarDigestLista();
 
       await $ctrl.onCarregaColaboradores();
+      if (seqEdicao !== $ctrl._seqEdicao) return;
       await $ctrl.onCarregaTrackingRegras();
+      if (seqEdicao !== $ctrl._seqEdicao) return;
 
 
       if (reg == undefined) {
@@ -106,6 +151,7 @@ app.component('gateway', {
 
         await $ctrl.onCarregaNiveis('01', false, $ctrl._seqNiveis);
         await $ctrl.onCarregaNiveisDestino('01', false, $ctrl._seqNiveisDestino);
+        if (seqEdicao !== $ctrl._seqEdicao) return;
 
         $ctrl._editGateway = {
           _id: uteisService.onGetID(),
@@ -166,7 +212,7 @@ app.component('gateway', {
 
       } else {
 
-        $ctrl._editGateway = angular.copy(reg);
+        $ctrl._editGateway = reg;
         $ctrl._editGateway.ativo = "" + $ctrl._editGateway.ativo;
         $ctrl._editGateway.gera_associao = "" + $ctrl._editGateway.gera_associao;
         $ctrl._editGateway.posicao_esperada_auto = "" + $ctrl._editGateway.posicao_esperada_auto;
@@ -183,6 +229,8 @@ app.component('gateway', {
         $ctrl._editGateway.id_nivel_loc2_destino = normalizaIdNivel($ctrl._editGateway.id_nivel_loc2_destino);
         $ctrl._editGateway.id_nivel_loc3_destino = normalizaIdNivel($ctrl._editGateway.id_nivel_loc3_destino);
         $ctrl._editGateway.id_nivel_loc4_destino = normalizaIdNivel($ctrl._editGateway.id_nivel_loc4_destino);
+
+        $ctrl._modoFixo = String($ctrl._editGateway.modo || 'fixo') !== 'movel';
 
         $ctrl._editGateway['_foto'] = '../assets/images/icon_cadastro.fw.png'
         if ($ctrl._editGateway.foto) {
@@ -205,36 +253,45 @@ app.component('gateway', {
         $ctrl._listNivel4_destino = [];
 
         await $ctrl.onCarregaNiveis('01', true, seqOrigem);
+        if (seqEdicao !== $ctrl._seqEdicao) return;
 
         if ($ctrl._editGateway.id_nivel_loc1) {
           await $ctrl.onCarregaNiveis('02', true, seqOrigem);
+          if (seqEdicao !== $ctrl._seqEdicao) return;
 
           if ($ctrl._editGateway.id_nivel_loc2) {
             await $ctrl.onCarregaNiveis('03', true, seqOrigem);
+            if (seqEdicao !== $ctrl._seqEdicao) return;
 
             if ($ctrl._editGateway.id_nivel_loc3) {
               await $ctrl.onCarregaNiveis('04', true, seqOrigem);
-            };
+              if (seqEdicao !== $ctrl._seqEdicao) return;
+            }
           }
         }
 
         await $ctrl.onCarregaNiveisDestino('01', true, seqDestino);
+        if (seqEdicao !== $ctrl._seqEdicao) return;
         if ($ctrl._editGateway.id_nivel_loc1_destino) {
           await $ctrl.onCarregaNiveisDestino('02', true, seqDestino);
+          if (seqEdicao !== $ctrl._seqEdicao) return;
 
           if ($ctrl._editGateway.id_nivel_loc2_destino) {
             await $ctrl.onCarregaNiveisDestino('03', true, seqDestino);
+            if (seqEdicao !== $ctrl._seqEdicao) return;
 
             if ($ctrl._editGateway.id_nivel_loc3_destino) {
               await $ctrl.onCarregaNiveisDestino('04', true, seqDestino);
-            };
+              if (seqEdicao !== $ctrl._seqEdicao) return;
+            }
           }
         }
 
-      };
+      }
 
-      $ctrl.onLogs()
-
+      if (seqEdicao !== $ctrl._seqEdicao) return;
+      aplicarDigestLista();
+      $ctrl.onLogs();
     };
 
     $ctrl.onMudaModo = async function () {
@@ -359,6 +416,7 @@ app.component('gateway', {
         } else if (nivel == '04') {
           $ctrl._listNivel4 = lista;
         }
+        aplicarDigestLista();
       } catch (error) {
         uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
       }
@@ -420,6 +478,7 @@ app.component('gateway', {
         } else if (nivel == '04') {
           $ctrl._listNivel4_destino = lista;
         }
+        aplicarDigestLista();
       } catch (error) {
         uteisService.onToast('Algo deu errado, tente novamente por favor.', 'error', 2000, 'top-end');
       }
@@ -481,8 +540,8 @@ app.component('gateway', {
       uteisService.patchBase('/gateway', $ctrl._editGateway)
         .then((res) => {
           uteisService.onToast('Registrado!', 'success', 3000, 'top-end');
-          $ctrl.onFechar();
-        })
+          $ctrl.fechar();
+        });
 
     };
 
@@ -589,21 +648,10 @@ app.component('gateway', {
 
 
     $ctrl.fechar = function () {
-      // invalida qualquer carga em andamento
-      $ctrl._seqNiveis += 1;
-      $ctrl._seqNiveisDestino += 1;
-
-      $ctrl._listNivel1 = [];
-      $ctrl._listNivel2 = [];
-      $ctrl._listNivel3 = [];
-      $ctrl._listNivel4 = [];
-
-      $ctrl._listNivel1_destino = [];
-      $ctrl._listNivel2_destino = [];
-      $ctrl._listNivel3_destino = [];
-      $ctrl._listNivel4_destino = [];
-
-      $ctrl.onFechar();
+      $ctrl.limparEstadoFormulario();
+      if ($ctrl.onFechar) {
+        $ctrl.onFechar();
+      }
     };
 
   },
