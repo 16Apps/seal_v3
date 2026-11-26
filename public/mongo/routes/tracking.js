@@ -967,10 +967,10 @@ module.exports = (app, dbConnection) => {
     }
 
     /**
-     * Tolerância só para o gateway/local ganhador (ou o mesmo da presença atual):
-     * - dentro do tempo → permanência
-     * - após gap → novo ciclo
-     * Outro gateway ganhando disputa → troca de local (entrada), sem ignorar por tolerância.
+     * Tolerância só no mesmo leitor (gateway) e mesmo local do registro atual:
+     * - dentro do tempo → permanência no mesmo documento
+     * - após gap → novo ciclo (entrada) no mesmo leitor/local
+     * Troca de local ou de gateway → entrada (novo registro), não reescreve o ciclo anterior.
      */
     function resolverToleranciaVencedor({ ultimoRegistro, gatewayVencedorId, locVencedor, dataLeitura, toleranciaSeg }) {
         if (!ultimoRegistro || toleranciaSeg <= 0) {
@@ -991,9 +991,11 @@ module.exports = (app, dbConnection) => {
             locVencedor.id_nivel_loc3, locVencedor.id_nivel_loc4
         );
 
-        // Tolerância só se o vencedor é o mesmo gateway ou o mesmo local da presença atual
-        if (!(mesmoGateway || mesmoLocal)) {
+        if (!mesmoLocal) {
             return { soPermanencia: false, forcarNovoCiclo: false, gap: gap, trocaLocal: true };
+        }
+        if (!mesmoGateway) {
+            return { soPermanencia: false, forcarNovoCiclo: false, gap: gap, trocaGateway: true };
         }
 
         if (gap >= 0 && gap <= toleranciaSeg) {
@@ -1072,10 +1074,12 @@ module.exports = (app, dbConnection) => {
                 loc.id_nivel_loc1, loc.id_nivel_loc2, loc.id_nivel_loc3, loc.id_nivel_loc4
             );
 
+        const mesmoGateway = !!(ultimoRegistro && strId(ultimoRegistro.id_gateway) === strId(gateway._id));
+
         /**
          * Status:
-         * - permanencia → só atualização do MESMO ciclo no MESMO local
-         * - entrada → 1ª presença no local, troca de local, ou novo ciclo após gap
+         * - permanencia → só atualização do MESMO ciclo no MESMO local e MESMO gateway
+         * - entrada → 1ª presença no local, troca de local/leitor, ou novo ciclo após gap
          * - em_transito → leitura sem localização resolvida
          */
         let status = 'entrada';
@@ -1086,19 +1090,21 @@ module.exports = (app, dbConnection) => {
             retorno = (itemTinhaLocal || ultimoTinhaLocal)
                 ? 'Localização não informada, em trânsito.'
                 : 'O item já encontrava-se em trânsito';
-        } else if (mesmoLocal && !forcarNovoCiclo && ultimoRegistro) {
-            // Continua no mesmo ciclo
+        } else if (mesmoLocal && mesmoGateway && !forcarNovoCiclo && ultimoRegistro) {
+            // Continua no mesmo ciclo no mesmo leitor
             return atualizarPermanencia({ gateway, item, tag, loc, leitura, dataLeitura, ultimoRegistro });
         } else if (mesmoLocal && forcarNovoCiclo) {
             status = 'entrada';
             retorno = gapSegundos != null
                 ? `Novo ciclo de leitura (gap sem leitura: ${gapSegundos}s)`
                 : 'Novo ciclo de leitura (mesmo local após gap)';
-        } else if (!mesmoLocal && locPreenchida) {
-            // Troca de local (A → B) ou 1ª localização do item → sempre ENTRADA
+        } else if ((!mesmoLocal || !mesmoGateway) && locPreenchida) {
+            // Troca de local/leitor ou 1ª localização → sempre ENTRADA (preserva histórico por leitor)
             status = 'entrada';
             retorno = (itemTinhaLocal || ultimoTinhaLocal)
-                ? descricaoMovimento(item, loc)
+                ? (!mesmoGateway && mesmoLocal
+                    ? 'Entrada em novo leitor (mesmo endereço)'
+                    : descricaoMovimento(item, loc))
                 : 'Primeira entrada no local';
         }
 
@@ -1162,7 +1168,7 @@ module.exports = (app, dbConnection) => {
             retorno,
             registro: novoRegistro,
             novo: true,
-            ciclo: !!(forcarNovoCiclo || (!mesmoLocal && locPreenchida))
+            ciclo: !!(forcarNovoCiclo || ((!mesmoLocal || !mesmoGateway) && locPreenchida))
         };
     }
 
